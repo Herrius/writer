@@ -226,17 +226,16 @@ impl Project {
 
     /// Abre una sesión de lectura; si existe `.escritor`, recupera pendientes.
     pub fn lectura(&self) -> Result<SesionLectura> {
-        let escritor = self.ruta_escritor();
-        if !escritor.exists() {
+        let Some(escritor) = fsutil::validar_escritor(&self.raiz)? else {
             let escaneo = verify::escanear(&self.raiz)?;
             return Ok(SesionLectura {
                 _lock: None,
                 log: None,
                 escaneo,
             });
-        }
+        };
         let lock = ProjectLock::adquirir(&escritor, None)?;
-        let ruta_log = self.ruta_log();
+        let ruta_log = escritor.join("operaciones.log");
         if !ruta_log.is_file() {
             let mut escaneo = verify::escanear(&self.raiz)?;
             escaneo.errores.push(format!(
@@ -277,21 +276,37 @@ impl Project {
                 self.raiz.display()
             )));
         }
-        let escritor = self.ruta_escritor();
-        if !escritor.exists() {
+        let (escritor, nuevo) = match fsutil::validar_escritor(&self.raiz)? {
+            Some(real) => (real, false),
+            None => {
+                let nuevo = self.raiz.join(".escritor");
+                std::fs::create_dir_all(&nuevo)
+                    .map_err(|error| Error::Io(error).with_path(&nuevo))?;
+                let real = fsutil::validar_escritor(&self.raiz)?.ok_or_else(|| {
+                    Error::Integrity(format!(
+                        "no se pudo crear el directorio operativo {}",
+                        nuevo.display()
+                    ))
+                })?;
+                (real, true)
+            }
+        };
+        let ruta_log = escritor.join("operaciones.log");
+        if nuevo {
             std::fs::create_dir_all(escritor.join("objetos"))
                 .map_err(|error| Error::Io(error).with_path(&escritor))?;
             std::fs::create_dir_all(escritor.join("cuarentena"))
                 .map_err(|error| Error::Io(error).with_path(&escritor))?;
-            Log::crear_vacio(&self.ruta_log())?;
-        } else if !self.ruta_log().is_file() {
+            Log::crear_vacio(&ruta_log)?;
+            fsutil::validar_escritor(&self.raiz)?;
+        } else if !ruta_log.is_file() {
             return Err(Error::Recovery(format!(
                 "falta {}; el proyecto necesita recuperación",
-                self.ruta_log().display()
+                ruta_log.display()
             )));
         }
         let lock = ProjectLock::adquirir(&escritor, None)?;
-        let mut log = Log::cargar(&self.ruta_log())?;
+        let mut log = Log::cargar(&ruta_log)?;
         let blobs = BlobStore::abrir(&escritor)?;
         let recuperacion = recovery::recuperar(&self.raiz, &mut log, &blobs)?;
         let mut escaneo = verify::escanear(&self.raiz)?;
@@ -858,6 +873,7 @@ impl Project {
         let mut cambios = Vec::new();
         let mut conflictos = Vec::new();
         for efecto in &operacion.prepare.efectos {
+            fsutil::validar_ruta_documento(&efecto.ruta)?;
             let ruta = fsutil::ruta_del_proyecto(&self.raiz, &efecto.ruta)?;
             let actual = hash::hash_archivo(&ruta)?;
             if actual != efecto.hash_nuevo {
@@ -1030,6 +1046,7 @@ impl Project {
                     cambio.ruta
                 )));
             }
+            fsutil::validar_ruta_documento(&cambio.ruta)?;
             let ruta = fsutil::ruta_del_proyecto(&self.raiz, &cambio.ruta)?;
             let anterior = fsutil::leer_opcional(&ruta)?;
             let hash_anterior = anterior.as_ref().map(|bytes| hash::hash(bytes));
@@ -1470,7 +1487,12 @@ fn abrir_indice(
     operaciones: &[Operacion],
     revision: u64,
 ) -> Result<Indice> {
-    let mut indice = Indice::abrir(escritor)?;
+    let escritor = fsutil::directorio_real(escritor)?;
+    let ruta_indice = escritor.join("indice.sqlite");
+    if std::fs::symlink_metadata(&ruta_indice).is_ok() {
+        fsutil::archivo_real(&ruta_indice)?;
+    }
+    let mut indice = Indice::abrir(&escritor)?;
     if matches!(indice.esta_vigente(escenas, notas, revision), Ok(true)) {
         return Ok(indice);
     }
@@ -1479,7 +1501,7 @@ fn abrir_indice(
         Err(error) if parece_corrupto(&error) => {
             drop(indice);
             Indice::apartar(&escritor.join("indice.sqlite"))?;
-            let mut nuevo = Indice::abrir(escritor)?;
+            let mut nuevo = Indice::abrir(&escritor)?;
             nuevo.reconstruir(escenas, notas, operaciones, revision)?;
             Ok(nuevo)
         }

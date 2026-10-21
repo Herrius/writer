@@ -181,7 +181,9 @@ impl Log {
 
     /// Carga y valida un log. Si la última línea está truncada, la descarta.
     pub fn cargar(ruta: &Path) -> Result<Self> {
-        let bytes = std::fs::read(ruta).map_err(|error| Error::Io(error).with_path(ruta))?;
+        let ruta_real = fsutil::archivo_real(ruta)?;
+        let bytes =
+            std::fs::read(&ruta_real).map_err(|error| Error::Io(error).with_path(&ruta_real))?;
         let mut entradas = Vec::new();
         let mut largo_valido = 0_u64;
         let mut offset = 0_usize;
@@ -198,14 +200,14 @@ impl Log {
                 if es_ultima {
                     break;
                 }
-                return Err(corrupcion(ruta, "línea vacía en medio del log"));
+                return Err(corrupcion(&ruta_real, "línea vacía en medio del log"));
             }
             let Some(posicion) = sin_salto.iter().rposition(|byte| *byte == b'\t') else {
                 if truncada {
                     truncado = true;
                     break;
                 }
-                return Err(corrupcion(ruta, "línea del log sin tabulador"));
+                return Err(corrupcion(&ruta_real, "línea del log sin tabulador"));
             };
             let json = &sin_salto[..posicion];
             let checksum = &sin_salto[posicion + 1..];
@@ -218,7 +220,7 @@ impl Log {
                     truncado = true;
                     break;
                 }
-                return Err(corrupcion(ruta, "checksum inválido en el log"));
+                return Err(corrupcion(&ruta_real, "checksum inválido en el log"));
             }
             let valor: Value = match serde_json::from_slice(json) {
                 Ok(valor) => valor,
@@ -236,7 +238,7 @@ impl Log {
             let seq = valor
                 .get("seq")
                 .and_then(Value::as_u64)
-                .ok_or_else(|| corrupcion(ruta, "entrada sin 'seq' entero"))?;
+                .ok_or_else(|| corrupcion(&ruta_real, "entrada sin 'seq' entero"))?;
             if seq != siguiente_seq {
                 return Err(corrupcion(
                     ruta,
@@ -246,22 +248,25 @@ impl Log {
             let tipo = valor
                 .get("tipo")
                 .and_then(Value::as_str)
-                .ok_or_else(|| corrupcion(ruta, "entrada sin 'tipo' textual"))?
+                .ok_or_else(|| corrupcion(&ruta_real, "entrada sin 'tipo' textual"))?
                 .to_string();
             let entrada = match tipo.as_str() {
                 "PREPARE" => {
-                    let prepare: Prepare = serde_json::from_value(valor)
-                        .map_err(|error| corrupcion(ruta, &format!("PREPARE inválido: {error}")))?;
+                    let prepare: Prepare = serde_json::from_value(valor).map_err(|error| {
+                        corrupcion(&ruta_real, &format!("PREPARE inválido: {error}"))
+                    })?;
                     Entrada::Prepare(prepare)
                 }
                 "COMMIT" => {
-                    let commit: Commit = serde_json::from_value(valor)
-                        .map_err(|error| corrupcion(ruta, &format!("COMMIT inválido: {error}")))?;
+                    let commit: Commit = serde_json::from_value(valor).map_err(|error| {
+                        corrupcion(&ruta_real, &format!("COMMIT inválido: {error}"))
+                    })?;
                     Entrada::Commit(commit)
                 }
                 "ABORT" => {
-                    let abort: Abort = serde_json::from_value(valor)
-                        .map_err(|error| corrupcion(ruta, &format!("ABORT inválido: {error}")))?;
+                    let abort: Abort = serde_json::from_value(valor).map_err(|error| {
+                        corrupcion(&ruta_real, &format!("ABORT inválido: {error}"))
+                    })?;
                     Entrada::Abort(abort)
                 }
                 _ => Entrada::Desconocida { seq, tipo },
@@ -279,7 +284,7 @@ impl Log {
         }
 
         let log = Self {
-            ruta: ruta.to_path_buf(),
+            ruta: ruta_real,
             entradas,
             largo_valido,
             siguiente_seq,
@@ -606,13 +611,7 @@ impl Log {
 }
 
 fn validar_efecto(ruta: &Path, efecto: &Efecto) -> Result<()> {
-    if efecto.ruta.is_empty()
-        || efecto.ruta.starts_with('/')
-        || efecto
-            .ruta
-            .split('/')
-            .any(|parte| parte.is_empty() || parte == "." || parte == "..")
-    {
+    if crate::fsutil::validar_ruta_documento(&efecto.ruta).is_err() {
         return Err(corrupcion(
             ruta,
             &format!("ruta de efecto no válida: {}", efecto.ruta),

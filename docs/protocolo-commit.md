@@ -29,6 +29,16 @@ de contenido sobre rutas relativas:
 Un movimiento son dos efectos, no un campo especial: así la reversión usa el
 mismo algoritmo que cualquier otra operación.
 
+Las rutas de efecto se validan antes de cargar el log y antes de aplicar cada
+efecto:
+
+- relativas, con separadores `/`, dentro de `manuscrito/` o `notas/`;
+- sin `\`, `:`, prefijos de unidad, UNC, componentes `.` o `..`, controles ni
+  nombres reservados de Windows;
+- sin enlaces simbólicos en ningún componente existente;
+- `.escritor`, el log, el lock, `objetos`, `indice.sqlite` y `cuarentena` deben
+  ser archivos o directorios reales, no enlaces.
+
 ## 3. Orden de una transacción
 
 1. **Lock del SO** sobre `.escritor/bloqueo` (`File::try_lock`). Si está ocupado,
@@ -140,7 +150,9 @@ controlado. `WRITER_FAULT_EXTERNAL` permite fijar el contenido externo.
 
 ## 9. Lock
 
-- Archivo `.escritor/bloqueo`; el contenido JSON es informativo.
+- Archivo `.escritor/bloqueo`; el contenido JSON es informativo. El directorio
+  `.escritor` y el archivo de lock deben ser reales: un enlace se rechaza antes
+  de abrirlos.
 - Lock exclusivo del SO, sin vencimiento. Si el proceso muere, el SO lo libera.
 - Se toma por transacción y también para recuperar al abrir.
 - En red, el lock puede no excluir; el CAS sigue protegiendo y `verify` avisa.

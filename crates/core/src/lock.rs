@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use crate::error::{Error, Result};
+use crate::fsutil;
 use crate::time;
 
 /// Lock exclusivo del proyecto. Se libera al soltar el valor.
@@ -22,9 +23,15 @@ pub struct ProjectLock {
 impl ProjectLock {
     /// Toma el lock, esperando hasta el límite configurado.
     pub fn adquirir(escritor: &Path, op_id: Option<&str>) -> Result<Self> {
+        let escritor = fsutil::directorio_real(escritor)?;
         let ruta = escritor.join("bloqueo");
-        if let Some(padre) = ruta.parent() {
-            std::fs::create_dir_all(padre).map_err(|error| Error::Io(error).with_path(padre))?;
+        if let Ok(metadatos) = std::fs::symlink_metadata(&ruta) {
+            if metadatos.file_type().is_symlink() {
+                return Err(Error::Integrity(format!(
+                    "se rechaza un lock enlazado: {}",
+                    ruta.display()
+                )));
+            }
         }
         let archivo = std::fs::OpenOptions::new()
             .read(true)

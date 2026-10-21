@@ -168,14 +168,90 @@ pub fn ruta_relativa(ruta: &Path, raiz: &Path) -> Result<String> {
         .join("/"))
 }
 
-/// Une una ruta relativa del proyecto con su raíz, rechazando `..`.
-pub fn ruta_del_proyecto(raiz: &Path, relativa: &str) -> Result<PathBuf> {
-    let mut salida = raiz.to_path_buf();
+/// Valida una ruta relativa del proyecto sin tocar el sistema de archivos.
+///
+/// Rechaza separadores de Windows, prefijos de unidad, UNC, componentes `.` o
+/// `..`, caracteres de control y nombres reservados de Windows. La comprobación
+/// es deliberadamente estricta: una ruta de proyecto nunca necesita esas formas.
+pub fn validar_ruta_relativa(relativa: &str) -> Result<()> {
+    if relativa.is_empty()
+        || relativa.starts_with('/')
+        || relativa.starts_with('\\')
+        || relativa.contains('\\')
+        || relativa.contains(':')
+        || relativa.contains('\0')
+    {
+        return Err(Error::Integrity(format!("ruta no válida: {relativa}")));
+    }
     for componente in relativa.split('/') {
-        if componente.is_empty() || componente == "." || componente == ".." {
+        if componente.is_empty()
+            || componente == "."
+            || componente == ".."
+            || componente.ends_with('.')
+            || componente.ends_with(' ')
+            || componente.chars().any(char::is_control)
+        {
             return Err(Error::Integrity(format!("ruta no válida: {relativa}")));
         }
+        let mayusculas = componente.to_ascii_uppercase();
+        let base = mayusculas.split('.').next().unwrap_or("");
+        let reservado = matches!(base, "CON" | "PRN" | "AUX" | "NUL")
+            || (base.len() == 4
+                && (base.starts_with("COM") || base.starts_with("LPT"))
+                && base.as_bytes()[3].is_ascii_digit()
+                && base.as_bytes()[3] != b'0');
+        if reservado {
+            return Err(Error::Integrity(format!("ruta no válida: {relativa}")));
+        }
+    }
+    Ok(())
+}
+
+/// Valida una ruta que debe ser un documento del proyecto.
+pub fn validar_ruta_documento(relativa: &str) -> Result<()> {
+    validar_ruta_relativa(relativa)?;
+    if relativa.starts_with("manuscrito/") || relativa.starts_with("notas/") {
+        Ok(())
+    } else {
+        Err(Error::Integrity(format!(
+            "ruta fuera de manuscrito/ o notas/: {relativa}"
+        )))
+    }
+}
+
+/// Une una ruta relativa del proyecto con su raíz y rechaza enlaces simbólicos
+/// en cualquier componente existente. Devuelve la ruta bajo la raíz canónica.
+pub fn ruta_del_proyecto(raiz: &Path, relativa: &str) -> Result<PathBuf> {
+    validar_ruta_relativa(relativa)?;
+    let raiz_real =
+        std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
+    let componentes: Vec<&str> = relativa.split('/').collect();
+    let mut salida = raiz_real;
+    for (indice, componente) in componentes.iter().enumerate() {
         salida.push(componente);
+        match std::fs::symlink_metadata(&salida) {
+            Ok(metadatos) => {
+                if metadatos.file_type().is_symlink() {
+                    return Err(Error::Integrity(format!(
+                        "la ruta del proyecto contiene un enlace simbólico: {}",
+                        salida.display()
+                    )));
+                }
+                if indice + 1 < componentes.len() && !metadatos.is_dir() {
+                    return Err(Error::Integrity(format!(
+                        "un componente de la ruta no es un directorio: {}",
+                        salida.display()
+                    )));
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                for resto in &componentes[indice + 1..] {
+                    salida.push(resto);
+                }
+                break;
+            }
+            Err(error) => return Err(Error::Io(error).with_path(&salida)),
+        }
     }
     Ok(salida)
 }
@@ -206,6 +282,69 @@ pub fn archivo_real(ruta: &Path) -> Result<PathBuf> {
         )));
     }
     std::fs::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
+}
+
+/// Valida `.escritor` y sus rutas operativas antes de abrirlas o crearlas.
+///
+/// Devuelve `None` si `.escritor` no existe. La raíz puede ser un alias, pero
+/// `.escritor`, el log, el lock, los blobs, el índice y la cuarentena deben ser
+/// reales: un enlace simbólico permitiría escribir o borrar fuera del proyecto.
+pub fn validar_escritor(raiz: &Path) -> Result<Option<PathBuf>> {
+    let ruta = raiz.join(".escritor");
+    match std::fs::symlink_metadata(&ruta) {
+        Ok(metadatos) => {
+            if metadatos.file_type().is_symlink() {
+                return Err(Error::Integrity(format!(
+                    "se rechaza .escritor enlazado: {}",
+                    ruta.display()
+                )));
+            }
+            if !metadatos.is_dir() {
+                return Err(Error::Integrity(format!(
+                    "se esperaba un directorio .escritor real: {}",
+                    ruta.display()
+                )));
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(Error::Io(error).with_path(&ruta)),
+    }
+    let real = directorio_real(&ruta)?;
+    for (nombre, es_directorio) in [
+        ("operaciones.log", false),
+        ("bloqueo", false),
+        ("objetos", true),
+        ("cuarentena", true),
+        ("indice.sqlite", false),
+        ("indice.sqlite-wal", false),
+        ("indice.sqlite-shm", false),
+    ] {
+        let operativa = real.join(nombre);
+        match std::fs::symlink_metadata(&operativa) {
+            Ok(metadatos) => {
+                if metadatos.file_type().is_symlink() {
+                    return Err(Error::Integrity(format!(
+                        "se rechaza una ruta operativa enlazada: {}",
+                        operativa.display()
+                    )));
+                }
+                let correcto = if es_directorio {
+                    metadatos.is_dir()
+                } else {
+                    metadatos.is_file()
+                };
+                if !correcto {
+                    return Err(Error::Integrity(format!(
+                        "tipo incorrecto en la ruta operativa {}",
+                        operativa.display()
+                    )));
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(Error::Io(error).with_path(&operativa)),
+        }
+    }
+    Ok(Some(real))
 }
 
 /// Valida los dos directorios operativos y el informe antes de acceder a la
@@ -264,5 +403,33 @@ mod tests {
             "manuscrito/01-libro/01-capitulo/001.md"
         );
         assert!(ruta_del_proyecto(raiz, "../fuera").is_err());
+    }
+
+    #[test]
+    fn valida_rutas_sin_formas_de_windows() {
+        for ruta in [
+            "..\\fuera",
+            "C:\\Windows\\x.md",
+            "\\\\servidor\\recurso\\x.md",
+            "manuscrito\\x.md",
+            "manuscrito/01/../../fuera.md",
+            "manuscrito//x.md",
+            "manuscrito/CON.md",
+            "manuscrito/archivo.",
+            "manuscrito/archivo ",
+            "manuscrito/archivo\u{1}.md",
+        ] {
+            assert!(
+                validar_ruta_relativa(ruta).is_err(),
+                "debió rechazar {ruta:?}"
+            );
+        }
+        for ruta in ["manuscrito/01/x.md", "notas/personajes/marta.md"] {
+            assert!(
+                validar_ruta_documento(ruta).is_ok(),
+                "debió aceptar {ruta:?}"
+            );
+        }
+        assert!(validar_ruta_documento("proyecto.yml").is_err());
     }
 }

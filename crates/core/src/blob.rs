@@ -16,9 +16,19 @@ pub struct BlobStore {
 impl BlobStore {
     /// Abre (y crea si hace falta) el almacén dentro de `.escritor`.
     pub fn abrir(escritor: &Path) -> Result<Self> {
+        let escritor = fsutil::directorio_real(escritor)?;
         let raiz = escritor.join("objetos");
-        std::fs::create_dir_all(&raiz).map_err(|error| Error::Io(error).with_path(&raiz))?;
-        fsutil::fsync_dir(escritor)?;
+        match std::fs::symlink_metadata(&raiz) {
+            Ok(_) => {
+                fsutil::directorio_real(&raiz)?;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                std::fs::create_dir(&raiz).map_err(|error| Error::Io(error).with_path(&raiz))?;
+                fsutil::directorio_real(&raiz)?;
+            }
+            Err(error) => return Err(Error::Io(error).with_path(&raiz)),
+        }
+        fsutil::fsync_dir(&escritor)?;
         Ok(Self { raiz })
     }
 

@@ -2,10 +2,10 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 con las correcciones de QA r1 y r2 aplicadas;
-  pendiente repetir QA (r3) y continuar el pipeline de roles.
-- **Siguiente tarea:** QA independiente (r3) sobre el nuevo commit congelado;
-  después seguridad, release, UX y aceptación del product owner.
+- **Fase actual:** Fase 2 con QA r3 aprobada y las correcciones de seguridad
+  SEC-01/SEC-02 aplicadas; pendiente repetir seguridad.
+- **Siguiente tarea:** Security reviewer sobre el nuevo commit congelado;
+  después release, UX y aceptación del product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -14,7 +14,7 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 86 pruebas de núcleo en verde (33 unitarias + 28 de integración + 25 de CLI);
+- 88 pruebas de núcleo en verde (33 unitarias + 30 de integración + 25 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
@@ -244,7 +244,7 @@ python scripts/ci.py e2e          OK (7/7, Chromium)
 python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   86/86
+cargo test --workspace --all-targets --locked   88/88
 pnpm ui:test                      55/55
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
@@ -303,6 +303,9 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 
 - Ventana CAS no atómica: *last-writer-wins* ante un editor que escriba
   exactamente entre la comprobación del hash y el reemplazo.
+- Las rutas de efectos se confinan a `manuscrito/` o `notas/` y `.escritor` debe
+  ser real; se rechazan enlaces en componentes existentes. Queda una ventana
+  TOCTOU si un atacante local cambia el enlace después de la validación.
 - El hash base detecta cambios externos anteriores al guardado, no resuelve
   edición simultánea.
 - SMB/NFS no soportados para escritura.

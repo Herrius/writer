@@ -270,6 +270,95 @@ fn indice_busca_y_se_reconstruye() {
     assert_eq!(resultado.blobs_eliminados, 0);
 }
 
+#[cfg(unix)]
+#[test]
+fn recuperacion_no_escribe_fuera_del_proyecto_por_un_enlace() {
+    use std::os::unix::fs::symlink;
+    use writer_core::blob::BlobStore;
+    use writer_core::oplog::{Efecto, Log, PrepareInput};
+
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+
+    let fuera = directorio.path().join("fuera");
+    std::fs::create_dir_all(&fuera).expect("fuera");
+    let ancestro = raiz.join("manuscrito/01-libro/01-capitulo/extra");
+    symlink(&fuera, &ancestro).expect("enlace de ancestro");
+
+    let escritor = raiz.join(".escritor");
+    let bytes = b"contenido externo";
+    let hash_anterior = writer_core::hash::hash(bytes);
+    let blobs = BlobStore::abrir(&escritor).expect("blobs");
+    blobs.poner(bytes).expect("blob");
+    let mut log = Log::cargar(&escritor.join("operaciones.log")).expect("log");
+    let op_id = writer_core::ulid::nuevo().expect("ulid");
+    log.agregar_prepare(PrepareInput {
+        op_id: &op_id,
+        base_rev: 1,
+        autor: "humano",
+        scope: "test",
+        task_id: None,
+        modelo: None,
+        efectos: vec![Efecto {
+            ruta: "manuscrito/01-libro/01-capitulo/extra/pwned.txt".to_string(),
+            hash_nuevo: None,
+            hash_anterior: Some(hash_anterior),
+        }],
+    })
+    .expect("prepare");
+    log.sincronizar().expect("sincronizar");
+
+    let escaneo = proyecto.verificar().expect("verificar");
+    assert!(
+        escaneo.errores.iter().any(|error| error.contains("enlace")),
+        "errores: {:#?}",
+        escaneo.errores
+    );
+    assert!(!fuera.join("pwned.txt").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn rechaza_enlaces_en_rutas_de_proyecto_y_escritor() {
+    use std::os::unix::fs::symlink;
+
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+
+    let fuera = directorio.path().join("fuera");
+    std::fs::create_dir_all(&fuera).expect("fuera");
+    let ancestro = raiz.join("manuscrito/01-libro/01-capitulo/extra");
+    symlink(&fuera, &ancestro).expect("enlace de ancestro");
+
+    let error = writer_core::fsutil::ruta_del_proyecto(
+        &raiz,
+        "manuscrito/01-libro/01-capitulo/extra/pwned.txt",
+    )
+    .expect_err("la ruta atraviesa un enlace");
+    assert!(error.to_string().contains("enlace"));
+
+    let escritor = raiz.join(".escritor");
+    let escritor_externo = directorio.path().join("escritor-externo");
+    std::fs::rename(&escritor, &escritor_externo).expect("mover .escritor");
+    symlink(&escritor_externo, &escritor).expect("enlace de .escritor");
+
+    let error = proyecto
+        .lectura()
+        .expect_err("lectura debe rechazar .escritor");
+    assert!(error.to_string().contains(".escritor"));
+    let error = proyecto
+        .reindexar(false)
+        .expect_err("reindexar debe rechazar .escritor");
+    assert!(error.to_string().contains(".escritor"));
+
+    // El archivo externo que quedó dentro del .escritor real no se toca.
+    assert!(escritor_externo.join("operaciones.log").is_file());
+}
+
 #[test]
 fn buscar_reindexa_tras_una_edicion_externa() {
     let directorio = temporal();

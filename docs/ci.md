@@ -101,8 +101,8 @@ ruta y la codificación son parte del producto.
 | Comprobación | Qué detecta | Herramienta |
 |---|---|---|
 | Dependencias | Advisories (RustSec), versiones yanked, licencias fuera de la lista blanca, dependencias con comodín, registros y repos Git no permitidos. Se revisan el workspace Rust y la cáscara Tauri (`apps/desktop/src-tauri`). | `cargo-deny` (`deny.toml`) |
-| Secretos | Claves, tokens y credenciales en el historial de Git y en el árbol de trabajo. | `gitleaks` |
-| Workflows | Acciones sin fijar por hash, permisos excesivos, credenciales persistidas en artefactos, buenas prácticas de Dependabot. | `zizmor` |
+| Secretos | Claves, tokens y credenciales en el historial de Git y en el árbol versionado. `.gitleaks.toml` documenta la única allowlist (literales de ruta del fixture E2E). El escaneo de árbol copia solo `git ls-files` a un temporal, sin `target/` ni `node_modules/`. | `gitleaks` |
+| Workflows | Acciones sin fijar por hash, permisos excesivos, credenciales persistidas en artefactos, buenas prácticas de Dependabot. Si no existe `.github/`, el gate lo indica y omite `zizmor` en vez de fallar por ausencia de entradas. | `zizmor` |
 
 Política de `deny.toml`:
 

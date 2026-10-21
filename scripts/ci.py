@@ -72,6 +72,9 @@ def _entorno() -> dict[str, str]:
     entorno = os.environ.copy()
     entorno["RUSTFLAGS"] = "-D warnings"
     entorno.setdefault("CARGO_TERM_COLOR", "never")
+    local = Path.home() / ".local" / "bin"
+    if local.is_dir():
+        entorno["PATH"] = f"{local}:{entorno.get('PATH', '')}"
     return entorno
 
 
@@ -408,6 +411,32 @@ def _exigir_herramientas() -> None:
         raise Fallo("faltan herramientas de seguridad: " + " | ".join(ausentes))
 
 
+def _copiar_versionados(destino: Path) -> None:
+    """Copia solo archivos versionados para el escaneo de árbol.
+
+    `gitleaks dir .` recorre `target/`, `node_modules/` y otros artefactos no
+    versionados, lo que produce falsos positivos y hace que el gate dependa del
+    estado local. El árbol de trabajo versionado es la superficie que importa.
+    """
+    listado = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=RAIZ,
+        capture_output=True,
+        check=True,
+    ).stdout
+    for crudo in listado.split(b"\0"):
+        if not crudo:
+            continue
+        relativa = Path(os.fsdecode(crudo))
+        origen = RAIZ / relativa
+        if not origen.is_file():
+            print(f"aviso: archivo versionado ausente en el árbol: {relativa}", flush=True)
+            continue
+        copia = destino / relativa
+        copia.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(origen, copia)
+
+
 def seguridad() -> None:
     _exigir_herramientas()
     ejecutar(
@@ -429,9 +458,21 @@ def seguridad() -> None:
             "check",
         ]
     )
-    ejecutar(["gitleaks", "git", ".", "--redact", "--no-banner"])
-    ejecutar(["gitleaks", "dir", ".", "--redact", "--no-banner"])
-    ejecutar(["zizmor", "."])
+    configuracion = str(RAIZ / ".gitleaks.toml")
+    ejecutar(
+        ["gitleaks", "git", ".", "--redact", "--no-banner", "--config", configuracion]
+    )
+    with tempfile.TemporaryDirectory() as temporal:
+        arbol = Path(temporal) / "versionados"
+        arbol.mkdir()
+        _copiar_versionados(arbol)
+        ejecutar(
+            ["gitleaks", "dir", str(arbol), "--redact", "--no-banner", "--config", configuracion]
+        )
+    if (RAIZ / ".github").is_dir():
+        ejecutar(["zizmor", "."])
+    else:
+        print("zizmor: sin .github/ ni workflows; se omite", flush=True)
 
 
 # --------------------------------------------------------------------------- #

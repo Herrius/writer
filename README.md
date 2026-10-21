@@ -23,13 +23,13 @@ pruebas en Windows/macOS son las tareas externas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **Correcciones de QA r1 y r2 aplicadas; pendiente QA r3 y continuar seguridad, release, UX y aceptación** |
+| 2 | Interfaz Tauri (v0.2) | **QA r3 aprobada con observaciones; correcciones de seguridad SEC-01/SEC-02 aplicadas y pendientes de repetir seguridad, release, UX y aceptación** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 86 pruebas
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 88 pruebas
 (33 unitarias, 28 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
 cáscara Tauri y 55 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Además, 7 flujos
@@ -266,6 +266,9 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
 - La ventana entre la comprobación del hash y el reemplazo no es atómica. Un
   editor externo que escriba justo ahí puede perder su cambio
   (*last-writer-wins*). Está cubierto por la prueba `before_replace`.
+- Las rutas de efectos se limitan a `manuscrito/` o `notas/` y `.escritor` debe
+  ser real; se rechazan enlaces simbólicos en componentes existentes. Queda una
+  ventana TOCTOU si un atacante local cambia un enlace después de la validación.
 - SMB/NFS no están soportados para escritura.
 - `write` cambia el cuerpo; la edición completa del frontmatter desde la CLI aún
   no existe (los campos desconocidos se conservan al reescribir).

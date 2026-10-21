@@ -411,6 +411,7 @@ fn leer_proyecto(raiz: &Path) -> Result<(Proyecto, Vec<String>)> {
     if !ruta.is_file() {
         return Err(Error::Project("falta proyecto.yml".to_string()));
     }
+    let ruta = fsutil::archivo_real(&ruta)?;
     let (campos, mut avisos) = model::leer_plano(&ruta)?;
     let contexto = "proyecto.yml";
     let (proyecto, avisos_modelo) = Proyecto::desde_campos(&campos, contexto)?;
