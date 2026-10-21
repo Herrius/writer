@@ -1,6 +1,6 @@
 //! Pruebas de integración del motor sobre proyectos temporales.
 
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 use writer_core::model::{Escena, Nota};
@@ -361,6 +361,74 @@ fn buscar_fallback_coincide_con_fts_en_unicode_y_guiones() {
     assert_eq!(junto.len(), 1);
     assert_eq!(junto[0].id, "01KDVDNXH0HP47XVCD2KR6TFZH");
     assert!(!raiz.join(".escritor").exists());
+}
+
+#[test]
+fn exportar_docx_incluye_manuscrito_y_notas() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto
+        .init("Novela DOCX", Some("Autora"), None)
+        .expect("init");
+    let (id, _) = proyecto
+        .crear_escena("El faro", None, None, None)
+        .expect("crear escena");
+    proyecto
+        .escribir_cuerpo(
+            &id,
+            "# Un faro\n\nUna **luz** sobre el puerto.\n\n- Uno\n- Dos\n\n> Una cita.\n\n```text\ncódigo\n```\n\n[Enlace](https://example.com)\n",
+        )
+        .expect("escribir");
+    let (nota_id, _) = proyecto
+        .crear_nota("personajes", "Marta")
+        .expect("crear nota");
+    proyecto
+        .escribir_cuerpo(&nota_id, "Marta vuelve al puerto.\n")
+        .expect("escribir nota");
+
+    let destino = directorio.path().join("salida.docx");
+    let exportado = proyecto
+        .exportar_docx(&destino, true, false)
+        .expect("exportar DOCX");
+    let bytes = std::fs::read(&exportado).expect("leer DOCX");
+    assert_eq!(&bytes[..4], b"PK\x03\x04", "no parece un ZIP/DOCX");
+
+    let mut archivo =
+        zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("abrir DOCX como ZIP");
+    let mut documento = String::new();
+    archivo
+        .by_name("word/document.xml")
+        .expect("document.xml")
+        .read_to_string(&mut documento)
+        .expect("leer document.xml");
+    let mut relaciones = String::new();
+    archivo
+        .by_name("word/_rels/document.xml.rels")
+        .expect("rels")
+        .read_to_string(&mut relaciones)
+        .expect("leer rels");
+    for texto in [
+        "Novela DOCX",
+        "Autora",
+        "El faro",
+        "Una ",
+        "luz",
+        "sobre el puerto",
+        "Uno",
+        "Dos",
+        "Una cita",
+        "código",
+        "Enlace",
+        "Notas",
+        "Marta",
+    ] {
+        assert!(
+            documento.contains(texto),
+            "falta {texto:?} en el DOCX:\n{documento}"
+        );
+    }
+    assert!(relaciones.contains("https://example.com"));
+    assert!(proyecto.exportar_docx(&destino, false, false).is_err());
 }
 
 #[test]

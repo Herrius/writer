@@ -8,6 +8,8 @@
   recuperación y pruebas de caída.
 - [`markdown-v1.md`](markdown-v1.md) — contrato del editor: esquema aceptado,
   corpus golden, normalizaciones y construcciones bloqueadas.
+- [`docx-v1.md`](docx-v1.md) — contrato de exportación DOCX: estructura,
+  construcciones soportadas y limitaciones.
 - [`ci.md`](ci.md) — gates de calidad, interfaz, producto y seguridad; paridad
   local/CI.
 - [`adr/0001-editor-tiptap.md`](adr/0001-editor-tiptap.md) — decisión del editor
@@ -22,9 +24,10 @@
   autosave y conflictos por hash.
 - [`iteraciones/05-fase-2.md`](iteraciones/05-fase-2.md) — búsqueda FTS5,
   historial y reversión.
+- [`iteraciones/06-fase-2.md`](iteraciones/06-fase-2.md) — exportación DOCX
+  desde CLI y UI.
 
 Pendiente por fase:
 
-- Fase 2: DOCX, cuarentena visible, marcas propias, E2E de escritorio y
-  empaquetado.
+- Fase 2: cuarentena visible, marcas propias, E2E de escritorio y empaquetado.
 - Fase 3: `protocolo-patches.md` y contrato del servidor MCP.

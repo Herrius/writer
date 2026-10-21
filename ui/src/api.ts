@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { BusquedaDto } from './types/BusquedaDto';
 import type { ErrorDto } from './types/ErrorDto';
@@ -109,6 +109,19 @@ export async function elegirProyecto(): Promise<string | null> {
     directory: true,
     multiple: false,
     title: 'Abrir proyecto writer',
+  });
+  return typeof seleccion === 'string' ? seleccion : null;
+}
+
+export async function elegirDestinoDocx(titulo: string): Promise<string | null> {
+  const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'novela'}.docx`;
+  if (!esTauri) {
+    return window.prompt('Ruta del DOCX', nombre);
+  }
+  const seleccion = await save({
+    title: 'Exportar manuscrito a DOCX',
+    defaultPath: nombre,
+    filters: [{ name: 'Documento Word', extensions: ['docx'] }],
   });
   return typeof seleccion === 'string' ? seleccion : null;
 }
@@ -225,6 +238,18 @@ export async function revertir(ruta: string, revision: number): Promise<Reversio
     return { revision: demoProyecto.revision, erroresPendientes: [] };
   }
   return invoke<ReversionDto>('revertir', { ruta, revision });
+}
+
+export async function exportarDocx(
+  ruta: string,
+  destino: string,
+  incluirNotas: boolean,
+  forzar: boolean,
+): Promise<string> {
+  if (!esTauri) {
+    return destino;
+  }
+  return invoke<string>('exportar_docx', { ruta, destino, incluirNotas, forzar });
 }
 
 export async function escribir(

@@ -105,9 +105,23 @@ button:focus-visible {
 
 .topbar-acciones {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.7rem;
   margin-left: auto;
+}
+
+.notas-exportar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--tinta-suave);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.notas-exportar input {
+  accent-color: var(--acento);
 }
 
 .modo {

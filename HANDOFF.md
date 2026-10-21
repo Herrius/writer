@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 (Interfaz), tercera rebanada terminada.
-- **Siguiente tarea:** exportación DOCX básica y diálogo de destino.
+- **Fase actual:** Fase 2 (Interfaz), cuarta rebanada terminada.
+- **Siguiente tarea:** cuarentena visible y marcas propias de Tiptap.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -12,15 +12,16 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 70 pruebas de núcleo en verde (29 unitarias + 18 de integración + 23 de CLI);
+- 72 pruebas de núcleo en verde (29 unitarias + 19 de integración + 24 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
-La Fase 2 tiene tres rebanadas verticales:
+La Fase 2 tiene cuatro rebanadas verticales:
 
 1. cáscara Tauri, workspace pnpm, tipos generados, árbol y lectura con Tiptap;
 2. corpus golden Markdown, editor editable, autosave y conflictos por hash;
-3. **búsqueda FTS5, línea de tiempo e historial con reversión**.
+3. búsqueda FTS5, línea de tiempo e historial con reversión;
+4. **exportación DOCX básica desde CLI y UI**.
 
 Estado actual de la UI:
 
@@ -32,6 +33,7 @@ Estado actual de la UI:
   **Historial**;
 - búsqueda FTS5 en la barra lateral con `Ctrl+F`, fragmento resaltado y salto al
   documento;
+- exportación DOCX con casilla de notas y diálogo nativo de destino;
 - historial por revisión: metadatos, contenido de cada archivo y reversión con
   confirmación;
 - el borrador sobrevive al cambio de pestaña y la reversión bloquea la edición
@@ -48,8 +50,8 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 33 pruebas de UI (16 de corpus, 5 de compatibilidad y 12 de autosave, búsqueda,
-  historial y regresiones de borrador/reversión);
+- 34 pruebas de UI (16 de corpus, 5 de compatibilidad y 13 de autosave, búsqueda,
+  historial, DOCX y regresiones de borrador/reversión);
 - 2 pruebas de la cáscara Tauri;
 - gate `python scripts/ci.py interfaz` en verde.
 
@@ -131,6 +133,8 @@ writer/
   - devuelve `Error::Conflict` y no escribe si cambió;
   - devuelve `ResultadoGuardado { revision, hash_archivo }`.
 - `Project::escribir_cuerpo` sigue existiendo para la CLI sin comprobación.
+- `Project::exportar_docx(destino, incluir_notas, forzar)` genera OOXML con
+  `pulldown-cmark` y `zip` 9, sin dependencias de extracción de DOCX.
 - `verify::Documento::hash()` expone el hash del archivo escaneado.
 
 ### Comandos Tauri
@@ -146,6 +150,8 @@ En `apps/desktop/src-tauri/src/lib.rs`:
 - `mostrar(ruta, revision)`: contenido de los archivos de una revisión.
 - `revertir(ruta, revision)`: crea una revisión nueva y devuelve los errores
   pendientes.
+- `exportar_docx(ruta, destino, incluirNotas, forzar)`: escribe el DOCX y
+  devuelve la ruta final.
 - `escribir(ruta, objetivo, cuerpo, hashBase)`: devuelve
   `GuardadoDto { revision, hashArchivo }`.
 - Errores estructurados `ErrorDto { tipo, mensaje }`; `TipoError` distingue
@@ -166,6 +172,7 @@ En `apps/desktop/src-tauri/src/lib.rs`:
   - marca de revisión actual;
   - detalle con metadatos y contenido de cada archivo afectado;
   - reversión en dos pasos, con aviso de que crea una revisión nueva.
+- **Exportar DOCX** en la barra superior, con casilla **notas** y diálogo nativo.
 - Editor Tiptap editable con el esquema de `ui/src/editor/extensions.ts`.
 - Autosave con debounce y cola serializada (si llegan cambios mientras se
   guarda, se drenan antes de continuar).
@@ -205,8 +212,8 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   70/70
-pnpm ui:test                      33/33
+cargo test --workspace --all-targets --locked   72/72
+pnpm ui:test                      34/34
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK
@@ -229,18 +236,13 @@ sin inspección visual.
 
 ### Siguiente tarea inmediata
 
-1. **Exportación DOCX básica** (criterio 14):
-   - comando CLI `export docx` antes que la UI;
-   - motor: títulos, párrafos, énfasis, listas, citas, código, enlaces y
-     separadores;
-   - diálogo de destino en la UI y estados de error.
-2. **Cuarentena visible**:
+1. **Cuarentena visible**:
    - listar `.escritor/cuarentena` y explicar cada archivo;
    - descartar o conservar sin tocar el proyecto.
+2. **Marcas propias de Tiptap** (personajes, tramas, comentarios).
 
 ### Resto de Fase 2
 
-- Marcas propias de Tiptap (personajes, tramas, comentarios).
 - Toolbar de formato y recuento de palabras.
 - `bundle.active=true`, iconos completos e instaladores.
 - E2E con Playwright/Tauri.
@@ -271,6 +273,8 @@ sin inspección visual.
 - El historial no se compacta en v1.
 - El serializador de Tiptap escapa literales y entidades; el significado se
   conserva, la representación no.
+- El DOCX es básico: listas con prefijo y sangría, sin tablas nativas, TOC ni
+  imágenes incrustadas; el proyecto sigue siendo la fuente de verdad Markdown.
 - La búsqueda usa el índice; si editas archivos por fuera del motor, ejecuta
   `reindex` para que FTS5 refleje el disco.
 - Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;

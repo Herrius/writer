@@ -760,6 +760,40 @@ impl Project {
 
     /// Exporta el manuscrito a un archivo Markdown.
     pub fn exportar(&self, destino: &Path, incluir_notas: bool, forzar: bool) -> Result<PathBuf> {
+        let destino_abs = self.preparar_destino(destino, forzar)?;
+        let sesion = self.lectura()?;
+        if !sesion.escaneo.errores.is_empty() {
+            return Err(Error::Project(format!(
+                "no se exporta un proyecto con errores: {}",
+                sesion.escaneo.errores.join("; ")
+            )));
+        }
+        let contenido = exportar_markdown(&sesion.escaneo, incluir_notas);
+        fsutil::escribir_atomico(&destino_abs, contenido.as_bytes())?;
+        Ok(destino_abs)
+    }
+
+    /// Exporta el manuscrito a un archivo DOCX.
+    pub fn exportar_docx(
+        &self,
+        destino: &Path,
+        incluir_notas: bool,
+        forzar: bool,
+    ) -> Result<PathBuf> {
+        let destino_abs = self.preparar_destino(destino, forzar)?;
+        let sesion = self.lectura()?;
+        if !sesion.escaneo.errores.is_empty() {
+            return Err(Error::Project(format!(
+                "no se exporta un proyecto con errores: {}",
+                sesion.escaneo.errores.join("; ")
+            )));
+        }
+        let contenido = crate::docx::exportar(&sesion.escaneo, incluir_notas)?;
+        fsutil::escribir_atomico(&destino_abs, &contenido)?;
+        Ok(destino_abs)
+    }
+
+    fn preparar_destino(&self, destino: &Path, forzar: bool) -> Result<PathBuf> {
         if destino.exists() && !forzar {
             return Err(Error::Input(format!(
                 "el destino ya existe: {} (usa --forzar)",
@@ -773,15 +807,6 @@ impl Project {
                 "el destino no puede estar dentro del proyecto".to_string(),
             ));
         }
-        let sesion = self.lectura()?;
-        if !sesion.escaneo.errores.is_empty() {
-            return Err(Error::Project(format!(
-                "no se exporta un proyecto con errores: {}",
-                sesion.escaneo.errores.join("; ")
-            )));
-        }
-        let contenido = exportar_markdown(&sesion.escaneo, incluir_notas);
-        fsutil::escribir_atomico(&destino_abs, contenido.as_bytes())?;
         Ok(destino_abs)
     }
 

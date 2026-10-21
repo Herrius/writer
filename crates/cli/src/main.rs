@@ -195,10 +195,26 @@ enum Crear {
 enum Exportar {
     /// Exporta a un archivo Markdown.
     Md(MdArgs),
+    /// Exporta a un archivo DOCX.
+    Docx(DocxArgs),
 }
 
 #[derive(Debug, Args)]
 struct MdArgs {
+    /// Archivo de destino.
+    destino: PathBuf,
+    #[arg(default_value = ".")]
+    ruta: PathBuf,
+    /// Incluye las notas al final.
+    #[arg(long)]
+    notas: bool,
+    /// Sobrescribe el destino.
+    #[arg(long)]
+    forzar: bool,
+}
+
+#[derive(Debug, Args)]
+struct DocxArgs {
     /// Archivo de destino.
     destino: PathBuf,
     #[arg(default_value = ".")]
@@ -333,6 +349,12 @@ fn ejecutar(comando: Comando) -> writer_core::Result<u8> {
             Exportar::Md(args) => {
                 let proyecto = Project::new(&args.ruta);
                 let destino = proyecto.exportar(&args.destino, args.notas, args.forzar)?;
+                println!("exportado: {}", destino.display());
+                Ok(0)
+            }
+            Exportar::Docx(args) => {
+                let proyecto = Project::new(&args.ruta);
+                let destino = proyecto.exportar_docx(&args.destino, args.notas, args.forzar)?;
                 println!("exportado: {}", destino.display());
                 Ok(0)
             }

@@ -333,6 +333,19 @@ fn revertir(ruta: String, revision: u64) -> Result<ReversionDto, ErrorDto> {
 }
 
 #[tauri::command]
+fn exportar_docx(
+    ruta: String,
+    destino: String,
+    incluir_notas: bool,
+    forzar: bool,
+) -> Result<String, ErrorDto> {
+    Project::new(&ruta)
+        .exportar_docx(std::path::Path::new(&destino), incluir_notas, forzar)
+        .map(|ruta| ruta.display().to_string())
+        .map_err(error)
+}
+
+#[tauri::command]
 fn escribir(
     ruta: String,
     objetivo: String,
@@ -420,6 +433,7 @@ pub fn run() {
             historial,
             mostrar,
             revertir,
+            exportar_docx,
             escribir
         ])
         .run(tauri::generate_context!())
@@ -511,6 +525,12 @@ mod tests {
         assert_eq!(reversion.revision, 3);
         let restaurada = leer(ruta.clone(), escena.id.clone()).expect("leer restaurada");
         assert_eq!(restaurada.cuerpo, "");
+
+        let destino = directorio.path().join("salida.docx");
+        let exportado = exportar_docx(ruta.clone(), destino.display().to_string(), true, false)
+            .expect("exportar DOCX");
+        let bytes = std::fs::read(exportado).expect("leer DOCX");
+        assert_eq!(&bytes[..4], b"PK\x03\x04");
 
         let fallo = escribir(
             ruta,

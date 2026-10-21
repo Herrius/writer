@@ -185,6 +185,56 @@ fn buscar_encuentra_escenas_y_notas() {
 }
 
 #[test]
+fn exportar_docx_desde_cli() {
+    let (directorio, raiz) = proyecto_temporal();
+    let (id, _) = crear_escena(&raiz, "El faro");
+    let escritura = ejecutar_en(
+        &raiz,
+        &["write", &id, "--texto", "Una luz sobre el puerto.\n"],
+    );
+    assert!(escritura.status.success());
+    let destino = directorio.path().join("salida.docx");
+
+    let export = writer()
+        .args(["export", "docx"])
+        .arg(&destino)
+        .arg(&raiz)
+        .output()
+        .expect("export docx");
+    assert!(
+        export.status.success(),
+        "export docx: {}",
+        String::from_utf8_lossy(&export.stderr)
+    );
+    let bytes = std::fs::read(&destino).expect("leer docx");
+    assert_eq!(&bytes[..4], b"PK\x03\x04");
+    assert!(bytes.len() > 1000);
+
+    let repetido = writer()
+        .args(["export", "docx"])
+        .arg(&destino)
+        .arg(&raiz)
+        .output()
+        .expect("export docx repetido");
+    assert!(
+        !repetido.status.success(),
+        "debe rechazar destino existente"
+    );
+
+    let forzado = writer()
+        .args(["export", "docx", "--forzar"])
+        .arg(&destino)
+        .arg(&raiz)
+        .output()
+        .expect("export docx forzado");
+    assert!(
+        forzado.status.success(),
+        "export forzado: {}",
+        String::from_utf8_lossy(&forzado.stderr)
+    );
+}
+
+#[test]
 fn ciclo_completo_de_escritura_historial_y_exportacion() {
     let (directorio, raiz) = proyecto_temporal();
     let (id, ruta) = crear_escena(&raiz, "El faro");

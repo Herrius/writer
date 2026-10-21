@@ -6,8 +6,8 @@ recuperarse de un corte sin perder ni medio cambio.
 
 Este repositorio está en **Fase 2 (Interfaz, v0.2)** del plan. El motor y la CLI
 (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el árbol,
-permite leer y **editar con autosave**, busca con FTS5 y ofrece un historial con
-reversión. La exportación DOCX y el empaquetado son las siguientes rebanadas.
+permite leer y **editar con autosave**, busca con FTS5, ofrece historial con
+reversión y exporta a DOCX. El empaquetado es la siguiente rebanada.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -20,16 +20,16 @@ reversión. La exportación DOCX y el empaquetado son las siguientes rebanadas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **En curso: árbol, lectura/edición con autosave, conflictos, corpus Markdown, búsqueda FTS5 e historial con reversión; DOCX, cuarentena visible, marcas y empaquetado pendientes** |
+| 2 | Interfaz Tauri (v0.2) | **En curso: árbol, lectura/edición con autosave, conflictos, corpus Markdown, búsqueda FTS5, historial con reversión y exportación DOCX; cuarentena visible, marcas y empaquetado pendientes** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 70 pruebas
-(29 unitarias, 18 de integración y 23 de CLI). La Fase 2 añade 2 pruebas de la
-cáscara Tauri y 33 pruebas de UI (corpus Markdown, compatibilidad, autosave,
-búsqueda, historial y regresiones de borrador/reversión).
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 72 pruebas
+(29 unitarias, 19 de integración y 24 de CLI). La Fase 2 añade 2 pruebas de la
+cáscara Tauri y 34 pruebas de UI (corpus Markdown, compatibilidad, autosave,
+búsqueda, historial, DOCX y regresiones de borrador/reversión).
 
 ## Requisitos
 
@@ -80,6 +80,7 @@ cargo run --bin writer -- history ~/novela
 cargo run --bin writer -- show 3 ~/novela
 cargo run --bin writer -- revert 3 ~/novela
 cargo run --bin writer -- export md ~/salida.md ~/novela --notas
+cargo run --bin writer -- export docx ~/salida.docx ~/novela --notas
 
 # Verificación e índice
 cargo run --bin writer -- verify ~/novela
@@ -104,6 +105,7 @@ cargo run --bin writer -- reindex ~/novela --limpiar
 | `verify` | Comprueba IDs, frontmatter, referencias, orden y estructura. |
 | `reindex` | Reconstruye SQLite/FTS5; `--limpiar` recoge blobs huérfanos. |
 | `export md` | Exporta el manuscrito (y notas con `--notas`). |
+| `export docx` | Exporta a Word (y notas con `--notas`); `--forzar` sobrescribe. |
 
 Todos los comandos aceptan la ruta del proyecto como argumento posicional; el
 valor por defecto es el directorio actual. `--json` está disponible en `info`,
@@ -134,6 +136,8 @@ pnpm check          # Tauri build --no-bundle
 - Pestaña **Historial**: línea de tiempo por revisión, vista del contenido de
   cada archivo y reversión con confirmación; la reversión crea una revisión
   nueva y no borra el historial.
+- **Exportar DOCX** en la barra superior, con casilla para incluir notas y
+  diálogo nativo de destino. Contrato: [`docs/docx-v1.md`](docs/docx-v1.md).
 - Autosave a los 900 ms y con `Ctrl+S` / `Cmd+S`; estados `guardado`,
   `cambios sin guardar`, `guardando`, `conflicto`, `recuperación`, `ocupado`,
   `error` y `solo lectura`.
@@ -186,6 +190,7 @@ writer/
     core/                    # writer-core: motor
       src/
         model.rs             # Proyecto, Escena, Nota, YAML de ida y vuelta
+        docx.rs              # exportación OOXML/DOCX básica
         yaml.rs              # subconjunto YAML v1
         fsutil.rs            # escritura atómica y fsync
         blob.rs              # objetos/<blake3>
@@ -200,6 +205,7 @@ writer/
     desktop/src-tauri/       # cáscara Tauri y comandos
   ui/                        # React + Vite + Tiptap
   docs/
+    docx-v1.md               # contrato de exportación DOCX
     markdown-v1.md           # esquema del editor, corpus y pérdidas
     esquema-v1.md            # contrato de lo que hay en disco
     protocolo-commit.md      # orden, CAS, recuperación y fallos
@@ -254,6 +260,8 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   es correcto para fixtures y proyectos de solo lectura.
 - Una reversión falla con conflicto si alguno de los archivos afectados cambió
   después de esa revisión.
+- El DOCX es básico: listas con prefijo y sangría, sin tablas nativas, TOC ni
+  imágenes incrustadas; el proyecto sigue siendo la fuente de verdad Markdown.
 
 ## Pruebas y gates
 
@@ -301,6 +309,7 @@ La suite cubre, entre otras cosas:
 - guardar el cuerpo conserva el frontmatter;
 - búsqueda FTS5 en CLI y UI, incluido el fallback sin `.escritor`;
 - historial, detalle de revisión y reversión con confirmación;
+- exportación DOCX desde CLI y UI, incluido el rechazo sin `--forzar`;
 - UI: corpus golden Markdown (16 casos), compatibilidad conservadora, autosave
   con `Ctrl+S`, conflicto y solo lectura.
 

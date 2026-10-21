@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   abrirProyecto,
   buscar as buscarEnProyecto,
+  elegirDestinoDocx,
   elegirProyecto,
   errorDe,
   esTauri,
   escribir,
+  exportarDocx,
   historial as pedirHistorial,
   leer,
   listar,
@@ -175,6 +177,8 @@ export default function App() {
   const [confirmarReversion, setConfirmarReversion] =
     useState<ConfirmacionReversion | null>(null);
   const [revirtiendo, setRevirtiendo] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const [incluirNotas, setIncluirNotas] = useState(false);
 
   const cargando = useRef(false);
   const navegando = useRef(false);
@@ -631,6 +635,40 @@ export default function App() {
     }
   };
 
+  const exportarDocumento = async () => {
+    if (exportando || revirtiendoRef.current) {
+      return;
+    }
+    const proyectoActual = proyectoRef.current;
+    if (!proyectoActual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se exporta mientras haya cambios sin guardar.');
+      return;
+    }
+    setExportando(true);
+    setError(null);
+    try {
+      const destino = await elegirDestinoDocx(proyectoActual.titulo);
+      if (destino === null) {
+        return;
+      }
+      const exportado = await exportarDocx(
+        proyectoActual.raiz,
+        destino,
+        incluirNotas,
+        true,
+      );
+      setMensaje(`DOCX exportado en ${exportado}.`);
+    } catch (fallo) {
+      setError(errorDe(fallo).mensaje);
+    } finally {
+      setExportando(false);
+    }
+  };
+
   accionesRef.current = { guardar: guardarAhora, abrir };
 
   useEffect(() => {
@@ -792,6 +830,22 @@ export default function App() {
           <span className={`modo ${esTauri ? 'modo-tauri' : 'modo-demo'}`}>
             {esTauri ? 'Tauri' : 'Demo'}
           </span>
+          <label className="notas-exportar">
+            <input
+              type="checkbox"
+              checked={incluirNotas}
+              onChange={(evento) => setIncluirNotas(evento.target.checked)}
+              disabled={exportando}
+            />
+            notas
+          </label>
+          <button
+            className="secundario"
+            onClick={() => void exportarDocumento()}
+            disabled={exportando || revirtiendo}
+          >
+            {exportando ? 'Exportando…' : 'Exportar DOCX'}
+          </button>
           <button className="secundario" onClick={() => void abrir()}>
             Abrir otro
           </button>

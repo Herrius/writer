@@ -11,6 +11,7 @@
 #![forbid(unsafe_code)]
 
 pub mod blob;
+pub mod docx;
 pub mod error;
 pub mod fault;
 pub mod fsutil;

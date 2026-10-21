@@ -4,7 +4,9 @@ import App from './App';
 import {
   abrirProyecto,
   buscar,
+  elegirDestinoDocx,
   escribir,
+  exportarDocx,
   historial,
   leer,
   listar,
@@ -46,6 +48,8 @@ vi.mock('./api', () => ({
   historial: vi.fn(),
   mostrar: vi.fn(),
   revertir: vi.fn(),
+  elegirDestinoDocx: vi.fn(),
+  exportarDocx: vi.fn(),
   errorDe: (fallo: unknown) => {
     if (typeof fallo === 'object' && fallo !== null && 'tipo' in fallo && 'mensaje' in fallo) {
       return fallo;
@@ -62,6 +66,8 @@ const buscarMock = vi.mocked(buscar);
 const historialMock = vi.mocked(historial);
 const mostrarMock = vi.mocked(mostrar);
 const revertirMock = vi.mocked(revertir);
+const elegirDestinoDocxMock = vi.mocked(elegirDestinoDocx);
+const exportarDocxMock = vi.mocked(exportarDocx);
 
 const proyecto: ProyectoDto = {
   raiz: '/tmp/novela',
@@ -165,6 +171,8 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
     ],
   }));
   revertirMock.mockResolvedValue({ revision: 3, erroresPendientes: [] });
+  elegirDestinoDocxMock.mockResolvedValue('/tmp/salida.docx');
+  exportarDocxMock.mockResolvedValue('/tmp/salida.docx');
 }
 
 async function abrirDemo(): Promise<HTMLTextAreaElement> {
@@ -401,5 +409,21 @@ describe('autosave de la interfaz', () => {
       { timeout: 3000 },
     );
     expect(await screen.findByText('faro')).toBeTruthy();
+  });
+
+  it('exporta el manuscrito a DOCX con las notas elegidas', async () => {
+    await abrirDemo();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'notas' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar DOCX' }));
+
+    await waitFor(() =>
+      expect(exportarDocxMock).toHaveBeenCalledWith(
+        '/tmp/novela',
+        '/tmp/salida.docx',
+        true,
+        true,
+      ),
+    );
+    expect(await screen.findByText(/DOCX exportado en \/tmp\/salida.docx/)).toBeTruthy();
   });
 });
