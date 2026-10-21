@@ -794,20 +794,32 @@ impl Project {
     }
 
     fn preparar_destino(&self, destino: &Path, forzar: bool) -> Result<PathBuf> {
-        if destino.exists() && !forzar {
+        let raiz_lexica = normalizar_lexica(&absoluta(&self.raiz)?);
+        let raiz_real = std::fs::canonicalize(&self.raiz)
+            .map_err(|error| Error::Io(error).with_path(&self.raiz))?;
+        let destino_abs = normalizar_lexica(&absoluta(destino)?);
+
+        if destino_abs.starts_with(&raiz_lexica) {
+            return Err(Error::Input(
+                "el destino no puede estar dentro del proyecto".to_string(),
+            ));
+        }
+        if std::fs::symlink_metadata(&destino_abs).is_ok() && !forzar {
             return Err(Error::Input(format!(
                 "el destino ya existe: {} (usa --forzar)",
                 destino.display()
             )));
         }
-        let destino_abs = absoluta(destino)?;
-        let raiz_abs = absoluta(&self.raiz)?;
-        if destino_abs.starts_with(&raiz_abs) {
+
+        // Resolver enlaces simbólicos del destino y de sus ancestros existentes.
+        // Sin esto, un alias externo puede apuntar a un archivo del proyecto.
+        let destino_real = resolver_destino(&destino_abs)?;
+        if destino_real.starts_with(&raiz_real) {
             return Err(Error::Input(
                 "el destino no puede estar dentro del proyecto".to_string(),
             ));
         }
-        Ok(destino_abs)
+        Ok(destino_real)
     }
 
     /// Verifica el proyecto; intenta recuperar si existe `.escritor`.
@@ -1253,6 +1265,58 @@ fn absoluta(ruta: &Path) -> Result<PathBuf> {
     }
     let actual = std::env::current_dir().map_err(Error::Io)?;
     Ok(actual.join(ruta))
+}
+
+/// Normaliza `.` y `..` sin tocar el sistema de archivos.
+fn normalizar_lexica(ruta: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut salida = PathBuf::new();
+    for componente in ruta.components() {
+        match componente {
+            Component::Prefix(prefix) => salida.push(prefix.as_os_str()),
+            Component::RootDir => salida.push(componente.as_os_str()),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                salida.pop();
+            }
+            Component::Normal(parte) => salida.push(parte),
+        }
+    }
+    salida
+}
+
+/// Resuelve los enlaces simbólicos del destino aunque el archivo final no exista.
+///
+/// Canonicaliza el ancestro existente más profundo y vuelve a añadir los
+/// componentes que faltan. Así un alias externo que apunta al proyecto no puede
+/// colarse como destino de exportación.
+fn resolver_destino(ruta: &Path) -> Result<PathBuf> {
+    let mut actual = ruta.to_path_buf();
+    let mut faltantes: Vec<std::ffi::OsString> = Vec::new();
+    loop {
+        match std::fs::canonicalize(&actual) {
+            Ok(mut resuelto) => {
+                for componente in faltantes.iter().rev() {
+                    resuelto.push(componente);
+                }
+                return Ok(resuelto);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let Some(nombre) = actual.file_name() else {
+                    return Err(Error::Io(error).with_path(&actual));
+                };
+                faltantes.push(nombre.to_os_string());
+                let Some(padre) = actual.parent() else {
+                    return Err(Error::Io(error).with_path(&actual));
+                };
+                if padre == actual {
+                    return Err(Error::Io(error).with_path(&actual));
+                }
+                actual = padre.to_path_buf();
+            }
+            Err(error) => return Err(Error::Io(error).with_path(&actual)),
+        }
+    }
 }
 
 fn parece_corrupto(error: &Error) -> bool {

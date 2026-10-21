@@ -376,7 +376,7 @@ fn exportar_docx_incluye_manuscrito_y_notas() {
     proyecto
         .escribir_cuerpo(
             &id,
-            "# Un faro\n\nUna **luz** sobre el puerto.\n\n- Uno\n- Dos\n\n> Una cita.\n\n```text\ncódigo\n```\n\n[Enlace](https://example.com)\n",
+            "# Un faro\n\nUna **luz** sobre el puerto, Tom & Jerry < 3.\n\n- Uno\n- Dos\n\n> Una cita.\n\n```text\ncódigo\n```\n\n[Enlace](https://example.com)\n",
         )
         .expect("escribir");
     let (nota_id, _) = proyecto
@@ -428,7 +428,70 @@ fn exportar_docx_incluye_manuscrito_y_notas() {
         );
     }
     assert!(relaciones.contains("https://example.com"));
+    assert!(documento.contains("Tom &amp; Jerry"));
+    assert!(documento.contains("&lt;"));
     assert!(proyecto.exportar_docx(&destino, false, false).is_err());
+}
+
+#[test]
+fn exportar_docx_rechaza_caracteres_de_control_sin_tocar_destino() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    let escaneo = proyecto.verificar().expect("verificar");
+    let id = escaneo.escenas[0].escena.id.clone();
+    proyecto
+        .escribir_cuerpo(&id, "Antes\u{1}después.\n")
+        .expect("escribir con control");
+
+    let destino = directorio.path().join("salida.docx");
+    std::fs::write(&destino, b"conservar").expect("destino previo");
+    let error = proyecto
+        .exportar_docx(&destino, false, true)
+        .expect_err("XML inválido");
+    assert!(matches!(error, Error::Input(_)), "error: {error}");
+    assert!(error.to_string().contains("U+0001"), "error: {error}");
+    assert_eq!(
+        std::fs::read(&destino).expect("leer destino"),
+        b"conservar",
+        "el destino no debe reemplazarse si la exportación falla"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn exportar_rechaza_destino_dentro_del_proyecto_por_symlink() {
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+    let escaneo = proyecto.verificar().expect("verificar");
+    let escena = &escaneo.escenas[0];
+    let original = std::fs::read(&escena.ruta).expect("leer escena");
+
+    let alias = directorio.path().join("alias");
+    std::os::unix::fs::symlink(&raiz, &alias).expect("crear symlink");
+    let destino = alias
+        .join("manuscrito")
+        .join("01-libro")
+        .join("01-capitulo")
+        .join("001-primera-escena.md");
+
+    let error = proyecto
+        .exportar_docx(&destino, false, true)
+        .expect_err("DOCX a través de alias");
+    assert!(matches!(error, Error::Input(_)), "error: {error}");
+    assert_eq!(std::fs::read(&escena.ruta).expect("leer escena"), original);
+
+    let error = proyecto
+        .exportar(&destino, false, true)
+        .expect_err("Markdown a través de alias");
+    assert!(matches!(error, Error::Input(_)), "error: {error}");
+    assert_eq!(std::fs::read(&escena.ruta).expect("leer escena"), original);
+
+    assert!(proyecto
+        .exportar_docx(&raiz.join("salida.docx"), false, false)
+        .is_err());
 }
 
 #[test]

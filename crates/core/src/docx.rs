@@ -475,6 +475,10 @@ impl Render {
         );
         let app = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>writer</Application></Properties>"#;
 
+        validar_xml("word/document.xml", &document)?;
+        validar_xml("word/_rels/document.xml.rels", &document_rels)?;
+        validar_xml("docProps/core.xml", &core)?;
+
         let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
         let opciones = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
         for (nombre, contenido) in [
@@ -502,4 +506,28 @@ fn escapar_xml(texto: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+/// Rechaza caracteres que XML 1.0 no permite.
+///
+/// `escapar_xml` resuelve `&`, `<`, `>` y `"`, pero los caracteres de control
+/// (por ejemplo U+0001) siguen siendo inválidos dentro de cualquier documento
+/// XML. Es mejor rechazar la exportación antes de escribir el destino que
+/// generar un DOCX que Word no pueda abrir.
+fn validar_xml(nombre: &str, texto: &str) -> Result<()> {
+    if let Some(caracter) = texto.chars().find(|caracter| !xml_permitido(*caracter)) {
+        return Err(Error::Input(format!(
+            "el texto de {nombre} contiene un carácter no válido para XML 1.0: U+{:04X}",
+            caracter as u32
+        )));
+    }
+    Ok(())
+}
+
+fn xml_permitido(caracter: char) -> bool {
+    let codigo = caracter as u32;
+    matches!(codigo, 0x9 | 0xA | 0xD)
+        || (0x20..=0xD7FF).contains(&codigo)
+        || (0xE000..=0xFFFD).contains(&codigo)
+        || (0x10000..=0x10FFFF).contains(&codigo)
 }

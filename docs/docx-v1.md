@@ -64,6 +64,11 @@ Reglas del destino:
   verdad Markdown.
 - El ZIP se genera con `zip` 9 y solo se escribe; writer no extrae archivos de
   DOCX.
+- La comprobación del destino resuelve enlaces simbólicos y `..` en el momento de
+  validar. No elimina una carrera TOCTOU con un proceso local que cambie el
+  enlace después de la validación.
+- Los caracteres de control que XML 1.0 no permite (por ejemplo U+0001) se
+  rechazan antes de escribir el destino; el archivo existente no se toca.
 
 ## 5. Pruebas
 

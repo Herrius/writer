@@ -12,7 +12,7 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 72 pruebas de núcleo en verde (29 unitarias + 19 de integración + 24 de CLI);
+- 74 pruebas de núcleo en verde (29 unitarias + 21 de integración + 24 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
@@ -135,6 +135,10 @@ writer/
 - `Project::escribir_cuerpo` sigue existiendo para la CLI sin comprobación.
 - `Project::exportar_docx(destino, incluir_notas, forzar)` genera OOXML con
   `pulldown-cmark` y `zip` 9, sin dependencias de extracción de DOCX.
+- `preparar_destino` resuelve enlaces simbólicos y `..` antes de comprobar que el
+  destino queda fuera del proyecto; lo comparten Markdown y DOCX.
+- La exportación DOCX valida los caracteres permitidos por XML 1.0 antes de
+  escribir el destino.
 - `verify::Documento::hash()` expone el hash del archivo escaneado.
 
 ### Comandos Tauri
@@ -212,7 +216,7 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   72/72
+cargo test --workspace --all-targets --locked   74/74
 pnpm ui:test                      34/34
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
@@ -275,6 +279,10 @@ sin inspección visual.
   conserva, la representación no.
 - El DOCX es básico: listas con prefijo y sangría, sin tablas nativas, TOC ni
   imágenes incrustadas; el proyecto sigue siendo la fuente de verdad Markdown.
+- Los caracteres de control inválidos para XML 1.0 se rechazan antes de escribir
+  el DOCX; el destino existente no se toca.
+- La comprobación de destino resuelve enlaces y `..`, pero no elimina una carrera
+  TOCTOU con un proceso local que cambie el enlace después de la validación.
 - La búsqueda usa el índice; si editas archivos por fuera del motor, ejecuta
   `reindex` para que FTS5 refleje el disco.
 - Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;

@@ -26,8 +26,8 @@ reversión y exporta a DOCX. El empaquetado es la siguiente rebanada.
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 72 pruebas
-(29 unitarias, 19 de integración y 24 de CLI). La Fase 2 añade 2 pruebas de la
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 74 pruebas
+(29 unitarias, 21 de integración y 24 de CLI). La Fase 2 añade 2 pruebas de la
 cáscara Tauri y 34 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX y regresiones de borrador/reversión).
 
@@ -262,6 +262,8 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   después de esa revisión.
 - El DOCX es básico: listas con prefijo y sangría, sin tablas nativas, TOC ni
   imágenes incrustadas; el proyecto sigue siendo la fuente de verdad Markdown.
+- El destino de exportación se resuelve contra enlaces simbólicos y `..`; un
+  carácter inválido para XML 1.0 aborta el DOCX antes de reemplazar el archivo.
 
 ## Pruebas y gates
 

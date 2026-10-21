@@ -48,6 +48,20 @@ extrae archivos, se evitó añadir una excepción de seguridad: se genera el OOX
 directamente con `zip` 9.0.5, cuyas advisories quedan en verde. El documento
 sigue siendo válido y se comprobó con `pandoc`.
 
+### 1.5 Correcciones de la revisión
+
+- **Destino por enlace simbólico (P1):** `preparar_destino` ahora normaliza la
+  ruta y resuelve enlaces simbólicos del destino y de sus ancestros existentes
+  antes de comprobar que queda fuera del proyecto. La comprobación es compartida
+  por Markdown y DOCX y usa `symlink_metadata` para detectar enlaces rotos.
+  Regresión: `exportar_rechaza_destino_dentro_del_proyecto_por_symlink`.
+- **XML inválido con caracteres de control (P2):** `validar_xml` recorre
+  `word/document.xml`, `word/_rels/document.xml.rels` y `docProps/core.xml` y
+  rechaza cualquier carácter fuera del rango permitido por XML 1.0 antes de
+  escribir el ZIP. El error es `Error::Input` con el código `U+XXXX` y el
+  destino existente queda intacto. Regresión:
+  `exportar_docx_rechaza_caracteres_de_control_sin_tocar_destino`.
+
 ## 2. Decisiones
 
 | # | Decisión | Motivo |
@@ -63,7 +77,7 @@ sigue siendo válido y se comprobó con `pandoc`.
 
 ```text
 $ cargo test --workspace --all-targets --locked
-72/72                                                     # 29 + 19 + 24
+74/74                                                     # 29 + 21 + 24
 
 $ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 2/2                                                       # tipos + comandos + DOCX
