@@ -282,7 +282,9 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
 - El destino de exportación se resuelve contra enlaces simbólicos y `..`; un
   carácter inválido para XML 1.0 aborta el DOCX antes de reemplazar el archivo.
 - Las marcas no se anidan; el comentario no admite `|` ni `]]`, el texto marcado
-  no admite `]]` y los ULID deben empezar por `0`–`7`.
+  no admite `]]` y los ULID deben empezar por `0`–`7`. Con 1.000 marcas en una
+  escena la latencia de tecleo es ~2,2–2,4× la de un documento sin marcas, sin
+  bucle ni CPU alta.
 - El DOCX limpia marcas en los rangos de prosa del parser CommonMark; código,
   destinos de enlaces y construcciones escapadas se conservan literales.
 - La cuarentena rechaza enlaces simbólicos también en el ancestro `.escritor`.

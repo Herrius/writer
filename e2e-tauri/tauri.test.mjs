@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { remote } from 'webdriverio';
 
@@ -107,6 +107,28 @@ function cerrarVentanaX11() {
   return pid;
 }
 
+function procesoVivo(pid) {
+  if (!existsSync(`/proc/${pid}`)) {
+    return false;
+  }
+  try {
+    const estado = readFileSync(`/proc/${pid}/stat`, 'utf8').split(' ')[2];
+    return estado !== 'Z';
+  } catch {
+    return false;
+  }
+}
+
+async function esperarProcesoCerrado(pid, intentos = 60) {
+  for (let intento = 0; intento < intentos; intento += 1) {
+    if (!procesoVivo(pid)) {
+      return true;
+    }
+    await new Promise((resolver) => setTimeout(resolver, 250));
+  }
+  return false;
+}
+
 async function esperarVentanaCerrada(pid, intentos = 60) {
   for (let intento = 0; intento < intentos; intento += 1) {
     try {
@@ -182,8 +204,11 @@ try {
     if (!(await esperarVentanaCerrada(pid))) {
       throw new Error('la ventana sigue visible después de guardar y cerrar');
     }
+    if (!(await esperarProcesoCerrado(pid))) {
+      throw new Error('el proceso de la app sigue vivo después de cerrar');
+    }
     console.log(
-      'E2E Tauri: cerrar la ventana guarda los cambios pendientes y destruye la ventana',
+      'E2E Tauri: cerrar la ventana guarda, destruye la ventana y termina el proceso',
     );
   } else {
     throw new Error(`modo de E2E desconocido: ${modo}`);

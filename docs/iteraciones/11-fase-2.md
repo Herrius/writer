@@ -46,7 +46,17 @@ recomendación de ejecutar `reindex` tras una edición externa.
 - La búsqueda ya reindexa automáticamente por hash/`mtime`/tamaño; `reindex`
   queda como reconstrucción completa y así se documenta.
 
-## 3. Evidencia
+## 3. Ajustes tras la QA r3
+
+La r3 aprobó la fase con observaciones. Se aplicaron los ajustes no bloqueantes:
+
+- el E2E de cierre comprueba también que el proceso de la app termina, no solo
+  que la ventana X11 desaparece;
+- `HANDOFF.md` ya dice 18 parejas de corpus en todas sus menciones;
+- la latencia con 1.000 marcas (~2,2–2,4×) queda documentada como limitación P3
+  para que UX/rendimiento decida si es aceptable.
+
+## 4. Evidencia
 
 ```text
 pnpm typecheck                    OK
@@ -54,7 +64,7 @@ pnpm ui:test                      55/55
 python scripts/ci.py e2e-tauri    OK (guardar + cerrar; ventana destruida)
 ```
 
-## 4. Pendiente
+## 5. Pendiente
 
 - Repetir QA sobre el nuevo commit congelado (r3).
 - Security reviewer, release engineer, UX/accesibilidad/rendimiento y product

@@ -127,7 +127,7 @@ writer/
     src/markdown/
       compatibilidad.ts      # construcciones bloqueadas
       roundtrip.test.ts      # corpus golden
-      corpus/                # 16 parejas entrada/esperado
+      corpus/                # 18 parejas entrada/esperado
     src/types/               # generado por ts-rs
     src/styles.css
   docs/
@@ -329,6 +329,9 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 - Las marcas no se anidan, el comentario no admite `|` ni `]]` y el texto marcado
   no admite `]]`; los ULID deben empezar por `0`–`7`. El DOCX limpia solo prosa y
   conserva código y escapado.
+- Con 1.000 marcas en una sola escena, la latencia de tecleo es ~2,2–2,4× la de
+  un documento sin marcas; no hay bucle ni CPU alta (P3 de la QA r3, pendiente
+  de decisión de UX/rendimiento).
 - Los fixtures generados incluyen comentarios HTML de relleno; el editor los
   abre en solo lectura. Para probar edición usa la demo o un proyecto real.
 
