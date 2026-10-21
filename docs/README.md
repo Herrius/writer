@@ -29,7 +29,8 @@
   historial y reversión.
 - [`iteraciones/06-fase-2.md`](iteraciones/06-fase-2.md) — exportación DOCX
   desde CLI y UI.
-- `iteraciones/07-fase-2.md` — cuarentena visible y marcas propias (en curso).
+- [`iteraciones/07-fase-2.md`](iteraciones/07-fase-2.md) — cuarentena visible y
+  marcas propias.
 
 Pendiente por fase:
 
