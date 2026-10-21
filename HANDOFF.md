@@ -4,7 +4,7 @@
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** Fase 2 (Interfaz), tercera rebanada terminada.
 - **Siguiente tarea:** exportación DOCX básica y diálogo de destino.
-- **No hay repositorio Git en esta copia** (ver “Pendientes de publicación”).
+- **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
 
@@ -249,10 +249,12 @@ sin inspección visual.
 
 ## 8. Pendientes de publicación / entorno
 
-- **No hay repositorio Git** en esta copia; no se puede commit ni CI remoto.
+- **Repositorio Git local inicializado** en `main` (commit inicial `1c9f3c6`);
+  no hay remoto ni CI remoto todavía.
 - Falta `.github/` (workflows y Dependabot). `.gitignore`, `.editorconfig` y
   `.gitattributes` ya existen.
-- `gitleaks` y `zizmor` no se ejecutaron aquí (herramientas ausentes y sin `.git`).
+- `gitleaks` y `zizmor` no se ejecutaron aquí (herramientas ausentes). Ya existe
+  `.git`, así que `gitleaks` puede ejecutarse cuando se instale.
 - La carpeta está en MEGA; excluir `target/`, `node_modules/` y `ui/dist/` de la
   sincronización o mover el repo fuera de MEGA.
 - `ui/dist/` está ignorado; si se clona en limpio, ejecutar `pnpm ui:build`

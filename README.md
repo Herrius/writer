@@ -363,7 +363,10 @@ de MSRV. Detalle en [`docs/ci.md`](docs/ci.md).
 El repositorio vive dentro de una carpeta sincronizada por MEGA. Para no sincronizar
 `target/` (miles de archivos, cambios constantes) conviene excluir esa carpeta en
 la app de MEGA o mover el repo fuera de la sincronización. `.gitignore` ya excluye
-`target/`.
+`target/`, `node_modules/`, `ui/dist/` y `.escritor/`.
+
+El repositorio Git se inicializó localmente el 2026-10-21 en la rama `main`
+(commit inicial `1c9f3c6`). No hay remoto configurado.
 
 ## Licencia
 

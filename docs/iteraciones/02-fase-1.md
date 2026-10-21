@@ -191,8 +191,9 @@ un rollback incompleto no cierra la operación.
 - **Búsqueda CLI:** el índice FTS5 existe y tiene API, pero no hay comando
   `search` en la v0.1.
 - **Archivos ocultos del repo:** `.gitignore`, `.editorconfig` y
-  `.gitattributes` ya existen en esta copia; falta `.github/` y el directorio no
-  es un repositorio Git. Hay que restaurarlo antes de publicar.
+  `.gitattributes` ya existen. En el momento de este informe faltaban `.github/`
+  y el repositorio Git; desde el 2026-10-21 el repositorio local existe en
+  `main`. `.github/` sigue pendiente.
 
 ## 7. Siguiente fase
 
