@@ -37,6 +37,8 @@
   empaquetado deb/rpm.
 - [`iteraciones/09-fase-2.md`](iteraciones/09-fase-2.md) — toolbar, recuento,
   E2E de escritorio y cierre de la Fase 2.
+- [`revisiones/README.md`](revisiones/README.md) — pipeline secuencial de
+  revisión por roles y registro de la Fase 2.
 
 Pendiente por fase:
 
