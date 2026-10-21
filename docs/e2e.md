@@ -37,7 +37,7 @@ python scripts/ci.py e2e
    estado y el título;
 5. en una segunda ejecución limpia, escribe `PENDIENTE VENTANA.` y cierra la
    ventana con `Alt+F4` (X11), comprobando que el handler de Tauri guarda antes
-   de destruirla.
+   de destruirla y que la ventana y el proceso desaparecen.
 
 ```bash
 cargo install tauri-driver --version 2.0.6 --locked

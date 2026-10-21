@@ -89,12 +89,24 @@ describe('EditorMarkdown con marcas', () => {
       />,
     );
     await screen.findByRole('toolbar', { name: 'Marcas del texto' });
-    const personaje = document.querySelector('.marca-personaje') as HTMLElement;
-    const trama = document.querySelector('.marca-trama') as HTMLElement;
+    const tituloDe = (selector: string) =>
+      (document.querySelector(selector) as HTMLElement | null)?.title ?? '';
+    await waitFor(() =>
+      expect(tituloDe('.marca-personaje [title]')).toContain('Marta'),
+    );
 
-    await waitFor(() => expect(personaje.title).toContain('Marta'));
-    expect(trama.title).toContain('referencia desconocida');
-    expect(trama.getAttribute('data-referencia-desconocida')).toBe('true');
+    // El título debe ser estable: la corrección anterior mutaba el DOM y
+    // ProseMirror lo repintaba en bucle.
+    const muestras = new Set<string>();
+    for (let indice = 0; indice < 10; indice += 1) {
+      await new Promise((resolver) => setTimeout(resolver, 10));
+      muestras.add(tituloDe('.marca-personaje [title]'));
+    }
+    expect([...muestras]).toEqual(['Personaje: Marta']);
+    expect(tituloDe('.marca-trama [title]')).toContain('referencia desconocida');
+    expect(
+      document.querySelector('.marca-trama [data-referencia-desconocida="true"]'),
+    ).toBeTruthy();
   });
 
   it('oculta la toolbar en solo lectura', async () => {

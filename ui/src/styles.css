@@ -789,7 +789,7 @@ button.guardar:disabled {
   text-underline-offset: 0.16em;
 }
 
-.editor-content .ProseMirror .marca[data-referencia-desconocida="true"] {
+.editor-content .ProseMirror .marca [data-referencia-desconocida="true"] {
   background: #fde7e5;
   text-decoration: underline 1px dashed #b23b3b;
 }

@@ -23,7 +23,7 @@ pruebas en Windows/macOS son las tareas externas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **Correcciones de QA aplicadas; pendiente repetir QA y continuar seguridad, release, UX y aceptación** |
+| 2 | Interfaz Tauri (v0.2) | **Correcciones de QA r1 y r2 aplicadas; pendiente QA r3 y continuar seguridad, release, UX y aceptación** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
@@ -117,8 +117,8 @@ valor por defecto es el directorio actual. `--json` está disponible en `info`,
 `list`, `buscar`, `read`, `history`, `show` y `verify`.
 
 La búsqueda usa el índice FTS5 y lo reconstruye si falta o está desactualizado
-por revisión. Si editas archivos por fuera del motor, ejecuta `reindex` para que
-la búsqueda y el índice vuelvan a reflejar el disco.
+por revisión. La búsqueda compara hash, `mtime` y tamaño, y reindexa los
+archivos cambiados; `reindex` sigue disponible para reconstruir todo el índice.
 
 ### Interfaz Tauri (Fase 2)
 
@@ -271,7 +271,8 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   no existe (los campos desconocidos se conservan al reescribir).
 - El historial no se compacta en v1.
 - La búsqueda FTS5 usa el índice; si editas archivos por fuera del motor, ejecuta
-  `reindex` para que los resultados reflejen el disco.
+  `reindex` si quieres reconstruir todo el índice; la búsqueda detecta los
+  archivos cambiados por hash/`mtime`/tamaño.
 - Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;
   es correcto para fixtures y proyectos de solo lectura.
 - Una reversión falla con conflicto si alguno de los archivos afectados cambió
@@ -345,7 +346,7 @@ La suite cubre, entre otras cosas:
 - exportación DOCX desde CLI y UI, incluido el rechazo sin `--forzar`;
 - cuarentena visible: listar y descartar copias sin tocar los originales;
 - marcas propias con ida y vuelta Markdown y exportación DOCX sin delimitadores;
-- UI: corpus golden Markdown (17 casos), compatibilidad conservadora, autosave
+- UI: corpus golden Markdown (18 casos), compatibilidad conservadora, autosave
   con `Ctrl+S`, conflicto y solo lectura.
 
 ### Fixtures

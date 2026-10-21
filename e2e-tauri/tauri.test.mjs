@@ -99,8 +99,32 @@ function cerrarVentanaX11() {
     throw new Error('no se encontró la ventana X11 de writer');
   }
   const ventana = ids.at(-1);
+  const pid = Number(
+    execFileSync('xdotool', ['getwindowpid', ventana], { encoding: 'utf8' }).trim(),
+  );
   execFileSync('xdotool', ['windowactivate', '--sync', ventana]);
   execFileSync('xdotool', ['key', '--clearmodifiers', 'alt+F4']);
+  return pid;
+}
+
+async function esperarVentanaCerrada(pid, intentos = 60) {
+  for (let intento = 0; intento < intentos; intento += 1) {
+    try {
+      const salida = execFileSync(
+        'xdotool',
+        ['search', '--onlyvisible', '--pid', String(pid)],
+        { encoding: 'utf8' },
+      ).trim();
+      if (salida === '') {
+        return true;
+      }
+    } catch {
+      // `xdotool search` sale con código 1 cuando ya no queda ventana.
+      return true;
+    }
+    await new Promise((resolver) => setTimeout(resolver, 250));
+  }
+  return false;
 }
 
 async function esperarTextoEnArchivo(esperado, intentos = 40) {
@@ -148,14 +172,19 @@ try {
     console.log('E2E Tauri: Ctrl+S guarda en disco y la escena sigue visible');
   } else if (modo === 'cerrar') {
     await escribirEnEditor(navegador, textoCierre);
-    cerrarVentanaX11();
+    const pid = cerrarVentanaX11();
     const contenido = await esperarTextoEnArchivo(textoCierre, 60);
     if (!contenido.includes(textoCierre)) {
       throw new Error(
         `el cierre de ventana perdió los cambios pendientes:\n${contenido}`,
       );
     }
-    console.log('E2E Tauri: cerrar la ventana guarda los cambios pendientes');
+    if (!(await esperarVentanaCerrada(pid))) {
+      throw new Error('la ventana sigue visible después de guardar y cerrar');
+    }
+    console.log(
+      'E2E Tauri: cerrar la ventana guarda los cambios pendientes y destruye la ventana',
+    );
   } else {
     throw new Error(`modo de E2E desconocido: ${modo}`);
   }

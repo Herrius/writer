@@ -2,9 +2,9 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 con las correcciones de la primera revisión QA
-  aplicadas; pendiente repetir QA y continuar el pipeline de roles.
-- **Siguiente tarea:** QA independiente sobre el nuevo commit congelado;
+- **Fase actual:** Fase 2 con las correcciones de QA r1 y r2 aplicadas;
+  pendiente repetir QA (r3) y continuar el pipeline de roles.
+- **Siguiente tarea:** QA independiente (r3) sobre el nuevo commit congelado;
   después seguridad, release, UX y aceptación del product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
@@ -27,7 +27,7 @@ La Fase 2 tiene seis rebanadas verticales:
 5. cuarentena visible y marcas propias (personajes, tramas, comentarios);
 6. **E2E de navegador y escritorio, toolbar/recuento y empaquetado deb/rpm**.
 
-**La Fase 2 tiene las correcciones de la primera QA, pero no está aprobada.**
+**La Fase 2 tiene las correcciones de QA r1 y r2, pero no está aprobada.**
 Debe repetirse QA sobre el nuevo commit y continuar el pipeline secuencial de §9
 del plan: seguridad, release, UX/accesibilidad/rendimiento y aceptación del
 product owner. La validación externa (AppImage, firma, Windows/macOS y CI
@@ -224,7 +224,7 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 
 - Esquema aceptado: párrafos, títulos ATX, énfasis, negrita, tachado, código,
   listas, citas, bloques de código, enlaces, separadores, saltos y marcas propias.
-- Corpus: `ui/src/markdown/corpus/` (17 parejas).
+- Corpus: `ui/src/markdown/corpus/` (18 parejas).
 - Prueba: `ui/src/markdown/roundtrip.test.ts`.
 - Normalizaciones aceptadas: setext → ATX, referencias → inline, salto con
   barra → dos espacios, código indentado → cercado, escapado de literales y
@@ -316,8 +316,8 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
   el DOCX; el destino existente no se toca.
 - La comprobación de destino resuelve enlaces y `..`, pero no elimina una carrera
   TOCTOU con un proceso local que cambie el enlace después de la validación.
-- La búsqueda usa el índice; si editas archivos por fuera del motor, ejecuta
-  `reindex` para que FTS5 refleje el disco.
+- La búsqueda detecta cambios externos por hash/`mtime`/tamaño y reindexa el
+  archivo; `reindex` reconstruye todo el índice si hace falta.
 - Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;
   es correcto para fixtures y proyectos de solo lectura, no para uso intensivo
   con miles de escenas.

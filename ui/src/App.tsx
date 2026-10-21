@@ -891,7 +891,14 @@ export default function App() {
             return;
           }
           cerrando = true;
-          await ventana.destroy();
+          try {
+            await ventana.destroy();
+          } catch (fallo) {
+            cerrando = false;
+            setMensaje(
+              `No se pudo cerrar la ventana: ${errorDe(fallo).mensaje}. Vuelve a intentarlo.`,
+            );
+          }
         });
       })
       .catch(() => {

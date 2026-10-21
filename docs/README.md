@@ -39,6 +39,8 @@
   E2E de escritorio y cierre de la Fase 2.
 - [`iteraciones/10-fase-2.md`](iteraciones/10-fase-2.md) — correcciones de los
   hallazgos de la QA independiente.
+- [`iteraciones/11-fase-2.md`](iteraciones/11-fase-2.md) — correcciones de la
+  QA r2: permiso de cierre y títulos de marcas con decoraciones.
 - [`revisiones/README.md`](revisiones/README.md) — pipeline secuencial de
   revisión por roles y registro de la Fase 2. Incluye el informe QA que bloqueó
   la primera congelación y el acta r2 con las correcciones.

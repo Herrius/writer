@@ -2,6 +2,7 @@ import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { extensionesEditor } from './editor/extensions';
 import { comentarioValido } from './editor/marcas';
+import { actualizarReferencias } from './editor/referencias';
 
 export type OpcionMarca = {
   id: string;
@@ -76,67 +77,12 @@ export function EditorMarkdown({
   }, [editor, editable]);
 
   useEffect(() => {
-    const dom = editor?.view.dom;
-    if (!dom) {
-      return;
-    }
-    const anotar = (
-      clase: 'personaje' | 'trama',
-      opciones: OpcionMarca[],
-      etiqueta: string,
-    ) => {
-      dom.querySelectorAll<HTMLElement>(`span[data-marca-${clase}]`).forEach((elemento) => {
-        const referencia = elemento.getAttribute('data-referencia') ?? '';
-        const nota = opciones.find((opcion) => opcion.id === referencia);
-        const titulo = nota
-          ? `${etiqueta}: ${nota.titulo}`
-          : `${etiqueta}: referencia desconocida`;
-        if (elemento.title !== titulo) {
-          elemento.title = titulo;
-        }
-        if (nota) {
-          if (elemento.hasAttribute('data-referencia-desconocida')) {
-            elemento.removeAttribute('data-referencia-desconocida');
-          }
-        } else if (elemento.getAttribute('data-referencia-desconocida') !== 'true') {
-          elemento.setAttribute('data-referencia-desconocida', 'true');
-        }
-      });
-    };
-    const ejecutar = () => {
-      anotar('personaje', personajes, 'Personaje');
-      anotar('trama', tramas, 'Trama');
-    };
-    ejecutar();
-    // El contenido puede terminar de montarse después del primer efecto y
-    // ProseMirror puede volver a pintar los atributos del mark en cada
-    // transacción. Un observador mantiene el título resuelto sin tocar el
-    // documento ni el Markdown.
-    const temporizador = window.setTimeout(ejecutar, 0);
-    let programado = false;
-    const observador = new MutationObserver(() => {
-      if (programado) {
-        return;
-      }
-      programado = true;
-      window.setTimeout(() => {
-        programado = false;
-        ejecutar();
-      }, 0);
-    });
-    observador.observe(dom, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ['title', 'data-referencia-desconocida'],
-    });
-    editor?.on('update', ejecutar);
-    return () => {
-      window.clearTimeout(temporizador);
-      observador.disconnect();
-      editor?.off('update', ejecutar);
-    };
-  }, [editor, personajes, tramas, palabras]);
+    actualizarReferencias(personajes, tramas);
+    // Un cambio de notas no cambia el documento, pero sí cómo se pinta el
+    // título de las marcas. Se fuerza un repintado con una transacción sin
+    // cambios (sin tocar el DOM a mano ni crear pasos de deshacer).
+    editor?.view.dispatch(editor.state.tr.setMeta('referencias-marcas', true));
+  }, [editor, personajes, tramas]);
 
   const estado = useEditorState({
     editor,

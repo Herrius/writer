@@ -2,6 +2,7 @@ import { Markdown } from '@tiptap/markdown';
 import StarterKit from '@tiptap/starter-kit';
 import { BloqueCodigo } from './code-block';
 import { marcasEditor } from './marcas';
+import { ReferenciasMarcas } from './referencias-plugin';
 
 /**
  * Esquema único del editor.
@@ -17,4 +18,5 @@ export const extensionesEditor = [
   BloqueCodigo,
   Markdown,
   ...marcasEditor,
+  ReferenciasMarcas,
 ];

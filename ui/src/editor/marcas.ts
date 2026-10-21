@@ -6,6 +6,7 @@ import {
   type MarkdownTokenizer,
 } from '@tiptap/core';
 
+
 /**
  * Marcas propias del proyecto.
  *
@@ -89,7 +90,7 @@ const MarcaWriter = Mark.create({
   },
 });
 
-function crearMarca(clase: ClaseMarca, atributo: string, etiqueta: string) {
+function crearMarca(clase: ClaseMarca, atributo: string) {
   return Mark.create({
     name: clase,
     excludes: 'personaje trama comentario',
@@ -111,7 +112,6 @@ function crearMarca(clase: ClaseMarca, atributo: string, etiqueta: string) {
         mergeAttributes(HTMLAttributes, {
           [`data-marca-${clase}`]: '',
           class: `marca marca-${clase}`,
-          title: etiqueta,
         }),
         0,
       ];
@@ -124,8 +124,8 @@ function crearMarca(clase: ClaseMarca, atributo: string, etiqueta: string) {
   });
 }
 
-export const Personaje = crearMarca('personaje', 'id', 'Personaje');
-export const Trama = crearMarca('trama', 'id', 'Trama');
-export const Comentario = crearMarca('comentario', 'texto', 'Comentario');
+export const Personaje = crearMarca('personaje', 'id');
+export const Trama = crearMarca('trama', 'id');
+export const Comentario = crearMarca('comentario', 'texto');
 
 export const marcasEditor = [MarcaWriter, Personaje, Trama, Comentario];
