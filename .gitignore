@@ -26,6 +26,11 @@ coverage/
 .pnpm-debug.log*
 *.log
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
 # Entorno y secretos
 .env
 .env.*

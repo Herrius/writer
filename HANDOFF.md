@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 (Interfaz), quinta rebanada terminada.
-- **Siguiente tarea:** E2E con Playwright/Tauri y empaquetado (`bundle.active`).
+- **Fase actual:** Fase 2 (Interfaz), sexta rebanada terminada.
+- **Siguiente tarea:** E2E de escritorio (Tauri/WebDriver), AppImage y firma.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -12,17 +12,18 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 79 pruebas de núcleo en verde (31 unitarias + 23 de integración + 25 de CLI);
+- 84 pruebas de núcleo en verde (33 unitarias + 26 de integración + 25 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
-La Fase 2 tiene cuatro rebanadas verticales:
+La Fase 2 tiene seis rebanadas verticales:
 
 1. cáscara Tauri, workspace pnpm, tipos generados, árbol y lectura con Tiptap;
 2. corpus golden Markdown, editor editable, autosave y conflictos por hash;
 3. búsqueda FTS5, línea de tiempo e historial con reversión;
 4. exportación DOCX básica desde CLI y UI;
-5. **cuarentena visible y marcas propias (personajes, tramas, comentarios)**.
+5. cuarentena visible y marcas propias (personajes, tramas, comentarios);
+6. **E2E de navegador con Playwright y empaquetado deb/rpm**.
 
 Estado actual de la UI:
 
@@ -55,10 +56,13 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 44 pruebas de UI (17 de corpus, 5 de compatibilidad y 22 de autosave, búsqueda,
+- 50 pruebas de UI (17 de corpus, 5 de compatibilidad y 28 de autosave, búsqueda,
   historial, DOCX, cuarentena, marcas y regresiones);
+- 6 flujos E2E de navegador con Playwright;
+- empaquetado deb/rpm generado y verificado en Linux;
 - 2 pruebas de la cáscara Tauri;
-- gate `python scripts/ci.py interfaz` en verde.
+- gate `python scripts/ci.py interfaz` en verde, además de `e2e` y
+  `empaquetado`.
 
 ## 2. Regla obligatoria: pnpm, nunca npm/npx
 
@@ -227,9 +231,11 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 ```text
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
+python scripts/ci.py e2e          OK (6/6, Chromium)
+python scripts/ci.py empaquetado  OK (deb + rpm)
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   79/79
-pnpm ui:test                      44/44
+cargo test --workspace --all-targets --locked   84/84
+pnpm ui:test                      50/50
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK
@@ -252,14 +258,15 @@ sin inspección visual.
 
 ### Siguiente tarea inmediata
 
-1. **E2E con Playwright/Tauri**: abrir, escribir, autosave, búsqueda, historial,
-   reversión, cuarentena y exportación DOCX.
-2. **Empaquetado**: `bundle.active=true`, iconos completos e instaladores.
+1. **E2E de escritorio**: `tauri-driver`/WebdriverIO (Linux) o WebView2 (Windows)
+   para abrir proyecto, editar, guardar, exportar y descartar cuarentena reales.
+2. **AppImage y firma**: instalar `linuxdeploy`, añadir `appimage` al target Linux
+   y definir firma/notarización.
 
 ### Resto de Fase 2
 
 - Toolbar de formato y recuento de palabras.
-- Integrar `interfaz` en CI remoto (hoy no hay `.github/`).
+- Integrar `interfaz`, `e2e` y `empaquetado` en CI remoto (hoy no hay `.github/`).
 - Probar en Windows y macOS.
 
 ## 8. Pendientes de publicación / entorno
@@ -274,6 +281,9 @@ sin inspección visual.
   sincronización o mover el repo fuera de MEGA.
 - `ui/dist/` está ignorado; si se clona en limpio, ejecutar `pnpm ui:build`
   antes de `cargo check` del desktop (Tauri embebe la UI).
+- Los instaladores quedan en `apps/desktop/src-tauri/target/release/bundle/`
+  (ignorado). Linux genera deb/rpm; AppImage requiere `linuxdeploy`.
+- Chromium de Playwright se instala fuera del repo con `pnpm e2e:install`.
 
 ## 9. Limitaciones conocidas
 
@@ -297,6 +307,10 @@ sin inspección visual.
 - Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;
   es correcto para fixtures y proyectos de solo lectura, no para uso intensivo
   con miles de escenas.
+- Sin toolbar: el formato se introduce con los atajos Markdown de StarterKit.
+- El E2E es de navegador, no de Tauri; no ejercita comandos ni escritura real.
+- AppImage, firma, notarización y updater quedan pendientes; Windows/macOS no se
+  probaron en este entorno.
 - La toolbar solo cubre marcas; negrita, cursiva y listas se introducen con los
   atajos Markdown de StarterKit.
 - Las marcas no se anidan, el comentario no admite `|` ni `]]` y el texto marcado
@@ -317,7 +331,10 @@ cd writer
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm ui:test
+pnpm e2e:install
+pnpm e2e
 pnpm ui:build
+pnpm build
 
 # Núcleo
 cargo test --workspace --all-targets --locked
@@ -325,6 +342,8 @@ cargo test --workspace --all-targets --locked
 # Interfaz
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 python scripts/ci.py interfaz
+python scripts/ci.py e2e
+python scripts/ci.py empaquetado
 
 # App de escritorio
 pnpm dev

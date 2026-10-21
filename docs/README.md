@@ -13,6 +13,8 @@
 - [`cuarentena.md`](cuarentena.md) — copia de diagnóstico, comandos y reglas.
 - [`marcas-v1.md`](marcas-v1.md) — sintaxis y modelo de personajes, tramas y
   comentarios.
+- [`e2e.md`](e2e.md) — Playwright sobre la demo y límites frente a Tauri.
+- [`empaquetado.md`](empaquetado.md) — configuración de bundle e instaladores.
 - [`ci.md`](ci.md) — gates de calidad, interfaz, producto y seguridad; paridad
   local/CI.
 - [`adr/0001-editor-tiptap.md`](adr/0001-editor-tiptap.md) — decisión del editor
@@ -31,8 +33,11 @@
   desde CLI y UI.
 - [`iteraciones/07-fase-2.md`](iteraciones/07-fase-2.md) — cuarentena visible y
   marcas propias.
+- [`iteraciones/08-fase-2.md`](iteraciones/08-fase-2.md) — E2E de navegador y
+  empaquetado deb/rpm.
 
 Pendiente por fase:
 
-- Fase 2: E2E de escritorio y empaquetado.
+- Fase 2: E2E de escritorio (Tauri/WebDriver), AppImage, firma y probar
+  Windows/macOS.
 - Fase 3: `protocolo-patches.md` y contrato del servidor MCP.

@@ -6,6 +6,8 @@ Los grupos son:
 
   calidad    Rust: formato, lints y tests (los mismos flags que en CI).
   interfaz   pnpm: instalación reproducible, tipos TS, build de UI y cáscara Tauri.
+  e2e        Playwright: flujos de demo en Chromium.
+  empaquetado Tauri: binario e instaladores de la plataforma.
   producto   Características del software: esquema, fixtures, determinismo,
              hallazgos esperados del fixture roto, documentación y presupuesto.
   seguridad  Cadena de suministro y secretos: cargo-deny, gitleaks y zizmor.
@@ -424,9 +426,24 @@ def seguridad() -> None:
 # CLI
 # --------------------------------------------------------------------------- #
 
+def e2e() -> None:
+    if shutil.which("pnpm") is None:
+        raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
+    ejecutar(["pnpm", "install", "--frozen-lockfile"])
+    ejecutar(["pnpm", "e2e"])
+
+
+def empaquetado() -> None:
+    if shutil.which("pnpm") is None:
+        raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
+    ejecutar(["pnpm", "build"])
+
+
 GRUPOS = {
     "calidad": calidad,
     "interfaz": interfaz,
+    "e2e": e2e,
+    "empaquetado": empaquetado,
     "producto": producto,
     "seguridad": seguridad,
 }

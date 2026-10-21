@@ -7,8 +7,9 @@ recuperarse de un corte sin perder ni medio cambio.
 Este repositorio está en **Fase 2 (Interfaz, v0.2)** del plan. El motor y la CLI
 (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el árbol,
 permite leer y **editar con autosave**, busca con FTS5, ofrece historial con
-reversión, exporta a DOCX, muestra la cuarentena y permite marcar personajes,
-tramas y comentarios. El E2E y el empaquetado son las siguientes tareas.
+reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
+tramas y comentarios, y se empaqueta en deb/rpm. El E2E de escritorio y AppImage
+son las siguientes tareas.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -21,16 +22,17 @@ tramas y comentarios. El E2E y el empaquetado son las siguientes tareas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **En curso: árbol, autosave, conflictos, corpus Markdown, búsqueda FTS5, historial, DOCX, cuarentena visible y marcas propias; E2E y empaquetado pendientes** |
+| 2 | Interfaz Tauri (v0.2) | **En curso: árbol, autosave, conflictos, corpus, búsqueda FTS5, historial, DOCX, cuarentena, marcas, E2E de navegador y empaquetado deb/rpm; E2E Tauri, AppImage y firma pendientes** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 79 pruebas
-(31 unitarias, 23 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
-cáscara Tauri y 44 pruebas de UI (corpus Markdown, compatibilidad, autosave,
-búsqueda, historial, DOCX, cuarentena, marcas y regresiones).
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 84 pruebas
+(33 unitarias, 26 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
+cáscara Tauri y 50 pruebas de UI (corpus Markdown, compatibilidad, autosave,
+búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Además, 6 flujos
+E2E de navegador con Playwright.
 
 ## Requisitos
 
@@ -123,13 +125,17 @@ pnpm install        # instala ui y apps/desktop en el workspace pnpm
 pnpm dev            # Tauri + Vite
 pnpm typecheck      # comprobación TypeScript
 pnpm ui:test        # corpus Markdown, compatibilidad y autosave
+pnpm e2e:install    # Chromium de Playwright (una vez)
+pnpm e2e            # 6 flujos de la demo
 pnpm ui:build       # build estático de la UI
 pnpm check          # Tauri build --no-bundle
+pnpm build          # binario + instaladores (deb/rpm en Linux)
 ```
 
 - `apps/desktop/src-tauri`: cáscara Tauri. Expone `abrir_proyecto`, `listar`,
-  `leer`, `verificar`, `buscar`, `historial`, `mostrar`, `revertir` y `escribir`;
-  toda la lógica vive en `writer-core`.
+  `leer`, `verificar`, `buscar`, `historial`, `mostrar`, `revertir`,
+  `exportar_docx`, `cuarentena` y `escribir`; toda la lógica vive en
+  `writer-core`.
 - `ui/`: React + Vite + Tiptap. Sin Tauri, `pnpm ui:dev` y el botón **Ver demo**
   permiten trabajar con datos de ejemplo en el navegador.
 - Búsqueda FTS5 en la barra lateral (`Ctrl+F`), con fragmento resaltado y salto
@@ -271,12 +277,16 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   carácter inválido para XML 1.0 aborta el DOCX antes de reemplazar el archivo.
 - Las marcas no se anidan; el comentario no admite `|` ni `]]`, el texto marcado
   no admite `]]` y los ULID deben empezar por `0`–`7`.
-- El DOCX limpia marcas solo en prosa; código y construcciones escapadas se
-  conservan literales.
-- La cuarentena rechaza enlaces simbólicos en el directorio, el informe y las
-  copias; descartar nunca toca el original.
+- El DOCX limpia marcas en los rangos de prosa del parser CommonMark; código,
+  destinos de enlaces y construcciones escapadas se conservan literales.
+- La cuarentena rechaza enlaces simbólicos también en el ancestro `.escritor`.
+  El informe se reemplaza de forma atómica y descartar nunca toca el original.
 - Descartar una copia de cuarentena no repara el archivo original; `verify`
   sigue mostrando el error.
+- El E2E es de navegador (Chromium, modo demo), no de Tauri; no ejercita
+  comandos ni escritura real.
+- El empaquetado genera deb/rpm en Linux; AppImage, firma y Windows/macOS quedan
+  pendientes.
 
 ## Pruebas y gates
 
@@ -296,6 +306,8 @@ python scripts/ci.py todo
 # Por grupos (el de seguridad necesita cargo-deny, gitleaks y zizmor)
 python scripts/ci.py calidad
 python scripts/ci.py interfaz
+python scripts/ci.py e2e
+python scripts/ci.py empaquetado
 python scripts/ci.py producto
 python scripts/ci.py seguridad
 ```
@@ -372,17 +384,20 @@ comprobaciones de `docs/esquema-v1.md`. El verificador Rust reproduce los mismos
 
 ## CI
 
-Tres familias de gates, ejecutables también en local con `python scripts/ci.py`:
+Seis grupos de gates, ejecutables también en local con `python scripts/ci.py`:
 
 | Grupo | Qué comprueba |
 |---|---|
 | `calidad` | `fmt`, `clippy -D warnings`, `cargo test --locked` en Windows, Linux y macOS |
 | `interfaz` | `pnpm install --frozen-lockfile`, tipos TS, corpus/autosave, build de Vite y `cargo check` de la cáscara Tauri |
+| `e2e` | Playwright sobre la demo: autosave, búsqueda, historial, marcas, cuarentena y DOCX |
+| `empaquetado` | `pnpm build`: binario release e instaladores de la plataforma |
 | `producto` | esquema, autopruebas, determinismo de fixtures, 12 hallazgos esperados, presupuesto de 1.000 escenas, enlaces y CLI Rust |
 | `seguridad` | `cargo-deny` (advisories, licencias, bans, orígenes), `gitleaks` (historial y árbol) y `zizmor` (workflows) |
 
 Además: acciones fijadas por SHA, permisos mínimos, Dependabot con cooldown y job
-de MSRV. Detalle en [`docs/ci.md`](docs/ci.md).
+de MSRV. Detalle en [`docs/ci.md`](docs/ci.md), [`docs/e2e.md`](docs/e2e.md) y
+[`docs/empaquetado.md`](docs/empaquetado.md).
 
 ## Nota sobre MEGA
 

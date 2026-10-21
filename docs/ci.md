@@ -1,13 +1,17 @@
 # CI y gates
 
-El CI de `writer` cubre tres familias de riesgo, además de la calidad del código:
+El CI de `writer` cubre, además de la calidad del código, la interfaz, el E2E de
+navegador, el empaquetado, el producto y la seguridad:
 
 1. **Interfaz**: que el workspace pnpm instale reproduciblemente, que TypeScript
    compile, que Vite genere la UI y que la cáscara Tauri compile.
-2. **Producto**: que se cumpla el contrato del esquema y que las características
+2. **E2E**: que los flujos principales de la demo funcionen en Chromium.
+3. **Empaquetado**: que Tauri genere el binario y los instaladores de la
+   plataforma.
+4. **Producto**: que se cumpla el contrato del esquema y que las características
    prometidas sigan funcionando (fixtures, determinismo, hallazgos esperados,
    rendimiento y documentación).
-3. **Seguridad**: dependencias, licencias, orígenes, secretos y los propios
+5. **Seguridad**: dependencias, licencias, orígenes, secretos y los propios
    workflows de GitHub Actions.
 
 La regla es la misma que en el resto del proyecto: **si no se puede ejecutar en
@@ -16,6 +20,8 @@ local, no es un gate**. Todo se orquesta desde `scripts/ci.py`.
 ```bash
 python scripts/ci.py calidad
 python scripts/ci.py interfaz
+python scripts/ci.py e2e
+python scripts/ci.py empaquetado
 python scripts/ci.py producto
 python scripts/ci.py seguridad
 python scripts/ci.py todo
@@ -50,6 +56,25 @@ Se ejecuta en **Windows, Linux y macOS**; el código manipula rutas, locks y
 
 Requiere **pnpm 12** y, en Linux, las bibliotecas de Tauri (`webkit2gtk-4.1`,
 `gtk3`, `libappindicator-gtk3`, `librsvg`, `patchelf`). `npm` y `npx` no se usan.
+
+### E2E (`e2e`)
+
+| Comprobación | Qué detecta |
+|---|---|
+| `pnpm e2e` | 6 flujos de la demo en Chromium: autosave, búsqueda, historial, marcas, cuarentena y DOCX. |
+
+Requiere Chromium de Playwright (`pnpm e2e:install`). Cubre el navegador, no los
+comandos Tauri ni el filesystem real. Detalle: [`e2e.md`](e2e.md).
+
+### Empaquetado (`empaquetado`)
+
+| Comprobación | Qué detecta |
+|---|---|
+| `pnpm build` | Que Tauri compile el binario release y genere los instaladores de la plataforma. |
+
+En Linux genera `.deb` y `.rpm`; AppImage queda pendiente por `linuxdeploy`.
+Windows/macOS requieren sus toolchains. Detalle:
+[`empaquetado.md`](empaquetado.md).
 
 ### Producto (`producto`)
 
@@ -102,6 +127,8 @@ Endurecimiento del propio CI:
 |---|---|
 | `calidad`: fmt, clippy, test | Job `calidad` en 3 sistemas |
 | `interfaz`: pnpm, tipos, corpus, autosave, búsqueda, historial, Vite y Tauri | Job `interfaz` en Linux (y build de escritorio en la matriz) |
+| `e2e`: Playwright sobre la demo | Job `e2e` en Linux con Chromium |
+| `empaquetado`: Tauri release + instaladores | Job `empaquetado` en la matriz |
 | `producto`: esquema y características | Job `producto` en Windows y Linux |
 | `seguridad`: cargo-deny, gitleaks, zizmor | Job `seguridad` con `cargo-deny-action`, `gitleaks-action` y `zizmor-action` |
 | — | Job `msrv`: `cargo check` con Rust 1.89 para el núcleo; la cáscara Tauri declara 1.90 |

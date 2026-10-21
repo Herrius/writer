@@ -35,6 +35,16 @@ const demoProyecto: ProyectoDto = {
   avisos: [],
 };
 
+const demoCuarentena: CuarentenaDto[] = [
+  {
+    archivo: '20260101T000000Z-primera-escena-esquema.md',
+    rutaOriginal: 'manuscrito/01-libro/01-capitulo/001-el-umbral.md',
+    motivo: 'esquema: falta el cierre del frontmatter',
+    ts: '2026-01-01T00:00:00Z',
+    tamano: 512,
+  },
+];
+
 const demoDocumentos: DocumentoDto[] = [
   {
     tipo: 'escena',
@@ -255,13 +265,17 @@ export async function exportarDocx(
 
 export async function cuarentena(ruta: string): Promise<CuarentenaDto[]> {
   if (!esTauri) {
-    return [];
+    return demoCuarentena.map((item) => ({ ...item }));
   }
   return invoke<CuarentenaDto[]>('cuarentena', { ruta });
 }
 
 export async function descartarCuarentena(ruta: string, archivo: string): Promise<void> {
   if (!esTauri) {
+    const indice = demoCuarentena.findIndex((item) => item.archivo === archivo);
+    if (indice >= 0) {
+      demoCuarentena.splice(indice, 1);
+    }
     return;
   }
   return invoke<void>('descartar_cuarentena', { ruta, archivo });

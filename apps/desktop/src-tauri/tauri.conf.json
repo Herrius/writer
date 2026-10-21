@@ -25,7 +25,18 @@
     }
   },
   "bundle": {
-    "active": false,
-    "targets": "all"
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Escritura con archivos como fuente de verdad",
+    "longDescription": "Proyecto de escritura con Markdown, historial, búsqueda FTS5 y exportación DOCX.",
+    "copyright": "© 2026 writer"
   }
 }
