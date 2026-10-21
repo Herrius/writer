@@ -245,7 +245,7 @@ fn indice_busca_y_se_reconstruye() {
     assert_eq!(resultados.len(), 1);
     assert_eq!(resultados[0].id, id);
     assert_eq!(resultados[0].tipo, "escena");
-    assert!(resultados[0].fragmento.contains("[puerto]"));
+    assert!(resultados[0].fragmento.contains("\u{1}puerto\u{2}"));
     assert_eq!(
         proyecto.buscar("cancion", 10).expect("sin diacríticos")[0].id,
         id
@@ -271,6 +271,87 @@ fn indice_busca_y_se_reconstruye() {
 }
 
 #[test]
+fn buscar_reindexa_tras_una_edicion_externa() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    let escaneo = proyecto.verificar().expect("verificar");
+    let ruta = escaneo.escenas[0].ruta.clone();
+    proyecto
+        .escribir_cuerpo(&escaneo.escenas[0].escena.id, "contenido alfa original\n")
+        .expect("escribir");
+
+    let original = std::fs::read_to_string(&ruta).expect("leer archivo");
+    assert!(original.contains("contenido alfa original"));
+    std::fs::write(
+        &ruta,
+        original.replace("contenido alfa original", "contenido omega externo"),
+    )
+    .expect("editar por fuera");
+
+    let omega = proyecto.buscar("omega", 10).expect("buscar omega");
+    assert_eq!(
+        omega.len(),
+        1,
+        "el índice debe reindexar el archivo cambiado"
+    );
+    assert!(proyecto.buscar("alfa", 10).expect("buscar alfa").is_empty());
+}
+
+#[test]
+fn ids_duplicados_no_rompen_busqueda_reindexar_ni_revertir() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    let (id, _ruta) = proyecto
+        .crear_escena("Segunda", None, None, Some(20))
+        .expect("crear segunda");
+    proyecto
+        .escribir_cuerpo(&id, "Una escena distinta.\n")
+        .expect("escribir");
+    let escaneo = proyecto.verificar().expect("verificar");
+    let copia = proyecto
+        .raiz()
+        .join("manuscrito/01-libro/01-capitulo/003-duplicada.md");
+    let original = escaneo
+        .escenas
+        .iter()
+        .find(|escena| escena.escena.id == id)
+        .expect("escena original")
+        .ruta
+        .clone();
+    std::fs::copy(&original, &copia).expect("copiar con el mismo id");
+
+    let escaneo = proyecto.verificar().expect("verificar duplicado");
+    assert!(
+        escaneo
+            .errores
+            .iter()
+            .any(|error| error.contains("duplicado")),
+        "errores: {:#?}",
+        escaneo.errores
+    );
+
+    let _ = proyecto
+        .buscar("escena", 10)
+        .expect("buscar con duplicados no debe fallar");
+    let reindexado = proyecto
+        .reindexar(false)
+        .expect("reindexar con duplicados no debe fallar");
+    assert_eq!(
+        reindexado.escenas, 1,
+        "solo la escena sin duplicar entra en el índice"
+    );
+    proyecto
+        .revertir(1)
+        .expect("revertir con duplicados no debe fallar por UNIQUE");
+
+    // La copia duplicada sigue en disco (la cuarentena copia, no mueve), pero
+    // queda fuera del índice y del árbol.
+    assert!(copia.exists());
+}
+
+#[test]
 fn buscar_en_fixture_sin_escritor_no_crea_directorio() {
     let raiz = fixture("proyecto-pequeno");
     let proyecto = Project::new(&raiz);
@@ -282,7 +363,7 @@ fn buscar_en_fixture_sin_escritor_no_crea_directorio() {
         .all(|resultado| resultado.tipo == "escena"));
     assert!(resultados
         .iter()
-        .any(|resultado| resultado.fragmento.contains("[marea]")));
+        .any(|resultado| resultado.fragmento.contains("\u{1}marea\u{2}")));
     assert!(!proyecto
         .buscar("lucia", 5)
         .expect("sin diacríticos")
@@ -353,7 +434,7 @@ fn buscar_fallback_coincide_con_fts_en_unicode_y_guiones() {
         .expect("buscar con guion");
     assert_eq!(con_guion.len(), 1);
     assert_eq!(con_guion[0].id, "01KDVDNXH0HP47XVCD2KR6TFZG");
-    assert!(con_guion[0].fragmento.contains("[Puerto-Viejo]"));
+    assert!(con_guion[0].fragmento.contains("\u{1}Puerto-Viejo\u{2}"));
 
     let junto = proyecto
         .buscar("puertoviejo", 10)

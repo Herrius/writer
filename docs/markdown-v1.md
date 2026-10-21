@@ -19,7 +19,8 @@ El editor usa `StarterKit` + `@tiptap/markdown` y acepta:
 - código en línea;
 - listas de viñetas y listas ordenadas, con anidamiento;
 - citas;
-- bloques de código cercados, con lenguaje;
+- bloques de código cercados, con lenguaje y una valla más larga que cualquier
+  secuencia de backticks del contenido;
 - enlaces inline y autolinks;
 - separadores (`---`);
 - saltos de línea duros;
@@ -46,7 +47,8 @@ pareja:
 
 Casos cubiertos: párrafos, énfasis, títulos, listas, citas, código, enlaces,
 separadores, saltos, literales escapados, Unicode, documento mixto, setext,
-referencias, código indentado, entidades HTML y marcas propias.
+referencias, código indentado, entidades HTML, marcas propias y valla de cuatro
+backticks con tres backticks dentro (18 parejas).
 
 ```bash
 pnpm ui:test
@@ -109,9 +111,11 @@ contenido y la interfaz abre el documento en **solo lectura**:
 | Listas de tareas | Se conserva el texto y se pierden las casillas. |
 | Notas al pie | La referencia queda escapada como texto literal. |
 
-La comprobación ignora el contenido de bloques y fragmentos de código, donde
-esas marcas son literales. Un falso positivo solo abre el documento en solo
-lectura; nunca lo sobrescribe.
+La comprobación usa el lexer de CommonMark/GFM de `marked`, no expresiones
+regulares sobre el texto. Así detecta tablas y tareas dentro de citas o listas,
+imágenes inline, de referencia y con texto alternativo anidado, y no confunde
+HTML dentro de bloques o fragmentos de código. Un falso positivo solo abre el
+documento en solo lectura; nunca lo sobrescribe.
 
 Para editar uno de estos documentos hoy hay que usar la CLI o convertirlo a las
 construcciones aceptadas. Añadir una extensión (imágenes, tablas) exige ampliar
@@ -130,6 +134,12 @@ el esquema, el corpus y este documento.
   construcción bloqueada, el editor queda en solo lectura.
 - Un fallo de E/S deja los cambios pendientes y permite reintentar; un modo
   recuperación bloquea la escritura.
+- Si el editor cambia mientras un guardado está en vuelo, la versión más
+  reciente queda pendiente y se vuelve a escribir; la interfaz no declara
+  `guardado` hasta que disco y editor coinciden.
+- Cerrar la ventana de Tauri con cambios pendientes ejecuta el guardado y solo
+  destruye la ventana si termina bien; un conflicto o error deja la ventana
+  abierta con el aviso correspondiente.
 
 La ventana entre la comprobación del hash y el reemplazo sigue siendo la
 documentada en [`protocolo-commit.md`](protocolo-commit.md): es
@@ -143,5 +153,6 @@ pnpm typecheck
 python scripts/ci.py interfaz
 ```
 
-Las pruebas de autosave usan un editor de prueba y la API simulada; no sustituyen
-al E2E de escritorio, que sigue pendiente.
+Las pruebas de autosave usan un editor de prueba y la API simulada. El E2E de
+escritorio (`pnpm e2e:tauri`) cubre además `Ctrl+S` y el cierre real de la
+ventana con cambios pendientes en Linux.

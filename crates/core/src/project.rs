@@ -12,7 +12,7 @@ use crate::hash;
 use crate::index::{EscenaFila, Indice, NotaFila};
 use crate::lock::ProjectLock;
 use crate::model::{self, Escena, Nota, Proyecto, TIPOS_NOTA};
-use crate::oplog::{Efecto, Log, Operacion};
+use crate::oplog::{Efecto, Entrada, Log, Operacion};
 use crate::recovery;
 use crate::ulid;
 use crate::verify::{self, Documento, Escaneo};
@@ -965,6 +965,13 @@ impl Project {
                             ));
                         }
                     }
+                    for entrada in log.entradas() {
+                        if let Entrada::Desconocida { seq, tipo } = entrada {
+                            escaneo.avisos.push(format!(
+                                "log: entrada {seq} de tipo desconocido {tipo:?}; se ignora"
+                            ));
+                        }
+                    }
                     let objetos = self.ruta_escritor().join("objetos");
                     if objetos.is_dir() {
                         let blobs = BlobStore::abrir(&self.ruta_escritor())?;
@@ -1464,13 +1471,8 @@ fn abrir_indice(
     revision: u64,
 ) -> Result<Indice> {
     let mut indice = Indice::abrir(escritor)?;
-    if let Ok(resumen) = indice.resumen() {
-        if resumen.escenas == escenas.len()
-            && resumen.notas == notas.len()
-            && resumen.revision == revision
-        {
-            return Ok(indice);
-        }
+    if matches!(indice.esta_vigente(escenas, notas, revision), Ok(true)) {
+        return Ok(indice);
     }
     match indice.reconstruir(escenas, notas, operaciones, revision) {
         Ok(()) => Ok(indice),

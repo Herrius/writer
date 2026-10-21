@@ -12,6 +12,11 @@ description = "Cáscara Tauri de writer"
 name = "writer_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Hook de apertura automática para el E2E de escritorio. La app de producción
+# se compila sin esta feature y el comando devuelve siempre `None`.
+e2e = []
+
 [build-dependencies]
 tauri-build = { version = "=2.7.3", features = [] }
 

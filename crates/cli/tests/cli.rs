@@ -192,7 +192,7 @@ fn buscar_encuentra_escenas_y_notas() {
     assert!(resultados[0]["fragmento"]
         .as_str()
         .expect("fragmento")
-        .contains("[puerto]"));
+        .contains("\u{1}puerto\u{2}"));
 
     let vacia = ejecutar_en(&raiz, &["buscar", "   "]);
     assert!(!vacia.status.success(), "una consulta vacía debe fallar");

@@ -106,10 +106,10 @@ function fragmentoDemo(cuerpo: string, consulta: string): string {
   }
   const inicio = Math.max(0, indice - 40);
   const fin = Math.min(cuerpo.length, indice + consulta.length + 60);
-  return `${inicio > 0 ? '…' : ''}${cuerpo.slice(inicio, indice)}[${cuerpo.slice(
+  return `${inicio > 0 ? '…' : ''}${cuerpo.slice(inicio, indice)}\u0001${cuerpo.slice(
     indice,
     indice + consulta.length,
-  )}]${cuerpo.slice(indice + consulta.length, fin)}${fin < cuerpo.length ? '…' : ''}`;
+  )}\u0002${cuerpo.slice(indice + consulta.length, fin)}${fin < cuerpo.length ? '…' : ''}`;
 }
 
 export async function elegirProyecto(): Promise<string | null> {

@@ -15,10 +15,24 @@ describe('compatibilidad del editor', () => {
     expect(construcciones('Texto[^1]\n\n[^1]: Nota.\n')).toContain('notas al pie');
   });
 
+  it('detecta tablas, imágenes y tareas anidadas', () => {
+    expect(construcciones('> a | b\n> --- | ---\n> 1 | 2\n')).toContain('tablas');
+    expect(construcciones('![alt][img]\n\n[img]: foto.png\n')).toContain('imágenes');
+    expect(construcciones('![alt][]\n\n[alt]: foto.png\n')).toContain('imágenes');
+    expect(construcciones('![alt]\n\n[alt]: foto.png\n')).toContain('imágenes');
+    expect(construcciones('![a [b]](foto.png)\n')).toContain('imágenes');
+    expect(construcciones('![alt][sin-definicion]\n')).toContain('imágenes');
+    expect(construcciones('> - [ ] tarea\n')).toContain('listas de tareas');
+    expect(construcciones('1. [ ] tarea\n')).toContain('listas de tareas');
+  });
+
   it('ignora las construcciones dentro de código', () => {
     expect(construcciones('```html\n<span>literal</span>\n```\n')).toEqual([]);
     expect(construcciones('Usa `<span>` y `![alt](x.png)` literalmente.\n')).toEqual([]);
     expect(construcciones('```\n| A | B |\n|---|---|\n```\n')).toEqual([]);
+    expect(construcciones('    <b>x</b>\n')).toEqual([]);
+    expect(construcciones('> ~~~\n> <b>x</b>\n> ~~~\n')).toEqual([]);
+    expect(construcciones('````md\n```\n![alt](x.png)\n```\n````\n')).toEqual([]);
   });
 
   it('no confunde prosa normal con HTML, tablas ni enlaces', () => {

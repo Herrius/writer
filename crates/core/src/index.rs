@@ -4,6 +4,7 @@
 //! Si el archivo no se puede abrir o su versión no se entiende, se aparta y se
 //! crea uno nuevo.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use rusqlite::{params, Connection};
@@ -484,6 +485,73 @@ impl Indice {
         })
     }
 
+    /// Comprueba que las filas del índice siguen representando los archivos
+    /// escaneados: misma revisión, mismas rutas, mismos hashes, mtime y tamaño.
+    ///
+    /// No basta con comparar recuentos: una edición externa puede cambiar el
+    /// contenido sin cambiar el número de documentos.
+    pub fn esta_vigente(
+        &self,
+        escenas: &[EscenaFila],
+        notas: &[NotaFila],
+        revision: u64,
+    ) -> Result<bool> {
+        let resumen = self.resumen()?;
+        if resumen.revision != revision
+            || resumen.escenas != escenas.len()
+            || resumen.notas != notas.len()
+        {
+            return Ok(false);
+        }
+        let escenas_indice = self.filas_archivo("escenas")?;
+        if escenas_indice.len() != escenas.len() {
+            return Ok(false);
+        }
+        for escena in escenas {
+            match escenas_indice.get(&escena.ruta) {
+                Some((hash, mtime_ns, tamano))
+                    if hash == &escena.hash
+                        && *mtime_ns == escena.mtime_ns
+                        && *tamano == escena.tamano => {}
+                _ => return Ok(false),
+            }
+        }
+        let notas_indice = self.filas_archivo("notas")?;
+        if notas_indice.len() != notas.len() {
+            return Ok(false);
+        }
+        for nota in notas {
+            match notas_indice.get(&nota.ruta) {
+                Some((hash, mtime_ns, tamano))
+                    if hash == &nota.hash
+                        && *mtime_ns == nota.mtime_ns
+                        && *tamano == nota.tamano => {}
+                _ => return Ok(false),
+            }
+        }
+        Ok(true)
+    }
+
+    fn filas_archivo(&self, tabla: &str) -> Result<BTreeMap<String, (String, i64, i64)>> {
+        // `tabla` solo se llama con las dos constantes internas de arriba.
+        let sentencia = format!("SELECT ruta, hash, mtime_ns, tamano FROM {tabla}");
+        let mut consulta = self.conexion.prepare(&sentencia).map_err(Error::Index)?;
+        let filas = consulta
+            .query_map([], |fila| {
+                Ok((
+                    fila.get::<_, String>(0)?,
+                    (fila.get::<_, String>(1)?, fila.get(2)?, fila.get(3)?),
+                ))
+            })
+            .map_err(Error::Index)?;
+        let mut salida = BTreeMap::new();
+        for fila in filas {
+            let (ruta, datos) = fila.map_err(Error::Index)?;
+            salida.insert(ruta, datos);
+        }
+        Ok(salida)
+    }
+
     /// Busca en escenas y notas con FTS5.
     pub fn buscar(&self, consulta: &str, limite: usize) -> Result<Vec<(String, String, String)>> {
         let mut salida = Vec::new();
@@ -491,11 +559,11 @@ impl Indice {
         let mut sentencia = self
             .conexion
             .prepare(
-                "SELECT e.id, e.ruta, snippet(fts_escenas, 2, '[', ']', '…', 12)
+                "SELECT e.id, e.ruta, snippet(fts_escenas, 2, char(1), char(2), '…', 12)
                  FROM fts_escenas JOIN escenas e ON e.id = fts_escenas.id
                  WHERE fts_escenas MATCH ?1
                  UNION ALL
-                 SELECT n.id, n.ruta, snippet(fts_notas, 2, '[', ']', '…', 12)
+                 SELECT n.id, n.ruta, snippet(fts_notas, 2, char(1), char(2), '…', 12)
                  FROM fts_notas JOIN notas n ON n.id = fts_notas.id
                  WHERE fts_notas MATCH ?1
                  LIMIT ?2",

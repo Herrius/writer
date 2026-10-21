@@ -2,10 +2,10 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 completada por el builder (Linux); pendiente el
-  pipeline secuencial de revisión por roles.
-- **Siguiente tarea:** revisión QA independiente, después seguridad, release, UX
-  y aceptación del product owner.
+- **Fase actual:** Fase 2 con las correcciones de la primera revisión QA
+  aplicadas; pendiente repetir QA y continuar el pipeline de roles.
+- **Siguiente tarea:** QA independiente sobre el nuevo commit congelado;
+  después seguridad, release, UX y aceptación del product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -14,7 +14,7 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 84 pruebas de núcleo en verde (33 unitarias + 26 de integración + 25 de CLI);
+- 86 pruebas de núcleo en verde (33 unitarias + 28 de integración + 25 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
@@ -27,10 +27,11 @@ La Fase 2 tiene seis rebanadas verticales:
 5. cuarentena visible y marcas propias (personajes, tramas, comentarios);
 6. **E2E de navegador y escritorio, toolbar/recuento y empaquetado deb/rpm**.
 
-**La Fase 2 está completada por el builder, pero no aprobada.** Debe pasar por el
-pipeline secuencial de §9 del plan: QA independiente, seguridad, release,
-UX/accesibilidad/rendimiento y aceptación del product owner. La validación
-externa (AppImage, firma, Windows/macOS y CI remoto) queda para el cierre.
+**La Fase 2 tiene las correcciones de la primera QA, pero no está aprobada.**
+Debe repetirse QA sobre el nuevo commit y continuar el pipeline secuencial de §9
+del plan: seguridad, release, UX/accesibilidad/rendimiento y aceptación del
+product owner. La validación externa (AppImage, firma, Windows/macOS y CI
+remoto) queda para el cierre.
 
 Estado actual de la UI:
 
@@ -63,10 +64,10 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 50 pruebas de UI (17 de corpus, 5 de compatibilidad y 28 de autosave, búsqueda,
+- 55 pruebas de UI (18 de corpus, 9 de compatibilidad y 28 de autosave, búsqueda,
   historial, DOCX, cuarentena, marcas y regresiones);
-- 7 flujos E2E de navegador con Playwright y 1 flujo E2E de escritorio con
-  Tauri/WebDriver;
+- 7 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
+  Tauri/WebDriver (`Ctrl+S` y cierre de ventana);
 - empaquetado deb/rpm generado y verificado en Linux;
 - 2 pruebas de la cáscara Tauri;
 - gate `python scripts/ci.py interfaz` en verde, además de `e2e` y
@@ -243,8 +244,8 @@ python scripts/ci.py e2e          OK (7/7, Chromium)
 python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   84/84
-pnpm ui:test                      50/50
+cargo test --workspace --all-targets --locked   86/86
+pnpm ui:test                      55/55
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK
@@ -257,18 +258,17 @@ pnpm --version                    12.14.0
 Linux y no tiene reemplazo compatible con Tauri 2.12. No es una vulnerabilidad
 explotable en writer; revisar al actualizar Tauri/gtk-rs.
 
-No se probó visualmente con un navegador real ni con un E2E de escritorio. Las
-pruebas de autosave usan un editor de prueba y la API simulada. `pnpm dev`
-compila y arranca; en este entorno Wayland el `WebProcess` de WebKit falla, y con
-`GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1` el proceso se mantiene vivo
-sin inspección visual.
+El E2E de navegador usa Chromium real sobre la demo. El E2E de escritorio se
+ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
+`Ctrl+S` y el cierre real de la ventana. No se probó la app instalada desde el
+`.deb`/`.rpm`, ni los diálogos nativos, ni Windows/macOS.
 
 ## 7. Qué falta — orden recomendado
 
 ### Siguiente tarea inmediata
 
 1. **Pipeline de revisión por roles** (plan §9):
-   - QA independiente;
+   - repetir QA sobre el commit con las correcciones;
    - security reviewer;
    - release engineer;
    - UX/accesibilidad/rendimiento;

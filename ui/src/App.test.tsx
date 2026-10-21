@@ -141,7 +141,7 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
       ruta: documentoActivo.ruta,
       titulo: documentoActivo.titulo,
       tipo: documentoActivo.tipo,
-      fragmento: '…una luz sobre el [puerto]…',
+      fragmento: '…una luz sobre el \u0001puerto\u0002…',
     },
   ]);
   historialMock.mockResolvedValue([
@@ -234,6 +234,31 @@ describe('autosave de la interfaz', () => {
     expect(estadoGuardado()).toBe('guardado');
   });
 
+  it('no declara guardado si el editor cambia durante un guardado en vuelo', async () => {
+    const enVuelo = diferida<{ revision: number; hashArchivo: string }>();
+    escribirMock
+      .mockReturnValueOnce(enVuelo.promesa)
+      .mockResolvedValueOnce({ revision: 4, hashArchivo: 'blake3:final' });
+
+    const editor = await abrirDemo();
+    fireEvent.change(editor, { target: { value: 'Versión intermedia.\n' } });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    await waitFor(() => expect(escribirMock).toHaveBeenCalledTimes(1));
+
+    // El usuario deshace y vuelve al cuerpo original mientras la escritura
+    // intermedia sigue en vuelo.
+    fireEvent.change(editor, { target: { value: documento.cuerpo } });
+    expect(estadoGuardado()).toBe('cambios sin guardar');
+
+    await act(async () => {
+      enVuelo.resolver({ revision: 3, hashArchivo: 'blake3:intermedio' });
+    });
+
+    await waitFor(() => expect(escribirMock).toHaveBeenCalledTimes(2));
+    expect(escribirMock.mock.calls[1][2]).toBe(documento.cuerpo);
+    await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
+  });
+
   it('entra en conflicto, bloquea la edición y permite recargar', async () => {
     escribirMock.mockRejectedValueOnce({
       tipo: 'conflicto',
@@ -298,7 +323,7 @@ describe('autosave de la interfaz', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar reversión' }));
 
     await waitFor(() => expect(revertirMock).toHaveBeenCalledWith('/tmp/novela', 2));
-    await screen.findByText(/Revisión 2 revertida en la revisión 3/);
+    await screen.findByText(/Demo: reversión simulada de la revisión 2/);
   });
 
   it('conserva el borrador al cambiar de pestaña antes del autosave', async () => {
@@ -346,7 +371,7 @@ describe('autosave de la interfaz', () => {
     await act(async () => {
       pendiente.resolver({ revision: 3, erroresPendientes: [] });
     });
-    await screen.findByText(/Revisión 2 revertida en la revisión 3/);
+    await screen.findByText(/Demo: reversión simulada de la revisión 2/);
     expect(escribirMock).not.toHaveBeenCalled();
   });
 
@@ -405,7 +430,7 @@ describe('autosave de la interfaz', () => {
         ruta: documento.ruta,
         titulo: documento.titulo,
         tipo: documento.tipo,
-        fragmento: '…el [faro] del puerto…',
+        fragmento: '…el \u0001faro\u0002 del puerto…',
       },
     ]);
     const editor = screen.getByRole('textbox', { name: 'editor de prueba' });
@@ -433,7 +458,7 @@ describe('autosave de la interfaz', () => {
         true,
       ),
     );
-    expect(await screen.findByText(/DOCX exportado en \/tmp\/salida.docx/)).toBeTruthy();
+    expect(await screen.findByText(/Demo: exportación simulada a \/tmp\/salida.docx/)).toBeTruthy();
   });
 
   it('muestra y descarta copias de cuarentena', async () => {

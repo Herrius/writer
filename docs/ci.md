@@ -41,8 +41,9 @@ python scripts/ci.py todo
 `unsafe_code = "forbid"` en el workspace: la única forma de introducir `unsafe`
 es cambiar la política, y eso se revisa.
 
-Se ejecuta en **Windows, Linux y macOS**; el código manipula rutas, locks y
-`fsync`, así que la matriz no es decorativa.
+La matriz prevista es **Windows, Linux y macOS**; el código manipula rutas,
+locks y `fsync`, así que la matriz no es decorativa. Hoy el pipeline se ejecuta
+en local sobre Linux y el CI remoto aún no está publicado.
 
 ### Interfaz (`interfaz`)
 
@@ -63,10 +64,10 @@ Requiere **pnpm 12** y, en Linux, las bibliotecas de Tauri (`webkit2gtk-4.1`,
 | Comprobación | Qué detecta |
 |---|---|
 | `pnpm e2e` | 7 flujos de la demo en Chromium: autosave persistente, búsqueda con salto, formato/recuento, historial, marcas, cuarentena y DOCX. |
-| `pnpm e2e:tauri` | 1 flujo real de escritorio en Linux: abrir proyecto, escribir, `Ctrl+S` y verificar el archivo en disco. |
+| `pnpm e2e:tauri` | 2 escenarios reales de escritorio en Linux: `Ctrl+S` con verificación en disco y cierre de ventana con cambios pendientes. |
 
 Requiere Chromium de Playwright (`pnpm e2e:install`) y, para Tauri,
-`tauri-driver` 2.0.6 + `WebKitWebDriver` en Linux. Detalle:
+`tauri-driver` 2.0.6 + `WebKitWebDriver` + `xdotool` en Linux. Detalle:
 [`e2e.md`](e2e.md).
 
 ### Empaquetado (`empaquetado`)
@@ -88,7 +89,7 @@ Windows/macOS requieren sus toolchains. Detalle:
 | `--verificar fixtures/proyecto-pequeno` | Integridad del fixture versionado. |
 | **Determinismo** | Regenera el fixture pequeño en un directorio temporal y exige árbol y bytes idénticos a los versionados. Detecta cambios accidentales del generador o ediciones manuales del fixture. |
 | **Hallazgos esperados** | `fixtures/proyecto-roto/` contiene 12 defectos deliberados y `esperados.txt` fija el contrato: `--json` debe devolver exactamente esos errores, ni uno más ni uno menos. Es la prueba de regresión negativa de `verify`. |
-| **Rendimiento** | Genera y verifica 1.000 escenas; presupuesto por defecto 60 s (`--presupuesto`). Mide el generador/verificador de referencia; el motor tiene sus propias pruebas de 1.000 escenas en Fase 2. |
+| **Rendimiento** | Genera y verifica 1.000 escenas; presupuesto por defecto 60 s (`--presupuesto`). Mide el generador/verificador de referencia en Python; las pruebas Rust de rendimiento con `criterion` siguen pendientes. |
 | **CLI Rust** | `writer verify` sobre el fixture pequeño (debe salir 0) y sobre el roto (debe devolver exactamente los 12 hallazgos). Es la paridad entre el verificador Python y el motor Rust. |
 | **Enlaces** | Los enlaces relativos de todos los `.md` del repo apuntan a archivos existentes. |
 
@@ -115,7 +116,8 @@ Política de `deny.toml`:
   `version` además de `path`).
 - **Sources**: solo crates.io. Nada de Git arbitrario ni registros alternativos.
 
-Endurecimiento del propio CI:
+Endurecimiento previsto del CI remoto (aún no hay `.github/`; hoy estas reglas
+son un objetivo documentado):
 
 - Acciones fijadas por **SHA** con el tag en comentario.
 - `permissions: contents: read` y `persist-credentials: false`.
@@ -125,6 +127,9 @@ Endurecimiento del propio CI:
 - `RUSTFLAGS=-D warnings` en todos los jobs.
 
 ## 2. Equivalencia local ↔ CI
+
+> El repositorio aún no tiene `.github/` ni remoto. La columna «CI» describe los
+> jobs previstos; la evidencia actual es la ejecución local en Linux.
 
 | Local (`scripts/ci.py`) | CI |
 |---|---|

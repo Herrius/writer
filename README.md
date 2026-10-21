@@ -23,17 +23,18 @@ pruebas en Windows/macOS son las tareas externas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **Completada por el builder en Linux; pendiente pipeline de revisión independiente (QA, seguridad, release, UX) y validación externa** |
+| 2 | Interfaz Tauri (v0.2) | **Correcciones de QA aplicadas; pendiente repetir QA y continuar seguridad, release, UX y aceptación** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 84 pruebas
-(33 unitarias, 26 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
-cáscara Tauri y 50 pruebas de UI (corpus Markdown, compatibilidad, autosave,
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 86 pruebas
+(33 unitarias, 28 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
+cáscara Tauri y 55 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Además, 7 flujos
-E2E de navegador con Playwright y 1 flujo E2E de escritorio con Tauri/WebDriver.
+E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
+Tauri/WebDriver (`Ctrl+S` y cierre de ventana).
 
 ## Requisitos
 
@@ -158,8 +159,9 @@ pnpm build          # binario + instaladores (deb/rpm en Linux)
 - El guardado envía el hash del archivo leído; `writer-core` lo compara dentro de
   la sesión de escritura y devuelve conflicto si cambió por fuera.
 - Los documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en
-  solo lectura para no perder contenido. Contrato:
-  [`docs/markdown-v1.md`](docs/markdown-v1.md).
+  solo lectura para no perder contenido, también dentro de citas y listas; la
+  detección usa el lexer de CommonMark/GFM y no confunde el contenido de código.
+  Contrato: [`docs/markdown-v1.md`](docs/markdown-v1.md).
 - Los tipos TypeScript se generan desde Rust:
 
   ```bash
@@ -392,15 +394,16 @@ Siete grupos de gates, ejecutables también en local con `python scripts/ci.py`:
 
 | Grupo | Qué comprueba |
 |---|---|
-| `calidad` | `fmt`, `clippy -D warnings`, `cargo test --locked` en Windows, Linux y macOS |
+| `calidad` | `fmt`, `clippy -D warnings`, `cargo test --locked` (matriz prevista: Windows, Linux y macOS; hoy ejecutado en Linux) |
 | `interfaz` | `pnpm install --frozen-lockfile`, tipos TS, corpus/autosave, build de Vite y `cargo check` de la cáscara Tauri |
 | `e2e` | Playwright sobre la demo: autosave persistente, búsqueda, formato, historial, marcas, cuarentena y DOCX |
-| `e2e-tauri` | Tauri/WebDriver en Linux: abrir proyecto, escribir, `Ctrl+S` y verificar el archivo |
+| `e2e-tauri` | Tauri/WebDriver en Linux: `Ctrl+S` con verificación en disco y cierre de ventana con cambios pendientes |
 | `empaquetado` | `pnpm build` y verificación de estructura, permisos, lanzador, iconos y md5/digests de deb/rpm |
 | `producto` | esquema, autopruebas, determinismo de fixtures, 12 hallazgos esperados, presupuesto de 1.000 escenas, enlaces y CLI Rust |
 | `seguridad` | `cargo-deny` (advisories, licencias, bans, orígenes), `gitleaks` (historial y árbol) y `zizmor` (workflows) |
 
-Además: acciones fijadas por SHA, permisos mínimos, Dependabot con cooldown y job
+El CI remoto aún no está publicado (no hay `.github/`). Cuando se publique,
+usará acciones fijadas por SHA, permisos mínimos, Dependabot con cooldown y job
 de MSRV. Detalle en [`docs/ci.md`](docs/ci.md), [`docs/e2e.md`](docs/e2e.md) y
 [`docs/empaquetado.md`](docs/empaquetado.md).
 

@@ -179,12 +179,30 @@ impl Escaneo {
             .map(|nota| Documento::Nota(nota.clone()))
     }
 
+    /// Indica si una ruta quedó marcada como inválida (por ejemplo, por un ID
+    /// duplicado). Esos documentos no entran en el índice ni en el árbol.
+    pub fn es_invalida(&self, relativa: &str) -> bool {
+        self.invalidos
+            .iter()
+            .any(|invalido| invalido.relativa == relativa)
+    }
+
     /// Documentos en orden de lectura: escenas por libro/capítulo/orden y notas
     /// agrupadas por tipo.
     pub fn ordenados(&self) -> Vec<Documento> {
-        let mut escenas = self.escenas.clone();
+        let mut escenas: Vec<_> = self
+            .escenas
+            .iter()
+            .filter(|escena| !self.es_invalida(&escena.relativa))
+            .cloned()
+            .collect();
         escenas.sort_by_key(|a| clave_lectura(&a.relativa, a.escena.orden));
-        let mut notas = self.notas.clone();
+        let mut notas: Vec<_> = self
+            .notas
+            .iter()
+            .filter(|nota| !self.es_invalida(&nota.relativa))
+            .cloned()
+            .collect();
         notas.sort_by_key(|a| {
             (
                 a.nota.tipo.clone(),
@@ -202,6 +220,7 @@ impl Escaneo {
         let escenas = self
             .escenas
             .iter()
+            .filter(|encontrada| !self.es_invalida(&encontrada.relativa))
             .map(|encontrada| {
                 let escena = &encontrada.escena;
                 EscenaFila {
@@ -226,6 +245,7 @@ impl Escaneo {
         let notas = self
             .notas
             .iter()
+            .filter(|encontrada| !self.es_invalida(&encontrada.relativa))
             .map(|encontrada| {
                 let nota = &encontrada.nota;
                 NotaFila {

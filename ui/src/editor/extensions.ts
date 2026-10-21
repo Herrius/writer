@@ -1,5 +1,6 @@
 import { Markdown } from '@tiptap/markdown';
 import StarterKit from '@tiptap/starter-kit';
+import { BloqueCodigo } from './code-block';
 import { marcasEditor } from './marcas';
 
 /**
@@ -11,4 +12,9 @@ import { marcasEditor } from './marcas';
  * comentarios. Cualquier extensión nueva exige ampliar el corpus y documentar la
  * pérdida o la normalización.
  */
-export const extensionesEditor = [StarterKit, Markdown, ...marcasEditor];
+export const extensionesEditor = [
+  StarterKit.configure({ codeBlock: false }),
+  BloqueCodigo,
+  Markdown,
+  ...marcasEditor,
+];

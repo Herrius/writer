@@ -5,6 +5,9 @@
   cierre local de la Fase 2.
 - **Estado:** Fase 2 completada por el builder en Linux; pendiente el pipeline
   secuencial de revisión por roles.
+- **Nota:** las cifras de esta iteración son las del cierre del builder. Tras la
+  QA se añadieron pruebas y correcciones; el estado actual está en
+  [`10-fase-2.md`](10-fase-2.md).
 
 ## 1. Toolbar y recuento
 

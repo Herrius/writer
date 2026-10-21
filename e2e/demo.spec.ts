@@ -99,5 +99,7 @@ test('exporta DOCX desde la demo', async ({ page }) => {
   });
   await abrirDemo(page);
   await page.getByRole('button', { name: 'Exportar DOCX' }).click();
-  await expect(page.getByText(/DOCX exportado en \/tmp\/writer-e2e.docx/)).toBeVisible();
+  await expect(
+    page.getByText(/Demo: exportación simulada a \/tmp\/writer-e2e.docx/),
+  ).toBeVisible();
 });

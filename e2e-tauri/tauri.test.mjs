@@ -1,9 +1,12 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { remote } from 'webdriverio';
 
 const proyecto = process.env.WRITER_E2E_PROJECT;
 const aplicacion = process.env.WRITER_DESKTOP_BIN;
+const puerto = Number(process.env.WRITER_E2E_PORT ?? 4444);
+const modo = process.env.WRITER_E2E_MODE ?? 'guardar';
 
 if (!proyecto || !aplicacion) {
   throw new Error('faltan WRITER_E2E_PROJECT o WRITER_DESKTOP_BIN');
@@ -16,42 +19,152 @@ const escena = path.join(
   '01-capitulo',
   '001-primera-escena.md',
 );
-const texto = 'Texto E2E Tauri.';
+const textoGuardado = 'Texto E2E Tauri.';
+const textoCierre = 'PENDIENTE VENTANA.';
 
-const navegador = await remote({
-  hostname: '127.0.0.1',
-  port: 4444,
-  path: '/',
-  logLevel: 'error',
-  capabilities: {
-    'tauri:options': { application: aplicacion },
-  },
-});
+function abrirSesion() {
+  return remote({
+    hostname: '127.0.0.1',
+    port: puerto,
+    path: '/',
+    logLevel: 'error',
+    capabilities: {
+      'tauri:options': { application: aplicacion },
+    },
+  });
+}
 
-try {
+async function cerrarSesion(navegador) {
+  try {
+    await navegador.deleteSession();
+  } catch (error) {
+    console.error(`aviso: no se pudo cerrar la sesión WebDriver: ${error.message}`);
+  }
+}
+
+async function esperarProyecto(navegador) {
   const editor = await navegador.$('.ProseMirror');
   await editor.waitForDisplayed({ timeout: 20_000 });
-  await editor.click();
-  await navegador.keys(['Control', 'a']);
-  await navegador.keys(texto);
-  await navegador.keys(['Control', 's']);
+  await navegador.waitUntil(
+    async () => {
+      const titulo = await navegador.$('h2');
+      return (await titulo.getText()).includes('Primera escena');
+    },
+    {
+      timeout: 20_000,
+      interval: 100,
+      timeoutMsg: 'la app no abrió el proyecto del E2E',
+    },
+  );
+  return editor;
+}
 
-  let contenido = '';
-  for (let intento = 0; intento < 24; intento += 1) {
-    contenido = readFileSync(escena, 'utf8');
-    if (contenido.includes(texto)) {
-      break;
+async function escribirEnEditor(navegador, contenido) {
+  for (let intento = 0; intento < 4; intento += 1) {
+    const editor = await navegador.$('.ProseMirror');
+    await editor.click();
+    await navegador.pause(200);
+    await navegador.keys(['Control', 'a']);
+    await navegador.keys(contenido);
+    try {
+      await navegador.waitUntil(
+        async () => {
+          const actual = await navegador.$('.ProseMirror');
+          return (await actual.getText()).includes(contenido);
+        },
+        { timeout: 3000, interval: 100 },
+      );
+      return;
+    } catch {
+      // WebKit puede perder las primeras pulsaciones mientras la ventana
+      // termina de activarse; se reintenta con una referencia fresca.
     }
-    await navegador.pause(250);
   }
-  if (!contenido.includes(texto)) {
-    throw new Error(`el archivo no contiene el texto guardado:\n${contenido}`);
+  const actual = await navegador.$('.ProseMirror');
+  throw new Error(
+    `el editor no recibió el texto tras varios intentos; texto actual: ${await actual.getText()}`,
+  );
+}
+
+function cerrarVentanaX11() {
+  // WebDriver cierra el WebView sin pasar por WM_DELETE_WINDOW; para probar el
+  // handler real de Tauri hay que cerrar la ventana como lo haría el usuario.
+  const ids = execFileSync('xdotool', ['search', '--name', '^writer$'], {
+    encoding: 'utf8',
+  })
+    .trim()
+    .split('\n')
+    .filter(Boolean);
+  if (ids.length === 0) {
+    throw new Error('no se encontró la ventana X11 de writer');
   }
-  const titulo = await navegador.$('h2');
-  if (!(await titulo.getText()).includes('Primera escena')) {
-    throw new Error('no se abrió la escena esperada');
+  const ventana = ids.at(-1);
+  execFileSync('xdotool', ['windowactivate', '--sync', ventana]);
+  execFileSync('xdotool', ['key', '--clearmodifiers', 'alt+F4']);
+}
+
+async function esperarTextoEnArchivo(esperado, intentos = 40) {
+  let contenido = '';
+  for (let intento = 0; intento < intentos; intento += 1) {
+    contenido = readFileSync(escena, 'utf8');
+    if (contenido.includes(esperado)) {
+      return contenido;
+    }
+    await new Promise((resolver) => setTimeout(resolver, 250));
   }
-  console.log('E2E Tauri: texto guardado en disco y escena visible');
+  return contenido;
+}
+
+const navegador = await abrirSesion();
+let fallo = null;
+try {
+  await esperarProyecto(navegador);
+
+  if (modo === 'guardar') {
+    await escribirEnEditor(navegador, textoGuardado);
+    await navegador.keys(['Control', 's']);
+
+    const contenido = await esperarTextoEnArchivo(textoGuardado);
+    if (!contenido.includes(textoGuardado)) {
+      throw new Error(`el archivo no contiene el texto guardado:\n${contenido}`);
+    }
+
+    await navegador.waitUntil(
+      async () =>
+        (await navegador.$('.tabs .estado-guardado').getText())
+          .toLowerCase()
+          .includes('guardado'),
+      {
+        timeout: 10_000,
+        interval: 100,
+        timeoutMsg: 'la interfaz no confirmó el estado guardado',
+      },
+    );
+
+    const titulo = await navegador.$('h2');
+    if (!(await titulo.getText()).includes('Primera escena')) {
+      throw new Error('no se abrió la escena esperada');
+    }
+    console.log('E2E Tauri: Ctrl+S guarda en disco y la escena sigue visible');
+  } else if (modo === 'cerrar') {
+    await escribirEnEditor(navegador, textoCierre);
+    cerrarVentanaX11();
+    const contenido = await esperarTextoEnArchivo(textoCierre, 60);
+    if (!contenido.includes(textoCierre)) {
+      throw new Error(
+        `el cierre de ventana perdió los cambios pendientes:\n${contenido}`,
+      );
+    }
+    console.log('E2E Tauri: cerrar la ventana guarda los cambios pendientes');
+  } else {
+    throw new Error(`modo de E2E desconocido: ${modo}`);
+  }
+} catch (error) {
+  fallo = error;
 } finally {
-  await navegador.deleteSession();
+  await cerrarSesion(navegador);
+}
+
+if (fallo) {
+  throw fallo;
 }

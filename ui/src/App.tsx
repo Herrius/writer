@@ -126,7 +126,10 @@ function estadoDeError(tipo: TipoError): EstadoGuardado {
   }
 }
 
-function formatearFecha(ts: string): string {
+function formatearFecha(ts: string | null): string {
+  if (!ts) {
+    return 'fecha desconocida';
+  }
   const fecha = new Date(ts);
   if (Number.isNaN(fecha.getTime())) {
     return ts;
@@ -138,11 +141,13 @@ function formatearFecha(ts: string): string {
 }
 
 function Fragmento({ texto }: { texto: string }) {
-  const partes = texto.split(/(\[[^\]]*\])/g);
+  // FTS5 marca la coincidencia con caracteres de control; así los corchetes
+  // literales del documento no se confunden con el resaltado.
+  const partes = texto.split(/(\u0001[^\u0002]*\u0002)/g);
   return (
     <>
       {partes.map((parte, indice) =>
-        parte.startsWith('[') && parte.endsWith(']') ? (
+        parte.startsWith('\u0001') && parte.endsWith('\u0002') ? (
           <mark key={indice}>{parte.slice(1, -1)}</mark>
         ) : (
           <span key={indice}>{parte}</span>
@@ -197,6 +202,7 @@ export default function App() {
   const activoRef = useRef<DocumentoDto | null>(null);
   const puedeEditarRef = useRef(false);
   const pendienteRef = useRef<Pendiente | null>(null);
+  const cuerpoEditorRef = useRef('');
   const drenajeRef = useRef<Promise<boolean> | null>(null);
   const temporizadorRef = useRef<number | null>(null);
   const accionesRef = useRef<{ guardar: () => Promise<boolean>; abrir: () => Promise<void> } | null>(
@@ -321,6 +327,7 @@ export default function App() {
       setDocumentos(lista);
       limpiarPendiente();
       fijarActivo(leido);
+      cuerpoEditorRef.current = leido?.cuerpo ?? '';
       setRevisionEditor((valor) => valor + 1);
       setEstadoGuardado(resumen.errores.length > 0 ? 'solo-lectura' : 'guardado');
       setConfirmarRecarga(false);
@@ -378,9 +385,16 @@ export default function App() {
           hashArchivo: guardado.hashArchivo,
         });
       }
-      if (pendienteRef.current?.cuerpo === pendiente.cuerpo) {
+      // El editor pudo cambiar mientras el guardado estaba en vuelo. Solo se
+      // limpia el pendiente si lo que hay ahora mismo en el editor es justo lo
+      // que se acaba de persistir; si no, se conserva la versión más reciente.
+      const cuerpoActual = cuerpoEditorRef.current;
+      if (cuerpoActual === pendiente.cuerpo) {
         pendienteRef.current = null;
         setEstadoGuardado('guardado');
+      } else {
+        pendienteRef.current = { id: pendiente.id, cuerpo: cuerpoActual };
+        setEstadoGuardado('pendiente');
       }
       setErrorGuardado(null);
       setConfirmarRecarga(false);
@@ -431,7 +445,12 @@ export default function App() {
       return;
     }
     cancelarTemporizador();
-    if (cuerpo === actual.cuerpo) {
+    cuerpoEditorRef.current = cuerpo;
+    // Si hay un guardado en vuelo, no se puede declarar «guardado» aunque el
+    // cuerpo coincida con la última versión de `activo`: el disco todavía puede
+    // recibir una versión intermedia. Se deja pendiente para que el drenaje la
+    // vuelva a escribir después.
+    if (cuerpo === actual.cuerpo && drenajeRef.current === null) {
       pendienteRef.current = null;
       setEstadoGuardado('guardado');
       setErrorGuardado(null);
@@ -472,6 +491,7 @@ export default function App() {
       try {
         const leido = await leer(proyectoActual.raiz, documento.id);
         fijarActivo(leido);
+        cuerpoEditorRef.current = leido.cuerpo;
         setRevisionEditor((valor) => valor + 1);
         setErrorGuardado(null);
         setConfirmarRecarga(false);
@@ -588,7 +608,9 @@ export default function App() {
       setConfirmarReversion(null);
       await cargar(confirmacion.raiz, activoId);
       setMensaje(
-        `Revisión ${confirmacion.revision} revertida en la revisión ${resultado.revision}.`,
+        esTauri
+          ? `Revisión ${confirmacion.revision} revertida en la revisión ${resultado.revision}.`
+          : `Demo: reversión simulada de la revisión ${confirmacion.revision}; no se modificó ningún archivo.`,
       );
       if (resultado.erroresPendientes.length > 0) {
         setError(
@@ -617,6 +639,7 @@ export default function App() {
       const leido = await leer(proyectoActual.raiz, actual.id);
       limpiarPendiente();
       fijarActivo(leido);
+      cuerpoEditorRef.current = leido.cuerpo;
       setDocumentos((lista) =>
         lista.map((documento) => (documento.id === leido.id ? leido : documento)),
       );
@@ -689,7 +712,11 @@ export default function App() {
         incluirNotas,
         true,
       );
-      setMensaje(`DOCX exportado en ${exportado}.`);
+      setMensaje(
+        esTauri
+          ? `DOCX exportado en ${exportado}.`
+          : `Demo: exportación simulada a ${exportado}; no se escribió ningún archivo.`,
+      );
     } catch (fallo) {
       setError(errorDe(fallo).mensaje);
     } finally {
@@ -831,6 +858,51 @@ export default function App() {
     window.addEventListener('beforeunload', alSalir);
     return () => window.removeEventListener('beforeunload', alSalir);
   }, [estadoGuardado]);
+
+  useEffect(() => {
+    if (!esTauri) {
+      return;
+    }
+    let cancelado = false;
+    let desregistrar: (() => void) | undefined;
+    let cerrando = false;
+    void import('@tauri-apps/api/window')
+      .then(async ({ getCurrentWindow }) => {
+        if (cancelado) {
+          return;
+        }
+        const ventana = getCurrentWindow();
+        desregistrar = await ventana.onCloseRequested(async (evento) => {
+          // Tauri no ejecuta `beforeunload`; hay que interceptar el cierre y
+          // vaciar el autosave antes de destruir la ventana.
+          evento.preventDefault();
+          if (cerrando) {
+            return;
+          }
+          if (revirtiendoRef.current) {
+            setMensaje('Espera a que termine la reversión antes de cerrar la ventana.');
+            return;
+          }
+          const guardado = (await accionesRef.current?.guardar()) ?? true;
+          if (!guardado) {
+            setMensaje(
+              'No se cerró la ventana: hay cambios sin guardar. Resuelve el error y vuelve a intentarlo.',
+            );
+            return;
+          }
+          cerrando = true;
+          await ventana.destroy();
+        });
+      })
+      .catch(() => {
+        // En un navegador normal el efecto no se ejecuta; si Tauri no expone la
+        // ventana, `beforeunload` sigue siendo la última barrera.
+      });
+    return () => {
+      cancelado = true;
+      desregistrar?.();
+    };
+  }, []);
 
   const cuerpoVisible =
     activo && pendienteRef.current?.id === activo.id
@@ -1096,6 +1168,16 @@ export default function App() {
               </ul>
             </details>
           )}
+          {proyecto && proyecto.avisos.length > 0 && (
+            <details className="diagnostico avisos">
+              <summary>{proyecto.avisos.length} aviso(s) de verificación</summary>
+              <ul>
+                {proyecto.avisos.map((detalle) => (
+                  <li key={detalle}>{detalle}</li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {cuarentena.length > 0 && (
             <section className="cuarentena">
@@ -1116,7 +1198,7 @@ export default function App() {
                       <span>
                         {item.motivo ?? 'sin motivo'} ·{' '}
                         {item.rutaOriginal ?? 'ruta original desconocida'} ·{' '}
-                        {item.tamano} bytes
+                        {formatearFecha(item.ts)} · {item.tamano} bytes
                       </span>
                     </div>
                     <button

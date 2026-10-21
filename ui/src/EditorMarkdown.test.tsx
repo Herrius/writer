@@ -1,5 +1,5 @@
 import { Editor } from '@tiptap/core';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EditorMarkdown } from './EditorMarkdown';
 import { extensionesEditor } from './editor/extensions';
@@ -53,6 +53,48 @@ describe('EditorMarkdown con marcas', () => {
     expect(screen.getByRole('combobox', { name: 'Aplicar trama' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Marta' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'El faro' })).toBeTruthy();
+  });
+
+  it('cuenta palabras al abrir con la definición del motor', async () => {
+    render(
+      <EditorMarkdown
+        markdown="uno-dos"
+        editable
+        personajes={personajes}
+        tramas={tramas}
+        onCambio={() => {}}
+      />,
+    );
+    await screen.findByRole('toolbar', { name: 'Marcas del texto' });
+    expect(screen.getByText('2 palabras')).toBeTruthy();
+
+    const dom = document.querySelector('[contenteditable=true]') as HTMLElement & {
+      editor: Editor;
+    };
+    act(() => {
+      dom.editor.commands.selectAll();
+      dom.editor.commands.insertContent('tres');
+    });
+    expect(screen.getByText('1 palabras')).toBeTruthy();
+  });
+
+  it('resuelve el título de la marca y avisa de referencias desconocidas', async () => {
+    render(
+      <EditorMarkdown
+        markdown={`[[personaje:${personajes[0].id}|Marta]] y [[trama:01KDVDNFVGFKJ1G1SEHGTVZ69D|El faro]]`}
+        editable
+        personajes={personajes}
+        tramas={[]}
+        onCambio={() => {}}
+      />,
+    );
+    await screen.findByRole('toolbar', { name: 'Marcas del texto' });
+    const personaje = document.querySelector('.marca-personaje') as HTMLElement;
+    const trama = document.querySelector('.marca-trama') as HTMLElement;
+
+    await waitFor(() => expect(personaje.title).toContain('Marta'));
+    expect(trama.title).toContain('referencia desconocida');
+    expect(trama.getAttribute('data-referencia-desconocida')).toBe('true');
   });
 
   it('oculta la toolbar en solo lectura', async () => {

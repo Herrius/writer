@@ -8,9 +8,25 @@ export type OpcionMarca = {
   titulo: string;
 };
 
+/**
+ * Misma definición que `writer_core::model::contar_palabras`: secuencias
+ * maximales de caracteres alfanuméricos Unicode. Se aplica al Markdown que se
+ * persiste, no al texto visible, para que el contador coincida con el índice.
+ */
 function contarPalabras(texto: string): number {
-  const limpio = texto.trim();
-  return limpio === '' ? 0 : limpio.split(/\s+/u).length;
+  let total = 0;
+  let dentro = false;
+  for (const caracter of texto) {
+    if (/[\p{L}\p{N}]/u.test(caracter)) {
+      if (!dentro) {
+        total += 1;
+        dentro = true;
+      }
+    } else {
+      dentro = false;
+    }
+  }
+  return total;
 }
 
 type Props = {
@@ -32,6 +48,7 @@ export function EditorMarkdown({
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
   const [comentarioTexto, setComentarioTexto] = useState('');
   const [errorComentario, setErrorComentario] = useState<string | null>(null);
+  const [palabras, setPalabras] = useState(() => contarPalabras(markdown));
 
   const editor = useEditor({
     extensions: extensionesEditor,
@@ -46,7 +63,9 @@ export function EditorMarkdown({
       },
     },
     onUpdate: ({ editor: instancia }) => {
-      alCambiar.current(instancia.getMarkdown());
+      const serializado = instancia.getMarkdown();
+      setPalabras(contarPalabras(serializado));
+      alCambiar.current(serializado);
     },
   });
 
@@ -55,6 +74,69 @@ export function EditorMarkdown({
       editor.setEditable(editable);
     }
   }, [editor, editable]);
+
+  useEffect(() => {
+    const dom = editor?.view.dom;
+    if (!dom) {
+      return;
+    }
+    const anotar = (
+      clase: 'personaje' | 'trama',
+      opciones: OpcionMarca[],
+      etiqueta: string,
+    ) => {
+      dom.querySelectorAll<HTMLElement>(`span[data-marca-${clase}]`).forEach((elemento) => {
+        const referencia = elemento.getAttribute('data-referencia') ?? '';
+        const nota = opciones.find((opcion) => opcion.id === referencia);
+        const titulo = nota
+          ? `${etiqueta}: ${nota.titulo}`
+          : `${etiqueta}: referencia desconocida`;
+        if (elemento.title !== titulo) {
+          elemento.title = titulo;
+        }
+        if (nota) {
+          if (elemento.hasAttribute('data-referencia-desconocida')) {
+            elemento.removeAttribute('data-referencia-desconocida');
+          }
+        } else if (elemento.getAttribute('data-referencia-desconocida') !== 'true') {
+          elemento.setAttribute('data-referencia-desconocida', 'true');
+        }
+      });
+    };
+    const ejecutar = () => {
+      anotar('personaje', personajes, 'Personaje');
+      anotar('trama', tramas, 'Trama');
+    };
+    ejecutar();
+    // El contenido puede terminar de montarse después del primer efecto y
+    // ProseMirror puede volver a pintar los atributos del mark en cada
+    // transacción. Un observador mantiene el título resuelto sin tocar el
+    // documento ni el Markdown.
+    const temporizador = window.setTimeout(ejecutar, 0);
+    let programado = false;
+    const observador = new MutationObserver(() => {
+      if (programado) {
+        return;
+      }
+      programado = true;
+      window.setTimeout(() => {
+        programado = false;
+        ejecutar();
+      }, 0);
+    });
+    observador.observe(dom, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['title', 'data-referencia-desconocida'],
+    });
+    editor?.on('update', ejecutar);
+    return () => {
+      window.clearTimeout(temporizador);
+      observador.disconnect();
+      editor?.off('update', ejecutar);
+    };
+  }, [editor, personajes, tramas, palabras]);
 
   const estado = useEditorState({
     editor,
@@ -73,7 +155,6 @@ export function EditorMarkdown({
       lista: instancia?.isActive('bulletList') ?? false,
       ordenada: instancia?.isActive('orderedList') ?? false,
       codigo: instancia?.isActive('codeBlock') ?? false,
-      palabras: instancia ? contarPalabras(instancia.getText()) : 0,
     }),
   });
 
@@ -306,7 +387,7 @@ export function EditorMarkdown({
           >
             Quitar marca
           </button>
-          <span className="editor-contador">{estado?.palabras ?? 0} palabras</span>
+          <span className="editor-contador">{palabras} palabras</span>
         </div>
       )}
       <EditorContent editor={editor} />

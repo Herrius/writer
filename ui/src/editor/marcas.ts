@@ -94,7 +94,13 @@ function crearMarca(clase: ClaseMarca, atributo: string, etiqueta: string) {
     name: clase,
     excludes: 'personaje trama comentario',
     addAttributes() {
-      return { [atributo]: { default: null } };
+      return {
+        [atributo]: {
+          default: null,
+          parseHTML: (elemento) => elemento.getAttribute('data-referencia'),
+          renderHTML: (atributos) => ({ 'data-referencia': atributos[atributo] }),
+        },
+      };
     },
     parseHTML() {
       return [{ tag: `span[data-marca-${clase}]` }];

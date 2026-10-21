@@ -31,11 +31,13 @@ python scripts/ci.py e2e
 `e2e-tauri/tauri.test.mjs` usa `tauri-driver` + `WebKitWebDriver` y la app real:
 
 1. crea un proyecto temporal con la CLI;
-2. arranca la app con `WRITER_E2E_PROJECT` (hook de prueba);
+2. compila la app con la feature `e2e` y la arranca con `WRITER_E2E_PROJECT`;
 3. abre la primera escena;
-4. escribe `Texto E2E Tauri.`;
-5. guarda con `Ctrl+S`;
-6. verifica el archivo Markdown en disco y el título de la escena.
+4. escribe `Texto E2E Tauri.`, guarda con `Ctrl+S` y verifica el archivo, el
+   estado y el título;
+5. en una segunda ejecución limpia, escribe `PENDIENTE VENTANA.` y cierra la
+   ventana con `Alt+F4` (X11), comprobando que el handler de Tauri guarda antes
+   de destruirla.
 
 ```bash
 cargo install tauri-driver --version 2.0.6 --locked
@@ -44,10 +46,12 @@ python scripts/ci.py e2e-tauri
 ```
 
 Requisitos: Linux, `WebKitWebDriver`, `tauri-driver`, X11
-(`GDK_BACKEND=x11`) y las dependencias de Tauri ya necesarias para compilar.
+(`GDK_BACKEND=x11`), `xdotool` y las dependencias de Tauri ya necesarias para
+compilar. El script usa un puerto libre, un grupo de procesos propio y limpia la
+app al terminar.
 
-El hook `WRITER_E2E_PROJECT` solo se activa si la variable de entorno existe; en
-uso normal la app no abre ningún proyecto automáticamente.
+La feature `e2e` solo existe en la compilación de prueba: la app de producción
+no autoabre proyectos ni conserva el hook activo.
 
 ## 3. Limitaciones
 
@@ -56,6 +60,8 @@ uso normal la app no abre ningún proyecto automáticamente.
 - Chromium de Playwright y `tauri-driver` se instalan fuera del repositorio.
 - El E2E de escritorio no prueba DOCX, búsqueda ni cuarentena; esos flujos se
   cubren en navegador.
+- El cierre real depende de X11 y `xdotool`; en Wayland puro o en Windows/macOS
+  queda pendiente.
 
 ## 4. Pendiente
 
