@@ -92,7 +92,7 @@ $ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 2/2                                                       # tipos + comandos
 
 $ pnpm ui:test
-Test Files  4 passed (4)
+Test Files  5 passed (5)
 Tests       41 passed (41)
 
 $ pnpm typecheck                                          # OK
