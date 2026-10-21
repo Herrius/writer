@@ -376,7 +376,7 @@ fn exportar_docx_incluye_manuscrito_y_notas() {
     proyecto
         .escribir_cuerpo(
             &id,
-            "# Un faro\n\nUna **luz** sobre el puerto, Tom & Jerry < 3.\n\n- Uno\n- Dos\n\n> Una cita.\n\n```text\ncódigo\n```\n\n[Enlace](https://example.com)\n",
+            "# Un faro\n\nUna **luz** sobre el puerto, Tom & Jerry < 3. [[personaje:01KDVDNBYG20KW71NVRK6P2FHG|Marta]] y [[comentario:revisar|una frase]].\n\n- Uno\n- Dos\n\n> Una cita.\n\n```text\ncódigo\n```\n\n[Enlace](https://example.com)\n",
         )
         .expect("escribir");
     let (nota_id, _) = proyecto
@@ -421,12 +421,15 @@ fn exportar_docx_incluye_manuscrito_y_notas() {
         "Enlace",
         "Notas",
         "Marta",
+        "una frase",
     ] {
         assert!(
             documento.contains(texto),
             "falta {texto:?} en el DOCX:\n{documento}"
         );
     }
+    assert!(!documento.contains("[[personaje"));
+    assert!(!documento.contains("[[comentario"));
     assert!(relaciones.contains("https://example.com"));
     assert!(documento.contains("Tom &amp; Jerry"));
     assert!(documento.contains("&lt;"));
@@ -492,6 +495,35 @@ fn exportar_rechaza_destino_dentro_del_proyecto_por_symlink() {
     assert!(proyecto
         .exportar_docx(&raiz.join("salida.docx"), false, false)
         .is_err());
+}
+
+#[test]
+fn cuarentena_lista_y_descarta_copias() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    let roto = proyecto
+        .raiz()
+        .join("manuscrito/01-libro/01-capitulo/999-roto.md");
+    std::fs::write(&roto, "sin frontmatter\n").expect("escribir inválido");
+
+    let escaneo = proyecto.verificar().expect("verificar");
+    assert!(!escaneo.invalidos.is_empty());
+    let copiados = verify::cuarentenar(proyecto.raiz(), &escaneo).expect("cuarentenar");
+    assert!(copiados >= 1);
+
+    let items = proyecto.cuarentena().expect("listar cuarentena");
+    assert_eq!(items.len(), 1);
+    assert!(items[0].motivo.is_some(), "items: {items:?}");
+    assert!(items[0].tamano > 0);
+    assert!(roto.exists(), "el original no debe tocarse");
+
+    assert!(proyecto.descartar_cuarentena("../escape").is_err());
+    proyecto
+        .descartar_cuarentena(&items[0].archivo)
+        .expect("descartar copia");
+    assert!(proyecto.cuarentena().expect("relistar").is_empty());
+    assert!(roto.exists(), "el original sigue existiendo");
 }
 
 #[test]

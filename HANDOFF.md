@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 (Interfaz), cuarta rebanada terminada.
-- **Siguiente tarea:** cuarentena visible y marcas propias de Tiptap.
+- **Fase actual:** Fase 2 (Interfaz), quinta rebanada terminada.
+- **Siguiente tarea:** E2E con Playwright/Tauri y empaquetado (`bundle.active`).
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -12,7 +12,7 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 74 pruebas de núcleo en verde (29 unitarias + 21 de integración + 24 de CLI);
+- 76 pruebas de núcleo en verde (29 unitarias + 22 de integración + 25 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
@@ -21,7 +21,8 @@ La Fase 2 tiene cuatro rebanadas verticales:
 1. cáscara Tauri, workspace pnpm, tipos generados, árbol y lectura con Tiptap;
 2. corpus golden Markdown, editor editable, autosave y conflictos por hash;
 3. búsqueda FTS5, línea de tiempo e historial con reversión;
-4. **exportación DOCX básica desde CLI y UI**.
+4. exportación DOCX básica desde CLI y UI;
+5. **cuarentena visible y marcas propias (personajes, tramas, comentarios)**.
 
 Estado actual de la UI:
 
@@ -34,6 +35,8 @@ Estado actual de la UI:
 - búsqueda FTS5 en la barra lateral con `Ctrl+F`, fragmento resaltado y salto al
   documento;
 - exportación DOCX con casilla de notas y diálogo nativo de destino;
+- panel de **Cuarentena** con motivo, ruta original y descarte en dos pasos;
+- toolbar de marcas: personaje, trama, comentario y quitar marca;
 - historial por revisión: metadatos, contenido de cada archivo y reversión con
   confirmación;
 - el borrador sobrevive al cambio de pestaña y la reversión bloquea la edición
@@ -50,8 +53,8 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 34 pruebas de UI (16 de corpus, 5 de compatibilidad y 13 de autosave, búsqueda,
-  historial, DOCX y regresiones de borrador/reversión);
+- 41 pruebas de UI (17 de corpus, 5 de compatibilidad y 19 de autosave, búsqueda,
+  historial, DOCX, cuarentena, marcas y regresiones);
 - 2 pruebas de la cáscara Tauri;
 - gate `python scripts/ci.py interfaz` en verde.
 
@@ -156,6 +159,8 @@ En `apps/desktop/src-tauri/src/lib.rs`:
   pendientes.
 - `exportar_docx(ruta, destino, incluirNotas, forzar)`: escribe el DOCX y
   devuelve la ruta final.
+- `cuarentena(ruta)`: lista copias con motivo, ruta original, fecha y tamaño.
+- `descartar_cuarentena(ruta, archivo)`: elimina solo la copia.
 - `escribir(ruta, objetivo, cuerpo, hashBase)`: devuelve
   `GuardadoDto { revision, hashArchivo }`.
 - Errores estructurados `ErrorDto { tipo, mensaje }`; `TipoError` distingue
@@ -177,7 +182,10 @@ En `apps/desktop/src-tauri/src/lib.rs`:
   - detalle con metadatos y contenido de cada archivo afectado;
   - reversión en dos pasos, con aviso de que crea una revisión nueva.
 - **Exportar DOCX** en la barra superior, con casilla **notas** y diálogo nativo.
-- Editor Tiptap editable con el esquema de `ui/src/editor/extensions.ts`.
+- **Cuarentena** en el panel: copias de archivos inválidos, con descarte en dos
+  pasos; los originales no se tocan.
+- Editor Tiptap editable con el esquema de `ui/src/editor/extensions.ts` y
+  toolbar para marcar personajes, tramas y comentarios.
 - Autosave con debounce y cola serializada (si llegan cambios mientras se
   guarda, se drenan antes de continuar).
 - Cambiar de documento o abrir otro proyecto espera al guardado pendiente.
@@ -200,15 +208,17 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 ## 5. Contrato Markdown
 
 - Esquema aceptado: párrafos, títulos ATX, énfasis, negrita, tachado, código,
-  listas, citas, bloques de código, enlaces, separadores y saltos.
-- Corpus: `ui/src/markdown/corpus/` (16 parejas).
+  listas, citas, bloques de código, enlaces, separadores, saltos y marcas propias.
+- Corpus: `ui/src/markdown/corpus/` (17 parejas).
 - Prueba: `ui/src/markdown/roundtrip.test.ts`.
 - Normalizaciones aceptadas: setext → ATX, referencias → inline, salto con
   barra → dos espacios, código indentado → cercado, escapado de literales y
   entidades.
 - Construcciones bloqueadas: HTML, imágenes, tablas, listas de tareas y notas al
   pie.
-- Detalle completo: [`docs/markdown-v1.md`](docs/markdown-v1.md).
+- Marcas: [`docs/marcas-v1.md`](docs/marcas-v1.md); detalle del editor:
+  [`docs/markdown-v1.md`](docs/markdown-v1.md).
+- Cuarentena: [`docs/cuarentena.md`](docs/cuarentena.md).
 
 ## 6. Verificación ejecutada al dejar el proyecto
 
@@ -216,8 +226,8 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   74/74
-pnpm ui:test                      34/34
+cargo test --workspace --all-targets --locked   76/76
+pnpm ui:test                      41/41
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK
@@ -240,16 +250,13 @@ sin inspección visual.
 
 ### Siguiente tarea inmediata
 
-1. **Cuarentena visible**:
-   - listar `.escritor/cuarentena` y explicar cada archivo;
-   - descartar o conservar sin tocar el proyecto.
-2. **Marcas propias de Tiptap** (personajes, tramas, comentarios).
+1. **E2E con Playwright/Tauri**: abrir, escribir, autosave, búsqueda, historial,
+   reversión, cuarentena y exportación DOCX.
+2. **Empaquetado**: `bundle.active=true`, iconos completos e instaladores.
 
 ### Resto de Fase 2
 
 - Toolbar de formato y recuento de palabras.
-- `bundle.active=true`, iconos completos e instaladores.
-- E2E con Playwright/Tauri.
 - Integrar `interfaz` en CI remoto (hoy no hay `.github/`).
 - Probar en Windows y macOS.
 
@@ -288,7 +295,11 @@ sin inspección visual.
 - Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;
   es correcto para fixtures y proyectos de solo lectura, no para uso intensivo
   con miles de escenas.
-- Sin toolbar: el formato se introduce con los atajos Markdown de StarterKit.
+- La toolbar solo cubre marcas; negrita, cursiva y listas se introducen con los
+  atajos Markdown de StarterKit.
+- Las marcas no se anidan, el comentario no admite `|` y el texto marcado no
+  admite `]]`. Los ULID no se resuelven en el Markdown; la UI los cruza con las
+  notas cargadas.
 - Los fixtures generados incluyen comentarios HTML de relleno; el editor los
   abre en solo lectura. Para probar edición usa la demo o un proyecto real.
 

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { BusquedaDto } from './types/BusquedaDto';
+import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { ErrorDto } from './types/ErrorDto';
 import type { EscaneoDto } from './types/EscaneoDto';
 import type { GuardadoDto } from './types/GuardadoDto';
@@ -250,6 +251,20 @@ export async function exportarDocx(
     return destino;
   }
   return invoke<string>('exportar_docx', { ruta, destino, incluirNotas, forzar });
+}
+
+export async function cuarentena(ruta: string): Promise<CuarentenaDto[]> {
+  if (!esTauri) {
+    return [];
+  }
+  return invoke<CuarentenaDto[]>('cuarentena', { ruta });
+}
+
+export async function descartarCuarentena(ruta: string, archivo: string): Promise<void> {
+  if (!esTauri) {
+    return;
+  }
+  return invoke<void>('descartar_cuarentena', { ruta, archivo });
 }
 
 export async function escribir(

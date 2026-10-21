@@ -10,6 +10,9 @@
   corpus golden, normalizaciones y construcciones bloqueadas.
 - [`docx-v1.md`](docx-v1.md) — contrato de exportación DOCX: estructura,
   construcciones soportadas y limitaciones.
+- [`cuarentena.md`](cuarentena.md) — copia de diagnóstico, comandos y reglas.
+- [`marcas-v1.md`](marcas-v1.md) — sintaxis y modelo de personajes, tramas y
+  comentarios.
 - [`ci.md`](ci.md) — gates de calidad, interfaz, producto y seguridad; paridad
   local/CI.
 - [`adr/0001-editor-tiptap.md`](adr/0001-editor-tiptap.md) — decisión del editor
@@ -26,8 +29,9 @@
   historial y reversión.
 - [`iteraciones/06-fase-2.md`](iteraciones/06-fase-2.md) — exportación DOCX
   desde CLI y UI.
+- `iteraciones/07-fase-2.md` — cuarentena visible y marcas propias (en curso).
 
 Pendiente por fase:
 
-- Fase 2: cuarentena visible, marcas propias, E2E de escritorio y empaquetado.
+- Fase 2: E2E de escritorio y empaquetado.
 - Fase 3: `protocolo-patches.md` y contrato del servidor MCP.

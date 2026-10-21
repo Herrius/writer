@@ -445,6 +445,75 @@ button:focus-visible {
   font-size: 0.78rem;
 }
 
+.cuarentena {
+  margin: 0 0 1.2rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #d9c7a9;
+  border-radius: 0.6rem;
+  background: #fbf6ea;
+  font-size: 0.78rem;
+}
+
+.cuarentena-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cuarentena-cabecera h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.cuarentena-cabecera p {
+  margin: 0;
+  max-width: 38ch;
+  color: var(--tinta-suave);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.cuarentena ul {
+  margin: 0.7rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cuarentena li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid rgb(217 199 169 / 45%);
+}
+
+.cuarentena-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.cuarentena-datos strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cuarentena-datos span {
+  color: var(--tinta-suave);
+  font-size: 0.68rem;
+}
+
+.peligro.pequeno {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.7rem;
+}
+
 .diagnostico {
   margin: 0 0 1.2rem;
   padding: 0.8rem 1rem;
@@ -610,6 +679,63 @@ button.guardar:disabled {
 .editor-content {
   min-height: 20rem;
   padding: 1.6rem 0.2rem;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--linea);
+}
+
+.editor-toolbar select,
+.editor-toolbar input {
+  max-width: 11rem;
+  padding: 0.32rem 0.45rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.4rem;
+  background: rgb(255 255 255 / 60%);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.editor-toolbar button:disabled,
+.editor-toolbar select:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.comentario-form {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.editor-content .ProseMirror .marca {
+  border-radius: 0.18rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.editor-content .ProseMirror .marca-personaje {
+  background: #e8f0e2;
+  text-decoration: underline 1px solid #7d9b6c;
+  text-underline-offset: 0.16em;
+}
+
+.editor-content .ProseMirror .marca-trama {
+  background: #f4e9cf;
+  text-decoration: underline 1px dashed #b08a4b;
+  text-underline-offset: 0.16em;
+}
+
+.editor-content .ProseMirror .marca-comentario {
+  background: #fbebe7;
+  text-decoration: underline 1px dotted #b55c4a;
+  text-underline-offset: 0.16em;
 }
 
 .editor-content .ProseMirror {

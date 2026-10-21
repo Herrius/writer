@@ -43,7 +43,7 @@ Se ejecuta en **Windows, Linux y macOS**; el código manipula rutas, locks y
 |---|---|
 | `pnpm install --frozen-lockfile` | Que el lockfile pnpm esté completo y no se resuelvan versiones nuevas. |
 | `pnpm typecheck` | Errores de TypeScript en la UI. |
-| `pnpm ui:test` | Corpus golden de Markdown, compatibilidad, autosave, búsqueda, historial y exportación DOCX. |
+| `pnpm ui:test` | Corpus golden de Markdown, compatibilidad, autosave, búsqueda, historial, DOCX, cuarentena y marcas. |
 | `pnpm ui:build` | Que Vite y Tiptap generen la UI de producción. |
 | `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml --locked` | Que la cáscara Tauri y los comandos compilen con su `Cargo.lock`. |
 | `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked` | Exportación de tipos y comandos básicos contra un proyecto temporal. |

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   abrirProyecto,
   buscar as buscarEnProyecto,
+  cuarentena as pedirCuarentena,
+  descartarCuarentena,
   elegirDestinoDocx,
   elegirProyecto,
   errorDe,
@@ -15,6 +17,7 @@ import {
   revertir as revertirRevision,
 } from './api';
 import type { BusquedaDto } from './types/BusquedaDto';
+import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
@@ -179,6 +182,9 @@ export default function App() {
   const [revirtiendo, setRevirtiendo] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [incluirNotas, setIncluirNotas] = useState(false);
+  const [cuarentena, setCuarentena] = useState<CuarentenaDto[]>([]);
+  const [confirmarDescarte, setConfirmarDescarte] = useState<string | null>(null);
+  const [descartando, setDescartando] = useState<string | null>(null);
 
   const cargando = useRef(false);
   const navegando = useRef(false);
@@ -231,6 +237,20 @@ export default function App() {
     () => agrupar(notas, (documento) => documento.clase ?? 'notas'),
     [notas],
   );
+  const personajes = useMemo(
+    () =>
+      notas
+        .filter((documento) => documento.clase === 'personajes')
+        .map((documento) => ({ id: documento.id, titulo: documento.titulo })),
+    [notas],
+  );
+  const tramas = useMemo(
+    () =>
+      notas
+        .filter((documento) => documento.clase === 'tramas')
+        .map((documento) => ({ id: documento.id, titulo: documento.titulo })),
+    [notas],
+  );
 
   const hallazgos = useMemo(
     () => (activo ? analizarCompatibilidad(activo.cuerpo) : []),
@@ -277,6 +297,8 @@ export default function App() {
     setConsulta('');
     setResultados([]);
     setErrorBusqueda(null);
+    setCuarentena([]);
+    setConfirmarDescarte(null);
     setRevisiones([]);
     setRevisionSeleccionada(null);
     setDetalleRevision(null);
@@ -301,6 +323,11 @@ export default function App() {
       setRevisionEditor((valor) => valor + 1);
       setEstadoGuardado(resumen.errores.length > 0 ? 'solo-lectura' : 'guardado');
       setConfirmarRecarga(false);
+      try {
+        setCuarentena(await pedirCuarentena(ruta));
+      } catch {
+        setCuarentena([]);
+      }
       setEstado('listo');
     } catch (fallo) {
       const detalle = errorDe(fallo);
@@ -669,6 +696,25 @@ export default function App() {
     }
   };
 
+  const descartarCopia = async (archivo: string) => {
+    const proyectoActual = proyectoRef.current;
+    if (!proyectoActual || descartando !== null) {
+      return;
+    }
+    setDescartando(archivo);
+    setError(null);
+    try {
+      await descartarCuarentena(proyectoActual.raiz, archivo);
+      setCuarentena((items) => items.filter((item) => item.archivo !== archivo));
+      setMensaje(`Copia de cuarentena descartada: ${archivo}.`);
+    } catch (fallo) {
+      setError(errorDe(fallo).mensaje);
+    } finally {
+      setDescartando(null);
+      setConfirmarDescarte(null);
+    }
+  };
+
   accionesRef.current = { guardar: guardarAhora, abrir };
 
   useEffect(() => {
@@ -1033,6 +1079,51 @@ export default function App() {
             </details>
           )}
 
+          {cuarentena.length > 0 && (
+            <section className="cuarentena">
+              <div className="cuarentena-cabecera">
+                <div>
+                  <p className="kicker">copia de diagnóstico</p>
+                  <h3>Cuarentena ({cuarentena.length})</h3>
+                </div>
+                <p>
+                  Los originales no se tocan. Descartar elimina solo la copia.
+                </p>
+              </div>
+              <ul>
+                {cuarentena.map((item) => (
+                  <li key={item.archivo}>
+                    <div className="cuarentena-datos">
+                      <strong>{item.archivo}</strong>
+                      <span>
+                        {item.motivo ?? 'sin motivo'} ·{' '}
+                        {item.rutaOriginal ?? 'ruta original desconocida'} ·{' '}
+                        {item.tamano} bytes
+                      </span>
+                    </div>
+                    <button
+                      className="peligro pequeno"
+                      disabled={descartando !== null}
+                      onClick={() => {
+                        if (confirmarDescarte !== item.archivo) {
+                          setConfirmarDescarte(item.archivo);
+                          return;
+                        }
+                        void descartarCopia(item.archivo);
+                      }}
+                    >
+                      {descartando === item.archivo
+                        ? 'Descartando…'
+                        : confirmarDescarte === item.archivo
+                          ? 'Confirmar descarte'
+                          : 'Descartar'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {proyecto ? (
             <article className="documento-panel">
               {activo ? (
@@ -1217,6 +1308,8 @@ export default function App() {
                   key={`${activo.id}:${revisionEditor}`}
                   markdown={cuerpoVisible}
                   editable={puedeEditar}
+                  personajes={personajes}
+                  tramas={tramas}
                   onCambio={alCambiar}
                 />
               ) : vista === 'fuente' && activo ? (

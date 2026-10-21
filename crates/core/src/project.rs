@@ -1,7 +1,7 @@
 //! Operaciones de proyecto: apertura, transacciones, creación, edición,
 //! movimiento, borrado, historial y exportación.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use crate::blob::BlobStore;
@@ -146,6 +146,28 @@ pub struct ResultadoBusqueda {
     pub tipo: String,
     /// Fragmento con la coincidencia marcada entre `[` y `]` cuando hay índice.
     pub fragmento: String,
+}
+
+/// Copia de un archivo inválido en cuarentena.
+#[derive(Clone, Debug)]
+pub struct CuarentenaItem {
+    /// Nombre del archivo dentro de `.escritor/cuarentena/`.
+    pub archivo: String,
+    /// Ruta original, si el informe la conserva.
+    pub ruta_original: Option<String>,
+    /// Motivo del apartado, si el informe lo conserva.
+    pub motivo: Option<String>,
+    /// Fecha del apartado, si el informe la conserva.
+    pub ts: Option<String>,
+    /// Tamaño de la copia en bytes.
+    pub tamano: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+struct InformeCuarentena {
+    ts: Option<String>,
+    ruta_original: Option<String>,
+    motivo: Option<String>,
 }
 
 impl Project {
@@ -419,6 +441,106 @@ impl Project {
         }
         resultados.truncate(limite);
         Ok(resultados)
+    }
+
+    /// Lista las copias de cuarentena con los metadatos del informe.
+    pub fn cuarentena(&self) -> Result<Vec<CuarentenaItem>> {
+        let directorio = self.ruta_escritor().join("cuarentena");
+        if !directorio.is_dir() {
+            return Ok(Vec::new());
+        }
+        let mut informes: BTreeMap<String, InformeCuarentena> = BTreeMap::new();
+        let informe = directorio.join("informe.jsonl");
+        if let Ok(texto) = std::fs::read_to_string(&informe) {
+            for linea in texto.lines() {
+                if linea.trim().is_empty() {
+                    continue;
+                }
+                let Ok(valor) = serde_json::from_str::<serde_json::Value>(linea) else {
+                    continue;
+                };
+                let Some(archivo) = valor.get("archivo").and_then(|campo| campo.as_str()) else {
+                    continue;
+                };
+                let ts = valor
+                    .get("ts")
+                    .and_then(|campo| campo.as_str())
+                    .map(str::to_string);
+                let ruta = valor
+                    .get("ruta_original")
+                    .and_then(|campo| campo.as_str())
+                    .map(str::to_string);
+                let motivo = valor
+                    .get("motivo")
+                    .and_then(|campo| campo.as_str())
+                    .map(str::to_string);
+                informes.insert(
+                    archivo.to_string(),
+                    InformeCuarentena {
+                        ts,
+                        ruta_original: ruta,
+                        motivo,
+                    },
+                );
+            }
+        }
+
+        let entradas = std::fs::read_dir(&directorio)
+            .map_err(|error| Error::Io(error).with_path(&directorio))?;
+        let mut archivos = Vec::new();
+        for entrada in entradas {
+            let entrada = entrada.map_err(|error| Error::Io(error).with_path(&directorio))?;
+            let nombre = entrada.file_name().to_string_lossy().to_string();
+            if nombre == "informe.jsonl" {
+                continue;
+            }
+            let metadatos = entrada
+                .metadata()
+                .map_err(|error| Error::Io(error).with_path(entrada.path()))?;
+            if !metadatos.is_file() {
+                continue;
+            }
+            let informe = informes.remove(&nombre).unwrap_or_default();
+            archivos.push(CuarentenaItem {
+                archivo: nombre,
+                ruta_original: informe.ruta_original,
+                motivo: informe.motivo,
+                ts: informe.ts,
+                tamano: metadatos.len(),
+            });
+        }
+        archivos.sort_by(|a, b| a.archivo.cmp(&b.archivo));
+        Ok(archivos)
+    }
+
+    /// Elimina una copia de cuarentena. Nunca toca el archivo original.
+    pub fn descartar_cuarentena(&self, archivo: &str) -> Result<()> {
+        let nombre = archivo.trim();
+        if nombre.is_empty()
+            || nombre == "."
+            || nombre == ".."
+            || nombre == "informe.jsonl"
+            || nombre.contains('/')
+            || nombre.contains('\\')
+        {
+            return Err(Error::Input(format!(
+                "nombre de cuarentena no válido: {archivo}"
+            )));
+        }
+        let ruta = self.ruta_escritor().join("cuarentena").join(nombre);
+        match std::fs::symlink_metadata(&ruta) {
+            Ok(metadatos) if metadatos.file_type().is_file() => {
+                fsutil::eliminar_archivo(&ruta)?;
+                Ok(())
+            }
+            Ok(_) => Err(Error::Input(format!(
+                "no es un archivo de cuarentena: {archivo}"
+            ))),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Err(Error::NotFound(
+                format!("archivo de cuarentena no encontrado: {archivo}"),
+            )),
+            Err(error) => Err(Error::Io(error).with_path(&ruta)),
+        }
     }
 
     /// Historial confirmado.

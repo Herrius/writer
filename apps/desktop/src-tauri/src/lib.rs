@@ -195,6 +195,23 @@ pub struct ReversionDto {
     pub errores_pendientes: Vec<String>,
 }
 
+/// Copia de cuarentena.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct CuarentenaDto {
+    /// Nombre del archivo en .escritor/cuarentena.
+    pub archivo: String,
+    /// Ruta original, si el informe la conserva.
+    pub ruta_original: Option<String>,
+    /// Motivo, si el informe lo conserva.
+    pub motivo: Option<String>,
+    /// Fecha, si el informe la conserva.
+    pub ts: Option<String>,
+    /// Tamaño en bytes.
+    pub tamano: u64,
+}
+
 /// Resultado de `verify` para la barra de estado.
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -346,6 +363,28 @@ fn exportar_docx(
 }
 
 #[tauri::command]
+fn cuarentena(ruta: String) -> Result<Vec<CuarentenaDto>, ErrorDto> {
+    let items = Project::new(&ruta).cuarentena().map_err(error)?;
+    Ok(items
+        .into_iter()
+        .map(|item| CuarentenaDto {
+            archivo: item.archivo,
+            ruta_original: item.ruta_original,
+            motivo: item.motivo,
+            ts: item.ts,
+            tamano: item.tamano,
+        })
+        .collect())
+}
+
+#[tauri::command]
+fn descartar_cuarentena(ruta: String, archivo: String) -> Result<(), ErrorDto> {
+    Project::new(&ruta)
+        .descartar_cuarentena(&archivo)
+        .map_err(error)
+}
+
+#[tauri::command]
 fn escribir(
     ruta: String,
     objetivo: String,
@@ -434,6 +473,8 @@ pub fn run() {
             mostrar,
             revertir,
             exportar_docx,
+            cuarentena,
+            descartar_cuarentena,
             escribir
         ])
         .run(tauri::generate_context!())
@@ -463,6 +504,7 @@ mod tests {
         ContenidoRevisionDto::export_all(&config).expect("exportar ContenidoRevisionDto");
         RevisionDetalleDto::export_all(&config).expect("exportar RevisionDetalleDto");
         ReversionDto::export_all(&config).expect("exportar ReversionDto");
+        CuarentenaDto::export_all(&config).expect("exportar CuarentenaDto");
     }
 
     #[test]
@@ -531,6 +573,23 @@ mod tests {
             .expect("exportar DOCX");
         let bytes = std::fs::read(exportado).expect("leer DOCX");
         assert_eq!(&bytes[..4], b"PK\x03\x04");
+
+        let cuarentena_dir = raiz.join(".escritor/cuarentena");
+        let archivo = "20260101T000000Z-prueba-motivo.md";
+        std::fs::write(cuarentena_dir.join(archivo), b"copia").expect("cuarentena");
+        std::fs::write(
+            cuarentena_dir.join("informe.jsonl"),
+            format!(
+                "{{\"ts\":\"2026-01-01T00:00:00Z\",\"archivo\":\"{archivo}\",\"ruta_original\":\"manuscrito/x.md\",\"motivo\":\"prueba\",\"hash\":\"blake3:x\"}}\n"
+            ),
+        )
+        .expect("informe");
+        let items = cuarentena(ruta.clone()).expect("listar cuarentena");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].archivo, archivo);
+        assert_eq!(items[0].motivo.as_deref(), Some("prueba"));
+        descartar_cuarentena(ruta.clone(), archivo.to_string()).expect("descartar");
+        assert!(!cuarentena_dir.join(archivo).exists());
 
         let fallo = escribir(
             ruta,

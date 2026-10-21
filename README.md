@@ -7,7 +7,8 @@ recuperarse de un corte sin perder ni medio cambio.
 Este repositorio está en **Fase 2 (Interfaz, v0.2)** del plan. El motor y la CLI
 (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el árbol,
 permite leer y **editar con autosave**, busca con FTS5, ofrece historial con
-reversión y exporta a DOCX. El empaquetado es la siguiente rebanada.
+reversión, exporta a DOCX, muestra la cuarentena y permite marcar personajes,
+tramas y comentarios. El E2E y el empaquetado son las siguientes tareas.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -20,16 +21,16 @@ reversión y exporta a DOCX. El empaquetado es la siguiente rebanada.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **En curso: árbol, lectura/edición con autosave, conflictos, corpus Markdown, búsqueda FTS5, historial con reversión y exportación DOCX; cuarentena visible, marcas y empaquetado pendientes** |
+| 2 | Interfaz Tauri (v0.2) | **En curso: árbol, autosave, conflictos, corpus Markdown, búsqueda FTS5, historial, DOCX, cuarentena visible y marcas propias; E2E y empaquetado pendientes** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 74 pruebas
-(29 unitarias, 21 de integración y 24 de CLI). La Fase 2 añade 2 pruebas de la
-cáscara Tauri y 34 pruebas de UI (corpus Markdown, compatibilidad, autosave,
-búsqueda, historial, DOCX y regresiones de borrador/reversión).
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 76 pruebas
+(29 unitarias, 22 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
+cáscara Tauri y 41 pruebas de UI (corpus Markdown, compatibilidad, autosave,
+búsqueda, historial, DOCX, cuarentena, marcas y regresiones).
 
 ## Requisitos
 
@@ -138,6 +139,10 @@ pnpm check          # Tauri build --no-bundle
   nueva y no borra el historial.
 - **Exportar DOCX** en la barra superior, con casilla para incluir notas y
   diálogo nativo de destino. Contrato: [`docs/docx-v1.md`](docs/docx-v1.md).
+- Panel de **Cuarentena** con archivo, motivo, ruta original y descarte en dos
+  pasos. Contrato: [`docs/cuarentena.md`](docs/cuarentena.md).
+- Toolbar de marcas sobre la selección: personaje, trama, comentario y quitar
+  marca. Sintaxis y reglas: [`docs/marcas-v1.md`](docs/marcas-v1.md).
 - Autosave a los 900 ms y con `Ctrl+S` / `Cmd+S`; estados `guardado`,
   `cambios sin guardar`, `guardando`, `conflicto`, `recuperación`, `ocupado`,
   `error` y `solo lectura`.
@@ -264,6 +269,10 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   imágenes incrustadas; el proyecto sigue siendo la fuente de verdad Markdown.
 - El destino de exportación se resuelve contra enlaces simbólicos y `..`; un
   carácter inválido para XML 1.0 aborta el DOCX antes de reemplazar el archivo.
+- Las marcas no se anidan; el comentario no admite `|` y el texto marcado no
+  admite `]]`.
+- Descartar una copia de cuarentena no repara el archivo original; `verify`
+  sigue mostrando el error.
 
 ## Pruebas y gates
 
@@ -312,7 +321,9 @@ La suite cubre, entre otras cosas:
 - búsqueda FTS5 en CLI y UI, incluido el fallback sin `.escritor`;
 - historial, detalle de revisión y reversión con confirmación;
 - exportación DOCX desde CLI y UI, incluido el rechazo sin `--forzar`;
-- UI: corpus golden Markdown (16 casos), compatibilidad conservadora, autosave
+- cuarentena visible: listar y descartar copias sin tocar los originales;
+- marcas propias con ida y vuelta Markdown y exportación DOCX sin delimitadores;
+- UI: corpus golden Markdown (17 casos), compatibilidad conservadora, autosave
   con `Ctrl+S`, conflicto y solo lectura.
 
 ### Fixtures

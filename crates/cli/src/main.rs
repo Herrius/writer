@@ -158,6 +158,11 @@ enum Comando {
         #[arg(long)]
         limpiar: bool,
     },
+    /// Lista o descarta copias de cuarentena.
+    Quarantine {
+        #[command(subcommand)]
+        accion: CuarentenaAccion,
+    },
     /// Exporta el manuscrito a Markdown.
     Export {
         #[command(subcommand)]
@@ -197,6 +202,24 @@ enum Exportar {
     Md(MdArgs),
     /// Exporta a un archivo DOCX.
     Docx(DocxArgs),
+}
+
+#[derive(Debug, Subcommand)]
+enum CuarentenaAccion {
+    /// Lista las copias en cuarentena.
+    List {
+        #[arg(default_value = ".")]
+        ruta: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Descarta una copia de cuarentena sin tocar el original.
+    Discard {
+        /// Nombre del archivo dentro de .escritor/cuarentena.
+        archivo: String,
+        #[arg(default_value = ".")]
+        ruta: PathBuf,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -345,6 +368,14 @@ fn ejecutar(comando: Comando) -> writer_core::Result<u8> {
             }
             Ok(0)
         }
+        Comando::Quarantine { accion } => match accion {
+            CuarentenaAccion::List { ruta, json } => cuarentena_listar(&ruta, json),
+            CuarentenaAccion::Discard { archivo, ruta } => {
+                Project::new(&ruta).descartar_cuarentena(&archivo)?;
+                println!("descartado: {archivo}");
+                Ok(0)
+            }
+        },
         Comando::Export { formato } => match formato {
             Exportar::Md(args) => {
                 let proyecto = Project::new(&args.ruta);
@@ -672,6 +703,42 @@ fn mostrar(ruta: &PathBuf, revision: u64, json: bool) -> writer_core::Result<u8>
                 Some(bytes) => print!("{}", String::from_utf8_lossy(&bytes)),
                 None => println!("(eliminado)"),
             }
+        }
+    }
+    Ok(0)
+}
+
+fn cuarentena_listar(ruta: &PathBuf, json: bool) -> writer_core::Result<u8> {
+    let items = Project::new(ruta).cuarentena()?;
+    if json {
+        let filas: Vec<_> = items
+            .iter()
+            .map(|item| {
+                json!({
+                    "archivo": item.archivo,
+                    "ruta_original": item.ruta_original,
+                    "motivo": item.motivo,
+                    "ts": item.ts,
+                    "tamano": item.tamano,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&filas).map_err(Error::Json)?
+        );
+    } else if items.is_empty() {
+        println!("sin archivos en cuarentena");
+    } else {
+        for item in items {
+            println!(
+                "{}  {} bytes  {}  {}  {}",
+                item.archivo,
+                item.tamano,
+                item.ruta_original.as_deref().unwrap_or("(desconocido)"),
+                item.motivo.as_deref().unwrap_or("(sin motivo)"),
+                item.ts.as_deref().unwrap_or("(sin fecha)")
+            );
         }
     }
     Ok(0)

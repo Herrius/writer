@@ -672,26 +672,28 @@ pub fn cuarentenar(raiz: &Path, escaneo: &Escaneo) -> Result<usize> {
             .unwrap_or("archivo.md")
             .trim_end_matches(".md");
         let motivo: String = model::slug(&invalido.motivo).chars().take(40).collect();
-        let nombre = format!(
+        let mut nombre = format!(
             "{}-{}-{}.md",
             crate::time::timestamp_slug(crate::time::now_ms()),
             model::slug(base),
             motivo
         );
-        let mut destino = directorio.join(nombre);
+        let mut destino = directorio.join(&nombre);
         let mut intento = 2_u32;
         while destino.exists() {
-            destino = directorio.join(format!(
+            nombre = format!(
                 "{}-{}-{}-{intento}.md",
                 crate::time::timestamp_slug(crate::time::now_ms()),
                 model::slug(base),
                 motivo
-            ));
+            );
+            destino = directorio.join(&nombre);
             intento += 1;
         }
         fsutil::escribir_atomico(&destino, &bytes)?;
         let linea = serde_json::json!({
             "ts": crate::time::ahora(),
+            "archivo": nombre,
             "ruta_original": invalido.relativa,
             "motivo": invalido.motivo,
             "hash": invalido.hash,

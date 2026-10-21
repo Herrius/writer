@@ -45,7 +45,7 @@ pub(crate) fn exportar(escaneo: &Escaneo, incluir_notas: bool) -> Result<Vec<u8>
             capitulo_actual = capitulo;
         }
         render.titulo(&encontrada.escena.titulo, 3);
-        render.markdown(&encontrada.escena.cuerpo);
+        render.markdown(&quitar_marcas(&encontrada.escena.cuerpo));
     }
 
     if incluir_notas {
@@ -66,7 +66,7 @@ pub(crate) fn exportar(escaneo: &Escaneo, incluir_notas: bool) -> Result<Vec<u8>
                     tipo_actual = nota.nota.tipo.clone();
                 }
                 render.titulo(&nota.nota.titulo, 3);
-                render.markdown(&nota.nota.cuerpo);
+                render.markdown(&quitar_marcas(&nota.nota.cuerpo));
             }
         }
     }
@@ -506,6 +506,49 @@ fn escapar_xml(texto: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+/// Quita los delimitadores de las marcas propias para el DOCX.
+///
+/// `[[personaje:ID|texto]]`, `[[trama:ID|texto]]` y
+/// `[[comentario:nota|texto]]` se convierten en `texto`. Las construcciones con
+/// ULID inválido o sin `|` se dejan intactas.
+fn quitar_marcas(markdown: &str) -> String {
+    let mut salida = String::with_capacity(markdown.len());
+    let mut resto = markdown;
+    while let Some(inicio) = resto.find("[[") {
+        salida.push_str(&resto[..inicio]);
+        let desde = &resto[inicio + 2..];
+        if let Some(fin) = desde.find("]]") {
+            let interior = &desde[..fin];
+            if let Some((clase, resto_marca)) = interior.split_once(':') {
+                if let Some((referencia, contenido)) = resto_marca.split_once('|') {
+                    let valida = match clase {
+                        "personaje" | "trama" => ulid_valido(referencia),
+                        "comentario" => !referencia.trim().is_empty(),
+                        _ => false,
+                    };
+                    if valida {
+                        salida.push_str(contenido);
+                        resto = &desde[fin + 2..];
+                        continue;
+                    }
+                }
+            }
+        }
+        salida.push('[');
+        resto = &resto[inicio + 1..];
+    }
+    salida.push_str(resto);
+    salida
+}
+
+fn ulid_valido(texto: &str) -> bool {
+    texto.len() == 26
+        && texto.chars().all(|caracter| {
+            caracter.is_ascii_digit()
+                || (caracter.is_ascii_uppercase() && !matches!(caracter, 'I' | 'L' | 'O' | 'U'))
+        })
 }
 
 /// Rechaza caracteres que XML 1.0 no permite.

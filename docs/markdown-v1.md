@@ -22,7 +22,9 @@ El editor usa `StarterKit` + `@tiptap/markdown` y acepta:
 - bloques de código cercados, con lenguaje;
 - enlaces inline y autolinks;
 - separadores (`---`);
-- saltos de línea duros.
+- saltos de línea duros;
+- marcas propias: `[[personaje:ULID|texto]]`, `[[trama:ULID|texto]]` y
+  `[[comentario:texto|texto]]` (ver [`marcas-v1.md`](marcas-v1.md)).
 
 Las imágenes, tablas, listas de tareas, HTML embebido y notas al pie **no** están
 en el esquema de la v0.2.
@@ -44,7 +46,7 @@ pareja:
 
 Casos cubiertos: párrafos, énfasis, títulos, listas, citas, código, enlaces,
 separadores, saltos, literales escapados, Unicode, documento mixto, setext,
-referencias, código indentado y entidades HTML.
+referencias, código indentado, entidades HTML y marcas propias.
 
 ```bash
 pnpm ui:test
@@ -54,7 +56,25 @@ Para añadir una construcción: se agrega la pareja, se ejecuta la prueba y, si 
 salida no es la deseada, se decide explícitamente entre aceptar la
 normalización, documentarla o bloquearla.
 
-## 3. Normalizaciones aceptadas
+## 3. Marcas propias
+
+El esquema incluye tres marcas que se serializan al Markdown:
+
+```text
+[[personaje:ULID|texto marcado]]
+[[trama:ULID|texto marcado]]
+[[comentario:texto del comentario|texto marcado]]
+```
+
+- `personaje` y `trama` exigen un ULID válido.
+- El texto marcado admite formato inline, pero no marcas anidadas ni `]]`.
+- El comentario no puede contener `|`.
+- La UI permite aplicar y quitar marcas sobre la selección.
+- En DOCX se exporta solo el texto marcado; el comentario no se imprime.
+
+El contrato completo está en [`marcas-v1.md`](marcas-v1.md).
+
+## 4. Normalizaciones aceptadas
 
 | Entrada | Salida | ¿Se conserva el significado? |
 |---|---|---|
@@ -74,7 +94,7 @@ Tiptap: el archivo sigue siendo Markdown válido y vuelve al mismo texto, pero l
 representación no es byte a byte la original. Es la normalización más visible
 para quien abra el `.md` fuera del editor.
 
-## 4. Construcciones bloqueadas
+## 5. Construcciones bloqueadas
 
 `ui/src/markdown/compatibilidad.ts` detecta las construcciones que pierden
 contenido y la interfaz abre el documento en **solo lectura**:
@@ -95,7 +115,7 @@ Para editar uno de estos documentos hoy hay que usar la CLI o convertirlo a las
 construcciones aceptadas. Añadir una extensión (imágenes, tablas) exige ampliar
 el esquema, el corpus y este documento.
 
-## 5. Autosave y conflictos
+## 6. Autosave y conflictos
 
 - El editor guarda 900 ms después de la última pulsación y con `Ctrl+S` /
   `Cmd+S`.
@@ -113,7 +133,7 @@ La ventana entre la comprobación del hash y el reemplazo sigue siendo la
 documentada en [`protocolo-commit.md`](protocolo-commit.md): es
 *last-writer-wins* frente a un proceso que escriba exactamente en ese intervalo.
 
-## 6. Pruebas
+## 7. Pruebas
 
 ```bash
 pnpm ui:test        # corpus + compatibilidad + autosave/conflictos

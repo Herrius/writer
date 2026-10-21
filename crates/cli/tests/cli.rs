@@ -103,8 +103,22 @@ fn ayuda_lista_los_comandos_previstos() {
     assert!(salida.status.success());
     let texto = String::from_utf8(salida.stdout).expect("salida UTF-8");
     for comando in [
-        "init", "info", "list", "buscar", "read", "create", "write", "move", "delete", "history",
-        "show", "revert", "verify", "reindex", "export",
+        "init",
+        "info",
+        "list",
+        "buscar",
+        "read",
+        "create",
+        "write",
+        "move",
+        "delete",
+        "history",
+        "show",
+        "revert",
+        "verify",
+        "reindex",
+        "quarantine",
+        "export",
     ] {
         assert!(
             texto.contains(comando),
@@ -232,6 +246,39 @@ fn exportar_docx_desde_cli() {
         "export forzado: {}",
         String::from_utf8_lossy(&forzado.stderr)
     );
+}
+
+#[test]
+fn quarantine_lista_y_descarta_sin_tocar_el_original() {
+    let (_directorio, raiz) = proyecto_temporal();
+    let roto = raiz.join("manuscrito/01-libro/01-capitulo/999-roto.md");
+    std::fs::write(&roto, "sin frontmatter\n").expect("escribir inválido");
+    let original = std::fs::read(&roto).expect("leer original");
+
+    let verify = ejecutar_en(&raiz, &["verify", "--cuarentena"]);
+    assert!(
+        texto(&verify).contains("cuarentena: 1 archivo(s) copiado(s)"),
+        "verify: {}",
+        texto(&verify)
+    );
+
+    let listado = ejecutar_en(&raiz, &["quarantine", "list", "--json"]);
+    assert!(listado.status.success(), "list: {}", texto(&listado));
+    let items: serde_json::Value = serde_json::from_slice(&listado.stdout).expect("json");
+    let items = items.as_array().expect("array");
+    assert_eq!(items.len(), 1);
+    let archivo = items[0]["archivo"].as_str().expect("archivo").to_string();
+    assert!(items[0]["motivo"].as_str().is_some());
+
+    let descartar = ejecutar_en(&raiz, &["quarantine", "discard", &archivo]);
+    assert!(descartar.status.success(), "discard: {}", texto(&descartar));
+    assert!(!raiz.join(".escritor/cuarentena").join(&archivo).exists());
+    assert_eq!(std::fs::read(&roto).expect("leer original"), original);
+
+    let vacio = ejecutar_en(&raiz, &["quarantine", "list", "--json"]);
+    assert!(vacio.status.success());
+    let vacio: serde_json::Value = serde_json::from_slice(&vacio.stdout).expect("json");
+    assert!(vacio.as_array().expect("array").is_empty());
 }
 
 #[test]

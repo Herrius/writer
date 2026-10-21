@@ -4,6 +4,8 @@ import App from './App';
 import {
   abrirProyecto,
   buscar,
+  cuarentena,
+  descartarCuarentena,
   elegirDestinoDocx,
   escribir,
   exportarDocx,
@@ -50,6 +52,8 @@ vi.mock('./api', () => ({
   revertir: vi.fn(),
   elegirDestinoDocx: vi.fn(),
   exportarDocx: vi.fn(),
+  cuarentena: vi.fn(),
+  descartarCuarentena: vi.fn(),
   errorDe: (fallo: unknown) => {
     if (typeof fallo === 'object' && fallo !== null && 'tipo' in fallo && 'mensaje' in fallo) {
       return fallo;
@@ -68,6 +72,8 @@ const mostrarMock = vi.mocked(mostrar);
 const revertirMock = vi.mocked(revertir);
 const elegirDestinoDocxMock = vi.mocked(elegirDestinoDocx);
 const exportarDocxMock = vi.mocked(exportarDocx);
+const cuarentenaMock = vi.mocked(cuarentena);
+const descartarCuarentenaMock = vi.mocked(descartarCuarentena);
 
 const proyecto: ProyectoDto = {
   raiz: '/tmp/novela',
@@ -173,6 +179,8 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
   revertirMock.mockResolvedValue({ revision: 3, erroresPendientes: [] });
   elegirDestinoDocxMock.mockResolvedValue('/tmp/salida.docx');
   exportarDocxMock.mockResolvedValue('/tmp/salida.docx');
+  cuarentenaMock.mockResolvedValue([]);
+  descartarCuarentenaMock.mockResolvedValue();
 }
 
 async function abrirDemo(): Promise<HTMLTextAreaElement> {
@@ -425,5 +433,30 @@ describe('autosave de la interfaz', () => {
       ),
     );
     expect(await screen.findByText(/DOCX exportado en \/tmp\/salida.docx/)).toBeTruthy();
+  });
+
+  it('muestra y descarta copias de cuarentena', async () => {
+    cuarentenaMock.mockResolvedValue([
+      {
+        archivo: '20260101T000000Z-roto-esquema.md',
+        rutaOriginal: 'manuscrito/01-libro/01-capitulo/999-roto.md',
+        motivo: 'esquema',
+        ts: '2026-01-01T00:00:00Z',
+        tamano: 24,
+      },
+    ]);
+    await abrirDemo();
+    expect(await screen.findByText('Cuarentena (1)')).toBeTruthy();
+    expect(screen.getByText(/manuscrito\/01-libro/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar descarte' }));
+    await waitFor(() =>
+      expect(descartarCuarentenaMock).toHaveBeenCalledWith(
+        '/tmp/novela',
+        '20260101T000000Z-roto-esquema.md',
+      ),
+    );
+    expect(await screen.findByText(/Copia de cuarentena descartada/)).toBeTruthy();
   });
 });

@@ -370,7 +370,8 @@ para diagnóstico; no decide nada.
 - Copia (no movimiento destructivo) a
   `.escritor/cuarentena/<AAAAMMDDTHHMMSSZ>-<slug>-<motivo>.md`.
 - Una línea por caso en `.escritor/cuarentena/informe.jsonl`:
-  `{"ts": "...", "ruta_original": "...", "motivo": "...", "hash": "blake3:..."}`.
+  `{"ts": "...", "archivo": "...", "ruta_original": "...", "motivo": "...", "hash": "blake3:..."}`.
+  Las líneas antiguas sin `archivo` se listan con metadatos desconocidos.
 - El archivo original **no se modifica**. `verify` lo sigue listando.
 
 ### 7.5 Alcance del CAS y concurrencia externa
