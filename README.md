@@ -8,8 +8,9 @@ Este repositorio está en **Fase 2 (Interfaz, v0.2)** del plan. El motor y la CL
 (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el árbol,
 permite leer y **editar con autosave**, busca con FTS5, ofrece historial con
 reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
-tramas y comentarios, y se empaqueta en deb/rpm. AppImage, firma y las pruebas
-en Windows/macOS son las siguientes tareas.
+tramas y comentarios, y se empaqueta en deb/rpm. La Fase 2 está completada por
+el builder; falta el pipeline de revisión independiente. AppImage, firma y las
+pruebas en Windows/macOS son las tareas externas.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -22,7 +23,7 @@ en Windows/macOS son las siguientes tareas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **Completada en local Linux: árbol, autosave, conflictos, corpus, búsqueda FTS5, historial, DOCX, cuarentena, marcas, toolbar, E2E de navegador y escritorio, deb/rpm. Pendiente externo: AppImage, firma, Windows/macOS y CI remoto** |
+| 2 | Interfaz Tauri (v0.2) | **Completada por el builder en Linux; pendiente pipeline de revisión independiente (QA, seguridad, release, UX) y validación externa** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 

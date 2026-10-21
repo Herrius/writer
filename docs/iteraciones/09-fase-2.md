@@ -1,9 +1,10 @@
-# Iteración 09 — Cierre de la Fase 2
+# Iteración 09 — Cierre del builder y estado de la Fase 2
 
 - **Fecha:** 2026-10-21
 - **Alcance:** toolbar de formato, recuento de palabras, E2E real de escritorio y
   cierre local de la Fase 2.
-- **Estado:** Fase 2 cerrada en local Linux. Validación externa pendiente.
+- **Estado:** Fase 2 completada por el builder en Linux; pendiente el pipeline
+  secuencial de revisión por roles.
 
 ## 1. Toolbar y recuento
 
@@ -29,9 +30,9 @@
 - Gate `python scripts/ci.py e2e-tauri`, Linux-only.
 - El E2E de navegador subió a 7 flujos (se añadió formato/recuento).
 
-## 3. Cierre de la Fase 2
+## 3. Cierre del builder
 
-La Fase 2 queda cerrada en local Linux con:
+La Fase 2 queda completada por el builder en local Linux con:
 
 - motor + CLI;
 - Tauri + React/Tiptap;
@@ -43,6 +44,9 @@ La Fase 2 queda cerrada en local Linux con:
 - toolbar y recuento;
 - 7 E2E de navegador + 1 E2E de escritorio;
 - empaquetado deb/rpm con verificación estructural.
+
+La fase **no está aprobada**: falta el pipeline secuencial de revisión por roles
+(QA, seguridad, release, UX y aceptación del product owner) descrito en el plan.
 
 ## 4. Evidencia
 
@@ -58,6 +62,7 @@ cargo deny                                      OK
 
 ## 5. Pendiente de validación externa
 
+- Pipeline de revisión por roles (plan §9).
 - AppImage (`linuxdeploy`).
 - Firma de código y notarización.
 - Windows (WebView2) y macOS.

@@ -2,8 +2,10 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 (Interfaz) cerrada en local Linux.
-- **Siguiente tarea:** AppImage, firma/notarización y validación Windows/macOS.
+- **Fase actual:** Fase 2 completada por el builder (Linux); pendiente el
+  pipeline secuencial de revisión por roles.
+- **Siguiente tarea:** revisión QA independiente, después seguridad, release, UX
+  y aceptación del product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -25,8 +27,10 @@ La Fase 2 tiene seis rebanadas verticales:
 5. cuarentena visible y marcas propias (personajes, tramas, comentarios);
 6. **E2E de navegador y escritorio, toolbar/recuento y empaquetado deb/rpm**.
 
-**La Fase 2 queda cerrada en local Linux.** Pendiente de validación externa:
-AppImage, firma/notarización, Windows/macOS y CI remoto.
+**La Fase 2 está completada por el builder, pero no aprobada.** Debe pasar por el
+pipeline secuencial de §9 del plan: QA independiente, seguridad, release,
+UX/accesibilidad/rendimiento y aceptación del product owner. La validación
+externa (AppImage, firma, Windows/macOS y CI remoto) queda para el cierre.
 
 Estado actual de la UI:
 
@@ -263,9 +267,13 @@ sin inspección visual.
 
 ### Siguiente tarea inmediata
 
-1. **AppImage y firma**: instalar `linuxdeploy`, añadir `appimage` al target Linux
-   y definir firma/notarización.
-2. **Windows/macOS**: compilar y probar E2E/paquetes en esas plataformas.
+1. **Pipeline de revisión por roles** (plan §9):
+   - QA independiente;
+   - security reviewer;
+   - release engineer;
+   - UX/accesibilidad/rendimiento;
+   - aceptación del product owner.
+2. **Validación externa**: AppImage, firma/notarización y Windows/macOS.
 
 ### Resto de Fase 2
 

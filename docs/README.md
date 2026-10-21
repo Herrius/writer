@@ -40,5 +40,6 @@
 
 Pendiente por fase:
 
-- Fase 2: validación externa (AppImage, firma, Windows/macOS y CI remoto).
+- Fase 2: pipeline de revisión por roles y validación externa (AppImage, firma,
+  Windows/macOS y CI remoto).
 - Fase 3: `protocolo-patches.md` y contrato del servidor MCP.
