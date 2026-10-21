@@ -12,7 +12,7 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 76 pruebas de núcleo en verde (29 unitarias + 22 de integración + 25 de CLI);
+- 79 pruebas de núcleo en verde (31 unitarias + 23 de integración + 25 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
@@ -35,8 +35,10 @@ Estado actual de la UI:
 - búsqueda FTS5 en la barra lateral con `Ctrl+F`, fragmento resaltado y salto al
   documento;
 - exportación DOCX con casilla de notas y diálogo nativo de destino;
-- panel de **Cuarentena** con motivo, ruta original y descarte en dos pasos;
-- toolbar de marcas: personaje, trama, comentario y quitar marca;
+- panel de **Cuarentena** con motivo, ruta original y descarte en dos pasos; la
+  ruta, el informe y las copias se validan contra enlaces simbólicos;
+- toolbar de marcas: personaje, trama, comentario y quitar marca; aplicar una
+  nueva sustituye la anterior y el comentario valida `|`/`]]`;
 - historial por revisión: metadatos, contenido de cada archivo y reversión con
   confirmación;
 - el borrador sobrevive al cambio de pestaña y la reversión bloquea la edición
@@ -53,7 +55,7 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 41 pruebas de UI (17 de corpus, 5 de compatibilidad y 19 de autosave, búsqueda,
+- 44 pruebas de UI (17 de corpus, 5 de compatibilidad y 22 de autosave, búsqueda,
   historial, DOCX, cuarentena, marcas y regresiones);
 - 2 pruebas de la cáscara Tauri;
 - gate `python scripts/ci.py interfaz` en verde.
@@ -226,8 +228,8 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   76/76
-pnpm ui:test                      41/41
+cargo test --workspace --all-targets --locked   79/79
+pnpm ui:test                      44/44
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK
@@ -297,9 +299,9 @@ sin inspección visual.
   con miles de escenas.
 - La toolbar solo cubre marcas; negrita, cursiva y listas se introducen con los
   atajos Markdown de StarterKit.
-- Las marcas no se anidan, el comentario no admite `|` y el texto marcado no
-  admite `]]`. Los ULID no se resuelven en el Markdown; la UI los cruza con las
-  notas cargadas.
+- Las marcas no se anidan, el comentario no admite `|` ni `]]` y el texto marcado
+  no admite `]]`; los ULID deben empezar por `0`–`7`. El DOCX limpia solo prosa y
+  conserva código y escapado.
 - Los fixtures generados incluyen comentarios HTML de relleno; el editor los
   abre en solo lectura. Para probar edición usa la demo o un proyecto real.
 

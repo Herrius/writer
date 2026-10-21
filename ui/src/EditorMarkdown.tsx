@@ -1,6 +1,7 @@
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { extensionesEditor } from './editor/extensions';
+import { comentarioValido } from './editor/marcas';
 
 export type OpcionMarca = {
   id: string;
@@ -26,6 +27,7 @@ export function EditorMarkdown({
   alCambiar.current = onCambio;
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
   const [comentarioTexto, setComentarioTexto] = useState('');
+  const [errorComentario, setErrorComentario] = useState<string | null>(null);
 
   const editor = useEditor({
     extensions: extensionesEditor,
@@ -69,28 +71,49 @@ export function EditorMarkdown({
   const seleccionVacia = estado?.vacia ?? true;
   const hayMarca = estado?.hayMarca ?? false;
 
+  const reemplazarMarca = (marca: string, attrs: Record<string, unknown>) => {
+    editor
+      .chain()
+      .focus()
+      .unsetMark('personaje')
+      .unsetMark('trama')
+      .unsetMark('comentario')
+      .setMark(marca, attrs)
+      .run();
+  };
+
   const aplicarPersonaje = (id: string) => {
     if (!id) {
       return;
     }
-    editor.chain().focus().setMark('personaje', { id }).run();
+    setErrorComentario(null);
+    reemplazarMarca('personaje', { id });
   };
 
   const aplicarTrama = (id: string) => {
     if (!id) {
       return;
     }
-    editor.chain().focus().setMark('trama', { id }).run();
+    setErrorComentario(null);
+    reemplazarMarca('trama', { id });
   };
 
   const aplicarComentario = () => {
     const texto = comentarioTexto.trim();
-    if (texto === '') {
+    if (!comentarioValido(texto)) {
+      setErrorComentario('El comentario no puede estar vacío ni contener «|».');
       return;
     }
-    editor.chain().focus().setMark('comentario', { texto }).run();
+    const { from, to } = editor.state.selection;
+    const seleccion = editor.state.doc.textBetween(from, to, '\n');
+    if (seleccion.includes('|') || seleccion.includes(']]')) {
+      setErrorComentario('La selección no puede contener «|» ni «]]».');
+      return;
+    }
+    reemplazarMarca('comentario', { texto });
     setComentarioTexto('');
     setComentarioAbierto(false);
+    setErrorComentario(null);
   };
 
   const quitarMarcas = () => {
@@ -137,7 +160,10 @@ export function EditorMarkdown({
             type="button"
             className="secundario pequeno"
             disabled={seleccionVacia}
-            onClick={() => setComentarioAbierto((abierto) => !abierto)}
+            onClick={() => {
+              setComentarioAbierto((abierto) => !abierto);
+              setErrorComentario(null);
+            }}
           >
             Comentario
           </button>
@@ -146,7 +172,10 @@ export function EditorMarkdown({
               <input
                 aria-label="Texto del comentario"
                 value={comentarioTexto}
-                onChange={(evento) => setComentarioTexto(evento.target.value)}
+                onChange={(evento) => {
+                  setComentarioTexto(evento.target.value);
+                  setErrorComentario(null);
+                }}
                 onKeyDown={(evento) => {
                   if (evento.key === 'Enter') {
                     evento.preventDefault();
@@ -154,6 +183,7 @@ export function EditorMarkdown({
                   } else if (evento.key === 'Escape') {
                     setComentarioAbierto(false);
                     setComentarioTexto('');
+                    setErrorComentario(null);
                   }
                 }}
                 placeholder="Nota de revisión"
@@ -168,6 +198,7 @@ export function EditorMarkdown({
               </button>
             </span>
           )}
+          {errorComentario && <span className="editor-error">{errorComentario}</span>}
           <button
             type="button"
             className="secundario pequeno"

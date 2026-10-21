@@ -25,30 +25,47 @@ type TokenMarca = MarkdownToken & {
   referencia: string;
 };
 
-const PATRON = /^\[\[(personaje|trama|comentario):([^|\]]+)\|([\s\S]+?)\]\]/;
-const ULID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+const PATRON_PERSONAJE = /^\[\[(personaje|trama):([0-7][0-9A-HJKMNP-TV-Z]{25})\|([\s\S]+?)\]\]/;
+const PATRON_COMENTARIO = /^\[\[comentario:([^|]+?)\|([\s\S]+?)\]\]/;
+const ULID = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
+
+export function ulidValido(texto: string): boolean {
+  return ULID.test(texto);
+}
+
+export function comentarioValido(texto: string): boolean {
+  return texto.trim() !== '' && texto === texto.trim() && !texto.includes('|');
+}
 
 const tokenizer: MarkdownTokenizer = {
   name: 'marcaWriter',
   level: 'inline',
   start: (src) => src.indexOf('[['),
   tokenize(src, _tokens, lexer) {
-    const coincidencia = PATRON.exec(src);
-    if (!coincidencia) {
+    const dePersonaje = PATRON_PERSONAJE.exec(src);
+    if (dePersonaje) {
+      const [raw, clase, referencia, contenido] = dePersonaje;
+      const token: TokenMarca = {
+        type: 'marcaWriter',
+        raw,
+        clase: clase as ClaseMarca,
+        referencia,
+        tokens: lexer.inlineTokens(contenido),
+      };
+      return token;
+    }
+    const deComentario = PATRON_COMENTARIO.exec(src);
+    if (!deComentario) {
       return;
     }
-    const [raw, clase, referencia, contenido] = coincidencia;
-    const tipo = clase as ClaseMarca;
-    if (tipo !== 'comentario' && !ULID.test(referencia)) {
-      return;
-    }
-    if (tipo === 'comentario' && referencia.trim() === '') {
+    const [raw, referencia, contenido] = deComentario;
+    if (!comentarioValido(referencia) || raw.split('|').length !== 2) {
       return;
     }
     const token: TokenMarca = {
       type: 'marcaWriter',
       raw,
-      clase: tipo,
+      clase: 'comentario',
       referencia,
       tokens: lexer.inlineTokens(contenido),
     };
@@ -70,6 +87,7 @@ const MarcaWriter = Mark.create({
 function crearMarca(clase: ClaseMarca, atributo: string, etiqueta: string) {
   return Mark.create({
     name: clase,
+    excludes: 'personaje trama comentario',
     addAttributes() {
       return { [atributo]: { default: null } };
     },

@@ -714,6 +714,11 @@ button.guardar:disabled {
   align-items: center;
 }
 
+.editor-error {
+  color: var(--rojo);
+  font-size: 0.68rem;
+}
+
 .editor-content .ProseMirror .marca {
   border-radius: 0.18rem;
   box-decoration-break: clone;

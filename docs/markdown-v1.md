@@ -66,11 +66,13 @@ El esquema incluye tres marcas que se serializan al Markdown:
 [[comentario:texto del comentario|texto marcado]]
 ```
 
-- `personaje` y `trama` exigen un ULID válido.
+- `personaje` y `trama` exigen un ULID válido (primer carácter `0`–`7`).
 - El texto marcado admite formato inline, pero no marcas anidadas ni `]]`.
-- El comentario no puede contener `|`.
-- La UI permite aplicar y quitar marcas sobre la selección.
-- En DOCX se exporta solo el texto marcado; el comentario no se imprime.
+- El comentario no puede contener `|` ni `]]`; admite corchetes simples.
+- La UI permite aplicar y quitar marcas sobre la selección; aplicar una nueva
+  sustituye la anterior.
+- En DOCX se exporta solo el texto marcado en prosa; código y construcciones
+  escapadas se conservan literales.
 
 El contrato completo está en [`marcas-v1.md`](marcas-v1.md).
 

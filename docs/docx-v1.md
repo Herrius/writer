@@ -52,7 +52,7 @@ Reglas del destino:
 | Saltos duros | `<w:br/>` dentro del run. |
 | Listas de tareas | Texto `[x]` / `[ ]`. |
 | Imágenes | Texto `[imagen: alt]`; no se incrusta la imagen. |
-| Marcas propias | Solo el texto marcado; los comentarios no se imprimen. |
+| Marcas propias | Solo el texto marcado en prosa; código y escapado se conservan literales. |
 
 ## 4. Limitaciones
 

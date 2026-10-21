@@ -446,42 +446,47 @@ impl Project {
     /// Lista las copias de cuarentena con los metadatos del informe.
     pub fn cuarentena(&self) -> Result<Vec<CuarentenaItem>> {
         let directorio = self.ruta_escritor().join("cuarentena");
-        if !directorio.is_dir() {
+        if !directorio.exists() {
             return Ok(Vec::new());
         }
+        let directorio = fsutil::directorio_real(&directorio)?;
         let mut informes: BTreeMap<String, InformeCuarentena> = BTreeMap::new();
         let informe = directorio.join("informe.jsonl");
-        if let Ok(texto) = std::fs::read_to_string(&informe) {
-            for linea in texto.lines() {
-                if linea.trim().is_empty() {
-                    continue;
+        if std::fs::symlink_metadata(&informe).is_ok() {
+            let informe = fsutil::archivo_real(&informe)?;
+            if let Ok(texto) = std::fs::read_to_string(&informe) {
+                for linea in texto.lines() {
+                    if linea.trim().is_empty() {
+                        continue;
+                    }
+                    let Ok(valor) = serde_json::from_str::<serde_json::Value>(linea) else {
+                        continue;
+                    };
+                    let Some(archivo) = valor.get("archivo").and_then(|campo| campo.as_str())
+                    else {
+                        continue;
+                    };
+                    let ts = valor
+                        .get("ts")
+                        .and_then(|campo| campo.as_str())
+                        .map(str::to_string);
+                    let ruta = valor
+                        .get("ruta_original")
+                        .and_then(|campo| campo.as_str())
+                        .map(str::to_string);
+                    let motivo = valor
+                        .get("motivo")
+                        .and_then(|campo| campo.as_str())
+                        .map(str::to_string);
+                    informes.insert(
+                        archivo.to_string(),
+                        InformeCuarentena {
+                            ts,
+                            ruta_original: ruta,
+                            motivo,
+                        },
+                    );
                 }
-                let Ok(valor) = serde_json::from_str::<serde_json::Value>(linea) else {
-                    continue;
-                };
-                let Some(archivo) = valor.get("archivo").and_then(|campo| campo.as_str()) else {
-                    continue;
-                };
-                let ts = valor
-                    .get("ts")
-                    .and_then(|campo| campo.as_str())
-                    .map(str::to_string);
-                let ruta = valor
-                    .get("ruta_original")
-                    .and_then(|campo| campo.as_str())
-                    .map(str::to_string);
-                let motivo = valor
-                    .get("motivo")
-                    .and_then(|campo| campo.as_str())
-                    .map(str::to_string);
-                informes.insert(
-                    archivo.to_string(),
-                    InformeCuarentena {
-                        ts,
-                        ruta_original: ruta,
-                        motivo,
-                    },
-                );
             }
         }
 
@@ -527,7 +532,8 @@ impl Project {
                 "nombre de cuarentena no válido: {archivo}"
             )));
         }
-        let ruta = self.ruta_escritor().join("cuarentena").join(nombre);
+        let directorio = fsutil::directorio_real(&self.ruta_escritor().join("cuarentena"))?;
+        let ruta = directorio.join(nombre);
         match std::fs::symlink_metadata(&ruta) {
             Ok(metadatos) if metadatos.file_type().is_file() => {
                 fsutil::eliminar_archivo(&ruta)?;

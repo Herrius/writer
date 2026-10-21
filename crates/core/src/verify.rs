@@ -658,9 +658,22 @@ pub fn cuarentenar(raiz: &Path, escaneo: &Escaneo) -> Result<usize> {
     if escaneo.invalidos.is_empty() {
         return Ok(0);
     }
-    let directorio = raiz.join(".escritor/cuarentena");
-    std::fs::create_dir_all(&directorio)
-        .map_err(|error| Error::Io(error).with_path(&directorio))?;
+    let escritor = raiz.join(".escritor");
+    if !escritor.exists() {
+        std::fs::create_dir_all(&escritor)
+            .map_err(|error| Error::Io(error).with_path(&escritor))?;
+    }
+    fsutil::directorio_real(&escritor)?;
+    let directorio = escritor.join("cuarentena");
+    if !directorio.exists() {
+        std::fs::create_dir_all(&directorio)
+            .map_err(|error| Error::Io(error).with_path(&directorio))?;
+    }
+    let directorio = fsutil::directorio_real(&directorio)?;
+    let informe_ruta = directorio.join("informe.jsonl");
+    if std::fs::symlink_metadata(&informe_ruta).is_ok() {
+        fsutil::archivo_real(&informe_ruta)?;
+    }
     let mut copiados = 0;
     for invalido in &escaneo.invalidos {
         let origen = fsutil::ruta_del_proyecto(raiz, &invalido.relativa)?;
@@ -701,8 +714,8 @@ pub fn cuarentenar(raiz: &Path, escaneo: &Escaneo) -> Result<usize> {
         let mut informe = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(directorio.join("informe.jsonl"))
-            .map_err(|error| Error::Io(error).with_path(&directorio))?;
+            .open(&informe_ruta)
+            .map_err(|error| Error::Io(error).with_path(&informe_ruta))?;
         use std::io::Write;
         informe
             .write_all(format!("{}\n", serde_json::to_string(&linea)?).as_bytes())

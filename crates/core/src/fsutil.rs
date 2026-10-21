@@ -180,6 +180,34 @@ pub fn ruta_del_proyecto(raiz: &Path, relativa: &str) -> Result<PathBuf> {
     Ok(salida)
 }
 
+/// Comprueba que `ruta` es un directorio real (no un enlace simbólico) y
+/// devuelve su ruta canónica.
+pub fn directorio_real(ruta: &Path) -> Result<PathBuf> {
+    let metadatos =
+        std::fs::symlink_metadata(ruta).map_err(|error| Error::Io(error).with_path(ruta))?;
+    if !metadatos.file_type().is_dir() {
+        return Err(Error::Integrity(format!(
+            "se esperaba un directorio real: {}",
+            ruta.display()
+        )));
+    }
+    std::fs::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
+}
+
+/// Comprueba que `ruta` es un archivo real (no un enlace simbólico) y devuelve
+/// su ruta canónica.
+pub fn archivo_real(ruta: &Path) -> Result<PathBuf> {
+    let metadatos =
+        std::fs::symlink_metadata(ruta).map_err(|error| Error::Io(error).with_path(ruta))?;
+    if !metadatos.file_type().is_file() {
+        return Err(Error::Integrity(format!(
+            "se esperaba un archivo real: {}",
+            ruta.display()
+        )));
+    }
+    std::fs::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

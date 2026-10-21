@@ -511,44 +511,175 @@ fn escapar_xml(texto: &str) -> String {
 /// Quita los delimitadores de las marcas propias para el DOCX.
 ///
 /// `[[personaje:ID|texto]]`, `[[trama:ID|texto]]` y
-/// `[[comentario:nota|texto]]` se convierten en `texto`. Las construcciones con
-/// ULID inválido o sin `|` se dejan intactas.
+/// `[[comentario:nota|texto]]` se convierten en `texto` solo cuando aparecen en
+/// prosa. Los bloques de código, el código inline y las construcciones
+/// escapadas se copian tal cual.
 fn quitar_marcas(markdown: &str) -> String {
+    let bytes = markdown.as_bytes();
     let mut salida = String::with_capacity(markdown.len());
-    let mut resto = markdown;
-    while let Some(inicio) = resto.find("[[") {
-        salida.push_str(&resto[..inicio]);
-        let desde = &resto[inicio + 2..];
-        if let Some(fin) = desde.find("]]") {
-            let interior = &desde[..fin];
-            if let Some((clase, resto_marca)) = interior.split_once(':') {
-                if let Some((referencia, contenido)) = resto_marca.split_once('|') {
-                    let valida = match clase {
-                        "personaje" | "trama" => ulid_valido(referencia),
-                        "comentario" => !referencia.trim().is_empty(),
-                        _ => false,
-                    };
-                    if valida {
-                        salida.push_str(contenido);
-                        resto = &desde[fin + 2..];
+    let mut i = 0;
+    let mut fence: Option<(u8, usize)> = None;
+    while i < bytes.len() {
+        if let Some((caracter, largo)) = fence {
+            let fin = fin_de_linea(bytes, i);
+            let linea = &markdown[i..fin];
+            let cierra = es_cierre_fence(linea, caracter, largo);
+            copiar_linea(&mut salida, markdown, i, fin);
+            i = if fin < bytes.len() { fin + 1 } else { fin };
+            if cierra {
+                fence = None;
+            }
+            continue;
+        }
+
+        let inicio_linea = i == 0 || bytes[i - 1] == b'\n';
+        if inicio_linea {
+            let mut j = i;
+            let mut espacios = 0;
+            while j < bytes.len() && bytes[j] == b' ' && espacios < 4 {
+                espacios += 1;
+                j += 1;
+            }
+            if bytes.get(j) == Some(&b'\t') || espacios >= 4 {
+                let fin = fin_de_linea(bytes, i);
+                copiar_linea(&mut salida, markdown, i, fin);
+                i = if fin < bytes.len() { fin + 1 } else { fin };
+                continue;
+            }
+            if let Some(&caracter) = bytes.get(j) {
+                if caracter == b'`' || caracter == b'~' {
+                    let mut k = j;
+                    while k < bytes.len() && bytes[k] == caracter {
+                        k += 1;
+                    }
+                    let largo = k - j;
+                    if largo >= 3 {
+                        let fin = fin_de_linea(bytes, i);
+                        copiar_linea(&mut salida, markdown, i, fin);
+                        i = if fin < bytes.len() { fin + 1 } else { fin };
+                        fence = Some((caracter, largo));
                         continue;
                     }
                 }
             }
         }
-        salida.push('[');
-        resto = &resto[inicio + 1..];
+
+        if bytes[i] == b'`' {
+            let mut k = i;
+            while k < bytes.len() && bytes[k] == b'`' {
+                k += 1;
+            }
+            let largo = k - i;
+            if let Some(fin) = cierre_backticks(bytes, k, largo) {
+                salida.push_str(&markdown[i..fin]);
+                i = fin;
+                continue;
+            }
+            salida.push_str(&markdown[i..]);
+            break;
+        }
+
+        if bytes[i] == b'\\' && i + 1 < bytes.len() {
+            let mut fin = i + 1;
+            if let Some(caracter) = markdown[fin..].chars().next() {
+                fin += caracter.len_utf8();
+            } else {
+                fin = bytes.len();
+            }
+            salida.push_str(&markdown[i..fin]);
+            i = fin;
+            continue;
+        }
+
+        if bytes[i..].starts_with(b"[[") {
+            if let Some((contenido, consumido)) = parsear_marca(&markdown[i..]) {
+                salida.push_str(contenido);
+                i += consumido;
+                continue;
+            }
+        }
+
+        let Some(caracter) = markdown[i..].chars().next() else {
+            break;
+        };
+        salida.push(caracter);
+        i += caracter.len_utf8();
     }
-    salida.push_str(resto);
     salida
 }
 
-fn ulid_valido(texto: &str) -> bool {
-    texto.len() == 26
-        && texto.chars().all(|caracter| {
-            caracter.is_ascii_digit()
-                || (caracter.is_ascii_uppercase() && !matches!(caracter, 'I' | 'L' | 'O' | 'U'))
-        })
+fn fin_de_linea(bytes: &[u8], desde: usize) -> usize {
+    bytes[desde..]
+        .iter()
+        .position(|byte| *byte == b'\n')
+        .map(|posicion| desde + posicion)
+        .unwrap_or(bytes.len())
+}
+
+fn copiar_linea(salida: &mut String, markdown: &str, inicio: usize, fin: usize) {
+    salida.push_str(&markdown[inicio..fin]);
+    if fin < markdown.len() {
+        salida.push('\n');
+    }
+}
+
+fn es_cierre_fence(linea: &str, caracter: u8, largo: usize) -> bool {
+    let bytes = linea.as_bytes();
+    let mut i = 0;
+    let mut espacios = 0;
+    while i < bytes.len() && bytes[i] == b' ' && espacios < 4 {
+        espacios += 1;
+        i += 1;
+    }
+    let mut run = 0;
+    while i < bytes.len() && bytes[i] == caracter {
+        run += 1;
+        i += 1;
+    }
+    run >= largo
+        && bytes[i..]
+            .iter()
+            .all(|byte| *byte == b' ' || *byte == b'\t')
+}
+
+fn cierre_backticks(bytes: &[u8], desde: usize, largo: usize) -> Option<usize> {
+    let mut i = desde;
+    while i < bytes.len() {
+        if bytes[i] == b'`' {
+            let mut k = i;
+            while k < bytes.len() && bytes[k] == b'`' {
+                k += 1;
+            }
+            if k - i == largo {
+                return Some(k);
+            }
+            i = k;
+        } else {
+            i += 1;
+        }
+    }
+    None
+}
+
+fn parsear_marca(texto: &str) -> Option<(&str, usize)> {
+    let resto = texto.strip_prefix("[[")?;
+    let fin = resto.find("]]")?;
+    let interior = &resto[..fin];
+    let (clase, resto_marca) = interior.split_once(':')?;
+    let (referencia, contenido) = resto_marca.split_once('|')?;
+    let valida = match clase {
+        "personaje" | "trama" => crate::ulid::es_valido(referencia),
+        "comentario" => interior.split('|').count() == 2 && comentario_valido(referencia),
+        _ => false,
+    };
+    if !valida {
+        return None;
+    }
+    Some((contenido, 2 + fin + 2))
+}
+
+fn comentario_valido(texto: &str) -> bool {
+    !texto.trim().is_empty() && texto == texto.trim() && !texto.contains('|')
 }
 
 /// Rechaza caracteres que XML 1.0 no permite.
@@ -573,4 +704,39 @@ fn xml_permitido(caracter: char) -> bool {
         || (0x20..=0xD7FF).contains(&codigo)
         || (0xE000..=0xFFFD).contains(&codigo)
         || (0x10000..=0x10FFFF).contains(&codigo)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ID: &str = "01KDVDNBYG20KW71NVRK6P2FHG";
+    const TRAMA: &str = "01KDVDNFVGFKJ1G1SEHGTVZ69D";
+
+    #[test]
+    fn quitar_marcas_solo_en_prosa() {
+        let normal = format!("[[personaje:{ID}|Marta]]");
+        assert_eq!(quitar_marcas(&normal), "Marta");
+
+        let inline = format!("`[[personaje:{ID}|Marta]]`");
+        assert_eq!(quitar_marcas(&inline), inline);
+
+        let bloque = format!("```\n[[trama:{TRAMA}|faro]]\n```\n");
+        assert_eq!(quitar_marcas(&bloque), bloque);
+
+        let escapado = format!("\\[[personaje:{ID}|Marta]]");
+        assert!(quitar_marcas(&escapado).contains("[[personaje"));
+    }
+
+    #[test]
+    fn quitar_marcas_rechaza_construcciones_invalidas() {
+        let ulid_invalido = "[[personaje:Z1KDVDNBYG20KW71NVRK6P2FHG|Marta]]";
+        assert_eq!(quitar_marcas(ulid_invalido), ulid_invalido);
+
+        let comentario_con_pipe = "[[comentario:Nota | secreta|Marta]]";
+        assert_eq!(quitar_marcas(comentario_con_pipe), comentario_con_pipe);
+
+        let comentario_con_corchete = "[[comentario:ver [capítulo 2]|Marta]]";
+        assert_eq!(quitar_marcas(comentario_con_corchete), "Marta");
+    }
 }

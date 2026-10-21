@@ -71,7 +71,25 @@ Contrato completo: [`../marcas-v1.md`](../marcas-v1.md).
 - Pruebas específicas en `ui/src/editor/marcas.test.ts`: ida y vuelta,
   ULID inválido, sintaxis ajena y formato inline dentro de una marca.
 
-## 3. Decisiones
+## 3. Correcciones de la revisión
+
+- **Cuarentena por enlaces (P1):** `.escritor`, `.escritor/cuarentena` e
+  `informe.jsonl` deben ser reales; los enlaces se rechazan antes de leer,
+  escribir o borrar. Las copias enlazadas no se listan y su descarte se rechaza.
+  Regresión: `cuarentena_rechaza_enlaces_en_directorio_informe_y_copias`.
+- **Marcas anidadas (P1):** las marcas se excluyen entre sí en el esquema y la
+  toolbar quita las tres antes de aplicar una nueva. Regresión: superposición
+  personaje → trama conserva solo trama.
+- **Comentarios con `|` (P1):** se valida el comentario y la selección antes de
+  aplicar la marca; el tokenizer exige un único `|` y admite corchetes simples
+  (`ver [capítulo 2]`). Regresiones en `marcas.test.ts`.
+- **DOCX con código o escapado (P2):** `quitar_marcas` ahora es un escáner que
+  respeta bloques de código, código inline y `\`; solo limpia prosa. Regresiones
+  unitarias en `docx.rs`.
+- **ULID incompleto (P2):** TypeScript y DOCX reutilizan la regla del esquema
+  (primer carácter `0`–`7`). Regresiones en Rust y TypeScript.
+
+## 4. Decisiones
 
 | # | Decisión | Motivo |
 |---|---|---|
@@ -82,18 +100,18 @@ Contrato completo: [`../marcas-v1.md`](../marcas-v1.md).
 | 5 | DOCX solo con el texto marcado | El comentario es una anotación de revisión, no prosa del manuscrito. |
 | 6 | Comentario inline en la toolbar | Evita depender de `window.prompt`, que no es fiable en WebView. |
 
-## 4. Evidencia
+## 5. Evidencia
 
 ```text
 $ cargo test --workspace --all-targets --locked
-76/76                                                     # 29 + 22 + 25
+79/79                                                     # 31 + 23 + 25
 
 $ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 2/2                                                       # tipos + comandos
 
 $ pnpm ui:test
 Test Files  5 passed (5)
-Tests       41 passed (41)
+Tests       44 passed (44)
 
 $ pnpm typecheck                                          # OK
 $ pnpm ui:build                                           # OK
@@ -105,7 +123,7 @@ $ python scripts/ci.py producto                           # OK
 $ cargo deny check                                        # OK
 ```
 
-## 5. Limitaciones
+## 6. Limitaciones
 
 - Sin marcas anidadas.
 - El texto de un comentario no puede contener `|`; el texto marcado no puede
@@ -114,7 +132,7 @@ $ cargo deny check                                        # OK
 - La UI no crea archivos de cuarentena; eso sigue siendo `verify --cuarentena`.
 - Descartar una copia no repara el original; `verify` sigue mostrando el error.
 
-## 6. Pendiente
+## 7. Pendiente
 
 - E2E con Playwright/Tauri.
 - `bundle.active=true`, iconos e instaladores.

@@ -463,6 +463,51 @@ fn exportar_docx_rechaza_caracteres_de_control_sin_tocar_destino() {
 
 #[cfg(unix)]
 #[test]
+fn cuarentena_rechaza_enlaces_en_directorio_informe_y_copias() {
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+    let capitulo = raiz.join("manuscrito/01-libro/01-capitulo");
+    let escena = capitulo.join("001-primera-escena.md");
+    let original = std::fs::read(&escena).expect("leer escena");
+    std::fs::write(capitulo.join("999-roto.md"), "sin frontmatter\n").expect("inválido");
+    let escaneo = proyecto.verificar().expect("verificar");
+    assert!(!escaneo.invalidos.is_empty());
+
+    let cuarentena = raiz.join(".escritor/cuarentena");
+    std::fs::remove_dir_all(&cuarentena).expect("quitar cuarentena real");
+    std::os::unix::fs::symlink(&capitulo, &cuarentena).expect("symlink de directorio");
+    let error = proyecto.cuarentena().expect_err("directorio enlazado");
+    assert!(matches!(error, Error::Integrity(_)), "error: {error}");
+    let error = proyecto
+        .descartar_cuarentena("001-primera-escena.md")
+        .expect_err("descarte por enlace");
+    assert!(matches!(error, Error::Integrity(_)), "error: {error}");
+    assert_eq!(std::fs::read(&escena).expect("leer escena"), original);
+
+    std::fs::remove_file(&cuarentena).expect("quitar symlink");
+    std::fs::create_dir_all(&cuarentena).expect("cuarentena real");
+    let informe = cuarentena.join("informe.jsonl");
+    std::os::unix::fs::symlink(&escena, &informe).expect("symlink de informe");
+    let error = verify::cuarentenar(proyecto.raiz(), &escaneo).expect_err("informe enlazado");
+    assert!(matches!(error, Error::Integrity(_)), "error: {error}");
+    assert_eq!(std::fs::read(&escena).expect("leer escena"), original);
+
+    std::fs::remove_file(&informe).expect("quitar informe enlazado");
+    let copia = cuarentena.join("copia-enlazada.md");
+    std::os::unix::fs::symlink(&escena, &copia).expect("symlink de copia");
+    let items = proyecto.cuarentena().expect("listar");
+    assert!(items.is_empty(), "no debe listar enlaces: {items:?}");
+    let error = proyecto
+        .descartar_cuarentena("copia-enlazada.md")
+        .expect_err("descarte de copia enlazada");
+    assert!(matches!(error, Error::Input(_)), "error: {error}");
+    assert_eq!(std::fs::read(&escena).expect("leer escena"), original);
+}
+
+#[cfg(unix)]
+#[test]
 fn exportar_rechaza_destino_dentro_del_proyecto_por_symlink() {
     let directorio = temporal();
     let raiz = directorio.path().join("novela");

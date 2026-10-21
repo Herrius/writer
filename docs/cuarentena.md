@@ -47,7 +47,19 @@ writer quarantine discard <archivo> ~/novela
 - La UI nunca modifica los archivos originales ni la cuarentena sin acción
   explícita.
 
-## 4. Reglas
+## 4. Seguridad de rutas
+
+- `.escritor` y `.escritor/cuarentena` deben ser **directorios reales**; un
+  enlace simbólico se rechaza con error.
+- `informe.jsonl`, si existe, debe ser un **archivo real**; un enlace se rechaza
+  antes de leerlo o escribir en él.
+- Solo se listan y descartan archivos reales dentro de la cuarentena real. Los
+  enlaces simbólicos se ignoran al listar y se rechazan al descartar.
+- Descartar nunca sigue un enlace ni toca el archivo original.
+- La validación resuelve la ruta en el momento de comprobar; no elimina una
+  carrera TOCTOU con un proceso local que cambie un enlace después.
+
+## 5. Reglas
 
 - La cuarentena no se indexa ni entra en la búsqueda.
 - `reindex` no la toca.
@@ -55,7 +67,7 @@ writer quarantine discard <archivo> ~/novela
   inválido.
 - La cuarentena no crece automáticamente: solo `verify --cuarentena` copia.
 
-## 5. Pruebas
+## 6. Pruebas
 
 ```bash
 cargo test -p writer-core --test proyecto cuarentena

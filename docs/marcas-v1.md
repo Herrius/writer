@@ -28,11 +28,15 @@ La luz del [[trama:01KDVDNFVGFKJ1G1SEHGTVZ69D|faro]] giraba cada doce segundos.
 
 Reglas:
 
-- `personaje` y `trama` exigen un **ULID válido**; si no lo es, la construcción
-  queda como texto literal y el serializador la escapa.
-- El texto del comentario no puede contener `|`.
+- `personaje` y `trama` exigen un **ULID válido**: 26 caracteres Crockford, el
+  primero entre `0` y `7`. Si no lo es, la construcción queda como texto literal
+  y el serializador la escapa.
+- El texto del comentario no puede contener `|`; la selección marcada por un
+  comentario tampoco.
+- El comentario admite corchetes simples (`ver [capítulo 2]`), pero no `]]`.
 - El texto marcado no puede contener `]]`.
-- No se admiten marcas anidadas dentro de marcas.
+- No se admiten marcas anidadas: el esquema las excluye y la toolbar sustituye
+  la marca anterior en la selección.
 - Se admite formato inline dentro del texto marcado:
   `[[personaje:ULID|**Marta** y *Lucía*]]`.
 - El resto de `[[...]]` que no case con el patrón se conserva como texto (con el
@@ -64,13 +68,15 @@ Reglas:
 
 - **Markdown:** conserva la sintaxis tal cual; el archivo es la fuente.
 - **DOCX:** muestra solo el texto marcado. Las marcas de personaje y trama
-  aportan el texto; los comentarios no se imprimen en el manuscrito.
+  aportan el texto; los comentarios no se imprimen en el manuscrito. La limpieza
+  respeta bloques de código, código inline y construcciones escapadas, que se
+  conservan literales.
 - La exportación no modifica el proyecto.
 
 ## 5. Limitaciones
 
 - Sin marcas anidadas.
-- El comentario no puede contener `|`.
+- El comentario no puede contener `|` ni `]]`; la selección marcada tampoco.
 - El texto marcado no puede contener `]]`.
 - Los ULID no se resuelven a títulos en el Markdown; la UI los resuelve contra
   las notas cargadas.

@@ -27,9 +27,9 @@ tramas y comentarios. El E2E y el empaquetado son las siguientes tareas.
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 76 pruebas
-(29 unitarias, 22 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
-cáscara Tauri y 41 pruebas de UI (corpus Markdown, compatibilidad, autosave,
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 79 pruebas
+(31 unitarias, 23 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
+cáscara Tauri y 44 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas y regresiones).
 
 ## Requisitos
@@ -269,8 +269,12 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   imágenes incrustadas; el proyecto sigue siendo la fuente de verdad Markdown.
 - El destino de exportación se resuelve contra enlaces simbólicos y `..`; un
   carácter inválido para XML 1.0 aborta el DOCX antes de reemplazar el archivo.
-- Las marcas no se anidan; el comentario no admite `|` y el texto marcado no
-  admite `]]`.
+- Las marcas no se anidan; el comentario no admite `|` ni `]]`, el texto marcado
+  no admite `]]` y los ULID deben empezar por `0`–`7`.
+- El DOCX limpia marcas solo en prosa; código y construcciones escapadas se
+  conservan literales.
+- La cuarentena rechaza enlaces simbólicos en el directorio, el informe y las
+  copias; descartar nunca toca el original.
 - Descartar una copia de cuarentena no repara el archivo original; `verify`
   sigue mostrando el error.
 
