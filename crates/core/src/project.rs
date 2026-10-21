@@ -445,11 +445,9 @@ impl Project {
 
     /// Lista las copias de cuarentena con los metadatos del informe.
     pub fn cuarentena(&self) -> Result<Vec<CuarentenaItem>> {
-        let directorio = self.ruta_escritor().join("cuarentena");
-        if !directorio.exists() {
+        let Some(directorio) = fsutil::directorio_cuarentena(&self.raiz, false)? else {
             return Ok(Vec::new());
-        }
-        let directorio = fsutil::directorio_real(&directorio)?;
+        };
         let mut informes: BTreeMap<String, InformeCuarentena> = BTreeMap::new();
         let informe = directorio.join("informe.jsonl");
         if std::fs::symlink_metadata(&informe).is_ok() {
@@ -520,19 +518,22 @@ impl Project {
 
     /// Elimina una copia de cuarentena. Nunca toca el archivo original.
     pub fn descartar_cuarentena(&self, archivo: &str) -> Result<()> {
-        let nombre = archivo.trim();
-        if nombre.is_empty()
+        let nombre = archivo;
+        if nombre.trim().is_empty()
             || nombre == "."
             || nombre == ".."
             || nombre == "informe.jsonl"
             || nombre.contains('/')
             || nombre.contains('\\')
+            || nombre.contains(':')
         {
             return Err(Error::Input(format!(
                 "nombre de cuarentena no válido: {archivo}"
             )));
         }
-        let directorio = fsutil::directorio_real(&self.ruta_escritor().join("cuarentena"))?;
+        let directorio = fsutil::directorio_cuarentena(&self.raiz, false)?.ok_or_else(|| {
+            Error::NotFound(format!("archivo de cuarentena no encontrado: {archivo}"))
+        })?;
         let ruta = directorio.join(nombre);
         match std::fs::symlink_metadata(&ruta) {
             Ok(metadatos) if metadatos.file_type().is_file() => {

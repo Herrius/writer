@@ -41,6 +41,8 @@ Reglas:
   `[[personaje:ULID|**Marta** y *Lucía*]]`.
 - El resto de `[[...]]` que no case con el patrón se conserva como texto (con el
   escapado normal del serializador).
+- La toolbar rechaza los delimitadores no admitidos antes de aplicar la marca
+  y muestra el error; no crea Markdown que el editor no pueda volver a leer.
 
 ## 2. Modelo
 
@@ -69,8 +71,10 @@ Reglas:
 - **Markdown:** conserva la sintaxis tal cual; el archivo es la fuente.
 - **DOCX:** muestra solo el texto marcado. Las marcas de personaje y trama
   aportan el texto; los comentarios no se imprimen en el manuscrito. La limpieza
-  respeta bloques de código, código inline y construcciones escapadas, que se
-  conservan literales.
+  usa los rangos del parser CommonMark para distinguir prosa de código, incluso
+  dentro de listas y citas. Respeta también las construcciones escapadas y los
+  destinos de enlaces. Los backticks sin pareja son texto literal y no impiden
+  exportar las marcas de los párrafos siguientes.
 - La exportación no modifica el proyecto.
 
 ## 5. Limitaciones

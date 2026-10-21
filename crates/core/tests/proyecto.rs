@@ -461,6 +461,102 @@ fn exportar_docx_rechaza_caracteres_de_control_sin_tocar_destino() {
     );
 }
 
+#[test]
+fn exportar_docx_conserva_marcas_literales_y_oculta_solo_anotaciones_validas() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Marcas", None, None).expect("init");
+    let id = proyecto.listar(false).expect("listar")[0].id().to_string();
+    let literal = "[[personaje:01KDVDNBYG20KW71NVRK6P2FHG|Marta]]";
+    let invalida = format!("[[personaje:{}|literal inválido]]", "Z".repeat(26));
+    let cuerpo = format!(
+        "`{literal}`\n\n> ```text\n> {literal}\n> ```\n\n\\{literal}\n\n{invalida}\n\n[[comentario:nota privada|Prosa final]].\n"
+    );
+    proyecto.escribir_cuerpo(&id, &cuerpo).expect("escribir");
+    let destino = directorio.path().join("marcas.docx");
+    proyecto
+        .exportar_docx(&destino, false, false)
+        .expect("exportar");
+    let mut archivo =
+        zip::ZipArchive::new(std::fs::File::open(destino).expect("archivo")).expect("ZIP");
+    let mut xml = String::new();
+    archivo
+        .by_name("word/document.xml")
+        .expect("documento")
+        .read_to_string(&mut xml)
+        .expect("XML");
+    // El parser puede repartir un literal entre varios runs; comprobar el
+    // texto conservado evita depender de esas fronteras de serialización.
+    let texto: String = xml
+        .split("<w:t")
+        .skip(1)
+        .filter_map(|run| run.split_once('>')?.1.split_once("</w:t>").map(|v| v.0))
+        .collect();
+    assert_eq!(texto.matches(literal).count(), 3, "{texto}");
+    assert!(texto.contains(&invalida), "{texto}");
+    assert!(texto.contains("Prosa final"), "{texto}");
+    assert!(!texto.contains("nota privada"), "{texto}");
+    assert_eq!(proyecto.leer(&id).expect("leer").cuerpo(), cuerpo);
+}
+
+#[cfg(unix)]
+#[test]
+fn cuarentena_rechaza_el_ancestro_escritor_enlazado() {
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+    let libro = raiz.join("manuscrito/01-libro");
+    let capitulo = libro.join("cuarentena");
+    std::fs::rename(libro.join("01-capitulo"), &capitulo).expect("renombrar capítulo");
+    let escena = capitulo.join("001-primera-escena.md");
+    let original = std::fs::read(&escena).expect("original");
+    std::fs::write(capitulo.join("999-roto.md"), "sin frontmatter\n").expect("inválido");
+    let escaneo = verify::escanear(&raiz).expect("escanear");
+    std::fs::rename(raiz.join(".escritor"), directorio.path().join("estado"))
+        .expect("apartar estado");
+    std::os::unix::fs::symlink(&libro, raiz.join(".escritor")).expect("enlace de ancestro");
+    assert!(matches!(proyecto.cuarentena(), Err(Error::Integrity(_))));
+    assert!(matches!(
+        proyecto.descartar_cuarentena("001-primera-escena.md"),
+        Err(Error::Integrity(_))
+    ));
+    assert!(matches!(
+        verify::cuarentenar(&raiz, &escaneo),
+        Err(Error::Integrity(_))
+    ));
+    assert_eq!(std::fs::read(escena).expect("original intacto"), original);
+    assert!(!capitulo.join("informe.jsonl").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn cuarentena_no_modifica_un_original_enlazado_duro_al_informe() {
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+    let escena = raiz.join("manuscrito/01-libro/01-capitulo/001-primera-escena.md");
+    let original = std::fs::read(&escena).expect("original");
+    let informe = raiz.join(".escritor/cuarentena/informe.jsonl");
+    std::fs::hard_link(&escena, &informe).expect("enlace duro");
+    std::fs::write(
+        escena.parent().expect("capítulo").join("999-roto.md"),
+        "sin frontmatter\n",
+    )
+    .expect("inválido");
+    let escaneo = verify::escanear(&raiz).expect("escanear");
+    assert_eq!(verify::cuarentenar(&raiz, &escaneo).expect("cuarentena"), 1);
+    assert_eq!(std::fs::read(escena).expect("original intacto"), original);
+    let informe = std::fs::read_to_string(informe).expect("informe");
+    let linea: serde_json::Value =
+        serde_json::from_str(informe.lines().last().expect("línea")).expect("JSONL");
+    assert_eq!(
+        linea["ruta_original"],
+        "manuscrito/01-libro/01-capitulo/999-roto.md"
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn cuarentena_rechaza_enlaces_en_directorio_informe_y_copias() {
@@ -563,7 +659,12 @@ fn cuarentena_lista_y_descarta_copias() {
     assert!(items[0].tamano > 0);
     assert!(roto.exists(), "el original no debe tocarse");
 
-    assert!(proyecto.descartar_cuarentena("../escape").is_err());
+    for nombre in ["../escape", "..\\escape", "C:escape", "informe.jsonl"] {
+        assert!(matches!(
+            proyecto.descartar_cuarentena(nombre),
+            Err(Error::Input(_))
+        ));
+    }
     proyecto
         .descartar_cuarentena(&items[0].archivo)
         .expect("descartar copia");

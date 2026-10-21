@@ -658,22 +658,10 @@ pub fn cuarentenar(raiz: &Path, escaneo: &Escaneo) -> Result<usize> {
     if escaneo.invalidos.is_empty() {
         return Ok(0);
     }
-    let escritor = raiz.join(".escritor");
-    if !escritor.exists() {
-        std::fs::create_dir_all(&escritor)
-            .map_err(|error| Error::Io(error).with_path(&escritor))?;
-    }
-    fsutil::directorio_real(&escritor)?;
-    let directorio = escritor.join("cuarentena");
-    if !directorio.exists() {
-        std::fs::create_dir_all(&directorio)
-            .map_err(|error| Error::Io(error).with_path(&directorio))?;
-    }
-    let directorio = fsutil::directorio_real(&directorio)?;
+    let directorio = fsutil::directorio_cuarentena(raiz, true)?
+        .ok_or_else(|| Error::Integrity("no se pudo crear la cuarentena".into()))?;
     let informe_ruta = directorio.join("informe.jsonl");
-    if std::fs::symlink_metadata(&informe_ruta).is_ok() {
-        fsutil::archivo_real(&informe_ruta)?;
-    }
+    let mut informe = fsutil::leer_opcional(&informe_ruta)?.unwrap_or_default();
     let mut copiados = 0;
     for invalido in &escaneo.invalidos {
         let origen = fsutil::ruta_del_proyecto(raiz, &invalido.relativa)?;
@@ -711,18 +699,12 @@ pub fn cuarentenar(raiz: &Path, escaneo: &Escaneo) -> Result<usize> {
             "motivo": invalido.motivo,
             "hash": invalido.hash,
         });
-        let mut informe = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&informe_ruta)
-            .map_err(|error| Error::Io(error).with_path(&informe_ruta))?;
-        use std::io::Write;
-        informe
-            .write_all(format!("{}\n", serde_json::to_string(&linea)?).as_bytes())
-            .map_err(|error| Error::Io(error).with_path(&directorio))?;
-        informe
-            .sync_all()
-            .map_err(|error| Error::Io(error).with_path(&directorio))?;
+        if !informe.is_empty() && !informe.ends_with(b"\n") {
+            informe.push(b'\n');
+        }
+        informe.extend_from_slice(serde_json::to_string(&linea)?.as_bytes());
+        informe.push(b'\n');
+        fsutil::escribir_atomico(&informe_ruta, &informe)?;
         copiados += 1;
     }
     Ok(copiados)

@@ -515,150 +515,62 @@ fn escapar_xml(texto: &str) -> String {
 /// prosa. Los bloques de código, el código inline y las construcciones
 /// escapadas se copian tal cual.
 fn quitar_marcas(markdown: &str) -> String {
-    let bytes = markdown.as_bytes();
-    let mut salida = String::with_capacity(markdown.len());
-    let mut i = 0;
-    let mut fence: Option<(u8, usize)> = None;
-    while i < bytes.len() {
-        if let Some((caracter, largo)) = fence {
-            let fin = fin_de_linea(bytes, i);
-            let linea = &markdown[i..fin];
-            let cierra = es_cierre_fence(linea, caracter, largo);
-            copiar_linea(&mut salida, markdown, i, fin);
-            i = if fin < bytes.len() { fin + 1 } else { fin };
-            if cierra {
-                fence = None;
+    // El parser CommonMark decide qué rangos son texto de prosa. Así los
+    // delimitadores dentro de código (incluidas listas y citas) y destinos de
+    // enlaces no se confunden con anotaciones.
+    let mut opciones = Options::empty();
+    opciones.insert(Options::ENABLE_STRIKETHROUGH);
+    opciones.insert(Options::ENABLE_TASKLISTS);
+    let mut codigo_bloque = 0_usize;
+    let mut enlaces_literales = Vec::new();
+    let mut prosa: Vec<std::ops::Range<usize>> = Vec::new();
+    for (evento, rango) in Parser::new_ext(markdown, opciones).into_offset_iter() {
+        match evento {
+            Event::Start(Tag::CodeBlock(_)) => codigo_bloque += 1,
+            Event::End(TagEnd::CodeBlock) => codigo_bloque = codigo_bloque.saturating_sub(1),
+            Event::Start(Tag::Link { link_type, .. }) => enlaces_literales.push(matches!(
+                link_type,
+                pulldown_cmark::LinkType::Autolink | pulldown_cmark::LinkType::Email
+            )),
+            Event::End(TagEnd::Link) => {
+                enlaces_literales.pop();
             }
-            continue;
+            Event::Text(_) if codigo_bloque == 0 && !enlaces_literales.contains(&true) => {
+                prosa.push(rango)
+            }
+            _ => {}
         }
-
-        let inicio_linea = i == 0 || bytes[i - 1] == b'\n';
-        if inicio_linea {
-            let mut j = i;
-            let mut espacios = 0;
-            while j < bytes.len() && bytes[j] == b' ' && espacios < 4 {
-                espacios += 1;
-                j += 1;
-            }
-            if bytes.get(j) == Some(&b'\t') || espacios >= 4 {
-                let fin = fin_de_linea(bytes, i);
-                copiar_linea(&mut salida, markdown, i, fin);
-                i = if fin < bytes.len() { fin + 1 } else { fin };
-                continue;
-            }
-            if let Some(&caracter) = bytes.get(j) {
-                if caracter == b'`' || caracter == b'~' {
-                    let mut k = j;
-                    while k < bytes.len() && bytes[k] == caracter {
-                        k += 1;
-                    }
-                    let largo = k - j;
-                    if largo >= 3 {
-                        let fin = fin_de_linea(bytes, i);
-                        copiar_linea(&mut salida, markdown, i, fin);
-                        i = if fin < bytes.len() { fin + 1 } else { fin };
-                        fence = Some((caracter, largo));
-                        continue;
-                    }
+    }
+    prosa.sort_unstable_by_key(|rango| rango.start);
+    let en_prosa = |posicion: usize| {
+        let siguiente = prosa.partition_point(|rango| rango.start <= posicion);
+        siguiente > 0 && prosa[siguiente - 1].contains(&posicion)
+    };
+    let mut salida = String::with_capacity(markdown.len());
+    let mut cursor = 0;
+    while let Some(relativo) = markdown[cursor..].find("[[") {
+        let inicio = cursor + relativo;
+        salida.push_str(&markdown[cursor..inicio]);
+        let barras = markdown.as_bytes()[..inicio]
+            .iter()
+            .rev()
+            .take_while(|byte| **byte == b'\\')
+            .count();
+        if barras % 2 == 0 && en_prosa(inicio) {
+            if let Some((contenido, consumido)) = parsear_marca(&markdown[inicio..]) {
+                let fin = inicio + consumido;
+                if en_prosa(fin - 1) {
+                    salida.push_str(contenido);
+                    cursor = fin;
+                    continue;
                 }
             }
         }
-
-        if bytes[i] == b'`' {
-            let mut k = i;
-            while k < bytes.len() && bytes[k] == b'`' {
-                k += 1;
-            }
-            let largo = k - i;
-            if let Some(fin) = cierre_backticks(bytes, k, largo) {
-                salida.push_str(&markdown[i..fin]);
-                i = fin;
-                continue;
-            }
-            salida.push_str(&markdown[i..]);
-            break;
-        }
-
-        if bytes[i] == b'\\' && i + 1 < bytes.len() {
-            let mut fin = i + 1;
-            if let Some(caracter) = markdown[fin..].chars().next() {
-                fin += caracter.len_utf8();
-            } else {
-                fin = bytes.len();
-            }
-            salida.push_str(&markdown[i..fin]);
-            i = fin;
-            continue;
-        }
-
-        if bytes[i..].starts_with(b"[[") {
-            if let Some((contenido, consumido)) = parsear_marca(&markdown[i..]) {
-                salida.push_str(contenido);
-                i += consumido;
-                continue;
-            }
-        }
-
-        let Some(caracter) = markdown[i..].chars().next() else {
-            break;
-        };
-        salida.push(caracter);
-        i += caracter.len_utf8();
+        salida.push_str("[[");
+        cursor = inicio + 2;
     }
+    salida.push_str(&markdown[cursor..]);
     salida
-}
-
-fn fin_de_linea(bytes: &[u8], desde: usize) -> usize {
-    bytes[desde..]
-        .iter()
-        .position(|byte| *byte == b'\n')
-        .map(|posicion| desde + posicion)
-        .unwrap_or(bytes.len())
-}
-
-fn copiar_linea(salida: &mut String, markdown: &str, inicio: usize, fin: usize) {
-    salida.push_str(&markdown[inicio..fin]);
-    if fin < markdown.len() {
-        salida.push('\n');
-    }
-}
-
-fn es_cierre_fence(linea: &str, caracter: u8, largo: usize) -> bool {
-    let bytes = linea.as_bytes();
-    let mut i = 0;
-    let mut espacios = 0;
-    while i < bytes.len() && bytes[i] == b' ' && espacios < 4 {
-        espacios += 1;
-        i += 1;
-    }
-    let mut run = 0;
-    while i < bytes.len() && bytes[i] == caracter {
-        run += 1;
-        i += 1;
-    }
-    run >= largo
-        && bytes[i..]
-            .iter()
-            .all(|byte| *byte == b' ' || *byte == b'\t')
-}
-
-fn cierre_backticks(bytes: &[u8], desde: usize, largo: usize) -> Option<usize> {
-    let mut i = desde;
-    while i < bytes.len() {
-        if bytes[i] == b'`' {
-            let mut k = i;
-            while k < bytes.len() && bytes[k] == b'`' {
-                k += 1;
-            }
-            if k - i == largo {
-                return Some(k);
-            }
-            i = k;
-        } else {
-            i += 1;
-        }
-    }
-    None
 }
 
 fn parsear_marca(texto: &str) -> Option<(&str, usize)> {
@@ -679,7 +591,10 @@ fn parsear_marca(texto: &str) -> Option<(&str, usize)> {
 }
 
 fn comentario_valido(texto: &str) -> bool {
-    !texto.trim().is_empty() && texto == texto.trim() && !texto.contains('|')
+    !texto.trim().is_empty()
+        && texto == texto.trim()
+        && !texto.contains('|')
+        && !texto.contains("]]")
 }
 
 /// Rechaza caracteres que XML 1.0 no permite.
@@ -726,6 +641,33 @@ mod tests {
 
         let escapado = format!("\\[[personaje:{ID}|Marta]]");
         assert!(quitar_marcas(&escapado).contains("[[personaje"));
+
+        let formato = format!("[[personaje:{ID}|**Marta** y *Lucía*]]");
+        assert_eq!(quitar_marcas(&formato), "**Marta** y *Lucía*");
+    }
+
+    #[test]
+    fn quitar_marcas_respeta_los_contextos_de_commonmark() {
+        let marca = format!("[[personaje:{ID}|Marta]]");
+        for literal in [
+            format!("> ```text\n> {marca}\n> ```\n"),
+            format!("- Ejemplo:\n\n  ```text\n  {marca}\n  ```\n"),
+            format!("    {marca}\n"),
+            format!("`` {marca} ``\n"),
+            format!("\\{marca}\n"),
+            format!("[enlace](https://example.com/{marca})\n"),
+            format!("<https://example.com/{marca}>\n"),
+        ] {
+            let entrada = format!("{literal}\n{marca}\n");
+            let esperado = format!("{literal}\nMarta\n");
+            assert_eq!(quitar_marcas(&entrada), esperado, "entrada: {entrada}");
+        }
+    }
+
+    #[test]
+    fn un_backtick_sin_pareja_no_oculta_las_marcas_siguientes() {
+        let entrada = "Un ` literal.\n\n[[comentario:solo revisión|Marta]]\n";
+        assert_eq!(quitar_marcas(entrada), "Un ` literal.\n\nMarta\n");
     }
 
     #[test]

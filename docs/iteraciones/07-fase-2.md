@@ -83,11 +83,19 @@ Contrato completo: [`../marcas-v1.md`](../marcas-v1.md).
 - **Comentarios con `|` (P1):** se valida el comentario y la selección antes de
   aplicar la marca; el tokenizer exige un único `|` y admite corchetes simples
   (`ver [capítulo 2]`). Regresiones en `marcas.test.ts`.
-- **DOCX con código o escapado (P2):** `quitar_marcas` ahora es un escáner que
-  respeta bloques de código, código inline y `\`; solo limpia prosa. Regresiones
-  unitarias en `docx.rs`.
+- **DOCX con código o escapado (P2):** `quitar_marcas` usa los rangos de texto
+  del parser CommonMark para limpiar solo prosa. Respeta código en listas y
+  citas, backticks sin pareja, destinos de enlaces y construcciones escapadas.
+  Regresiones unitarias y una exportación DOCX completa.
 - **ULID incompleto (P2):** TypeScript y DOCX reutilizan la regla del esquema
   (primer carácter `0`–`7`). Regresiones en Rust y TypeScript.
+
+La comprobación de cuarentena es común a listar, copiar y descartar: valida
+también el ancestro `.escritor` y parte de la raíz canónica del proyecto. El
+informe se actualiza por reemplazo atómico, de modo que ni un enlace duro al
+informe modifica otro archivo. Las pruebas de la toolbar usan Tiptap real para
+aplicar y reabrir marcas, rechazar `|`/`]]` sin cambiar el manuscrito y conservar
+los comentarios con corchetes simples.
 
 ## 4. Decisiones
 
@@ -104,24 +112,29 @@ Contrato completo: [`../marcas-v1.md`](../marcas-v1.md).
 
 ```text
 $ cargo test --workspace --all-targets --locked
-79/79                                                     # 31 + 23 + 25
+84/84                                                     # 33 + 26 + 25
 
 $ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 2/2                                                       # tipos + comandos
 
 $ pnpm ui:test
 Test Files  5 passed (5)
-Tests       44 passed (44)
+Tests       50 passed (50)
 
 $ pnpm typecheck                                          # OK
 $ pnpm ui:build                                           # OK
 $ pnpm check                                              # OK
 
 $ python scripts/ci.py calidad                            # OK
-$ python scripts/ci.py interfaz                           # OK
+$ python scripts/ci.py interfaz                           # bloqueado al instalar: almacén pnpm de solo lectura
 $ python scripts/ci.py producto                           # OK
 $ cargo deny check                                        # OK
 ```
+
+En la comprobación posterior, `typecheck`, las 50 pruebas de UI, el build de
+Tauri sin bundle y `fmt`/`clippy`/`check`/las 2 pruebas de la cáscara se ejecutan
+por separado. La instalación reproducible del gate `interfaz` no se puede
+repetir mientras el almacén de pnpm sea de solo lectura.
 
 ## 6. Limitaciones
 

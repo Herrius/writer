@@ -72,6 +72,20 @@ export function EditorMarkdown({
   const hayMarca = estado?.hayMarca ?? false;
 
   const reemplazarMarca = (marca: string, attrs: Record<string, unknown>) => {
+    const { from, to } = editor.state.selection;
+    const seleccion = editor.state.doc.textBetween(from, to, '\n');
+    if (from === to) {
+      setErrorComentario('Selecciona texto para aplicar la marca.');
+      return false;
+    }
+    if (seleccion.includes(']]')) {
+      setErrorComentario('La selección no puede contener «]]».');
+      return false;
+    }
+    if (marca === 'comentario' && seleccion.includes('|')) {
+      setErrorComentario('La selección de un comentario no puede contener «|».');
+      return false;
+    }
     editor
       .chain()
       .focus()
@@ -80,6 +94,7 @@ export function EditorMarkdown({
       .unsetMark('comentario')
       .setMark(marca, attrs)
       .run();
+    return true;
   };
 
   const aplicarPersonaje = (id: string) => {
@@ -101,16 +116,12 @@ export function EditorMarkdown({
   const aplicarComentario = () => {
     const texto = comentarioTexto.trim();
     if (!comentarioValido(texto)) {
-      setErrorComentario('El comentario no puede estar vacío ni contener «|».');
+      setErrorComentario('El comentario no puede estar vacío ni contener «|» o «]]».');
       return;
     }
-    const { from, to } = editor.state.selection;
-    const seleccion = editor.state.doc.textBetween(from, to, '\n');
-    if (seleccion.includes('|') || seleccion.includes(']]')) {
-      setErrorComentario('La selección no puede contener «|» ni «]]».');
+    if (!reemplazarMarca('comentario', { texto })) {
       return;
     }
-    reemplazarMarca('comentario', { texto });
     setComentarioTexto('');
     setComentarioAbierto(false);
     setErrorComentario(null);
@@ -198,7 +209,9 @@ export function EditorMarkdown({
               </button>
             </span>
           )}
-          {errorComentario && <span className="editor-error">{errorComentario}</span>}
+          {errorComentario && (
+            <span className="editor-error" role="alert">{errorComentario}</span>
+          )}
           <button
             type="button"
             className="secundario pequeno"

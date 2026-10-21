@@ -34,7 +34,12 @@ export function ulidValido(texto: string): boolean {
 }
 
 export function comentarioValido(texto: string): boolean {
-  return texto.trim() !== '' && texto === texto.trim() && !texto.includes('|');
+  return (
+    texto.trim() !== '' &&
+    texto === texto.trim() &&
+    !texto.includes('|') &&
+    !texto.includes(']]')
+  );
 }
 
 const tokenizer: MarkdownTokenizer = {

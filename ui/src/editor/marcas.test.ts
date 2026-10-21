@@ -59,10 +59,27 @@ describe('marcas propias', () => {
     expect(comentarioValido('revisar el ritmo')).toBe(true);
     expect(comentarioValido('ver [capítulo 2]')).toBe(true);
     expect(comentarioValido('Nota | secreta')).toBe(false);
+    expect(comentarioValido('Nota ]] privada')).toBe(false);
     expect(comentarioValido('  ')).toBe(false);
 
     const markdown = `[[comentario:ver [capítulo 2]|Marta]]\n`;
     expect(serializar(markdown)).toBe(markdown.trimEnd());
+  });
+
+  it('conserva como literal un comentario con delimitador de cierre en el atributo', () => {
+    const markdown = '[[comentario:Nota ]] privada|Marta]]';
+    const editor = new Editor({
+      extensions: extensionesEditor,
+      content: markdown,
+      contentType: 'markdown',
+    });
+    try {
+      expect(editor.getText()).toBe(markdown);
+      const salida = editor.getMarkdown();
+      expect(serializar(salida)).toBe(salida);
+    } finally {
+      editor.destroy();
+    }
   });
 
   it('aplica la regla ULID del esquema', () => {

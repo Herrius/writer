@@ -208,6 +208,39 @@ pub fn archivo_real(ruta: &Path) -> Result<PathBuf> {
     std::fs::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
 }
 
+/// Valida los dos directorios operativos y el informe antes de acceder a la
+/// cuarentena. La raíz puede ser un alias, pero sus directorios internos no.
+/// Devuelve `None` si falta un directorio y no se pidió crearlo.
+pub(crate) fn directorio_cuarentena(raiz: &Path, crear: bool) -> Result<Option<PathBuf>> {
+    let mut ruta = std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
+    for nombre in [".escritor", "cuarentena"] {
+        ruta.push(nombre);
+        match std::fs::symlink_metadata(&ruta) {
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                if !crear {
+                    return Ok(None);
+                }
+                std::fs::create_dir(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+                if let Some(padre) = ruta.parent() {
+                    fsync_dir(padre)?;
+                }
+            }
+            Err(error) => return Err(Error::Io(error).with_path(&ruta)),
+        }
+        ruta = directorio_real(&ruta)?;
+    }
+    let informe = ruta.join("informe.jsonl");
+    match std::fs::symlink_metadata(&informe) {
+        Ok(_) => {
+            archivo_real(&informe)?;
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(Error::Io(error).with_path(&informe)),
+    }
+    Ok(Some(ruta))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

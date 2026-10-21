@@ -20,7 +20,7 @@ y `verify` continúa reportando los mismos hallazgos.
 Cada línea de `informe.jsonl` tiene:
 
 ```json
-{"ts":"...","ruta_original":"manuscrito/...","motivo":"...","hash":"blake3:..."}
+{"ts":"...","archivo":"20261021T120000Z-escena-invalida.md","ruta_original":"manuscrito/...","motivo":"...","hash":"blake3:..."}
 ```
 
 ## 2. Comandos
@@ -50,12 +50,17 @@ writer quarantine discard <archivo> ~/novela
 ## 4. Seguridad de rutas
 
 - `.escritor` y `.escritor/cuarentena` deben ser **directorios reales**; un
-  enlace simbólico se rechaza con error.
+  enlace simbólico, incluso en el ancestro `.escritor`, se rechaza antes de
+  listar, copiar o descartar. Se admite abrir el proyecto por un alias de su
+  raíz: las comprobaciones parten de la raíz canónica.
 - `informe.jsonl`, si existe, debe ser un **archivo real**; un enlace se rechaza
   antes de leerlo o escribir en él.
 - Solo se listan y descartan archivos reales dentro de la cuarentena real. Los
   enlaces simbólicos se ignoran al listar y se rechazan al descartar.
 - Descartar nunca sigue un enlace ni toca el archivo original.
+- El informe se actualiza por reemplazo atómico. Si un archivo regular del
+  informe comparte un enlace duro con otro archivo, la actualización tampoco
+  modifica ese otro archivo.
 - La validación resuelve la ruta en el momento de comprobar; no elimina una
   carrera TOCTOU con un proceso local que cambie un enlace después.
 
