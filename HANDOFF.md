@@ -14,7 +14,7 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 88 pruebas de núcleo en verde (33 unitarias + 30 de integración + 25 de CLI);
+- 92 pruebas de núcleo en verde (34 unitarias + 33 de integración + 25 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
@@ -244,7 +244,7 @@ python scripts/ci.py e2e          OK (7/7, Chromium)
 python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   88/88
+cargo test --workspace --all-targets --locked   92/92
 pnpm ui:test                      55/55
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
@@ -287,8 +287,8 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
   no hay remoto ni CI remoto todavía.
 - Falta `.github/` (workflows y Dependabot). `.gitignore`, `.editorconfig` y
   `.gitattributes` ya existen.
-- `gitleaks` y `zizmor` no se ejecutaron aquí (herramientas ausentes). Ya existe
-  `.git`, así que `gitleaks` puede ejecutarse cuando se instale.
+- `gitleaks` y `zizmor` están instalados en `~/.local/bin`; el gate `seguridad`
+  ejecuta ambos (zizmor se omite si no hay `.github/`).
 - La carpeta está en MEGA; excluir `target/`, `node_modules/` y `ui/dist/` de la
   sincronización o mover el repo fuera de MEGA.
 - `ui/dist/` está ignorado; si se clona en limpio, ejecutar `pnpm ui:build`
@@ -296,8 +296,8 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 - Los instaladores quedan en `apps/desktop/src-tauri/target/release/bundle/`
   (ignorado). Linux genera deb/rpm; AppImage requiere `linuxdeploy`.
 - Chromium de Playwright se instala fuera del repo con `pnpm e2e:install`.
-- El E2E de Tauri requiere `tauri-driver` 2.0.6 y `WebKitWebDriver` en Linux;
-  no se versionan.
+- El E2E de Tauri requiere `tauri-driver` 2.0.6, `WebKitWebDriver` y `xdotool`
+  en Linux; no se versionan.
 
 ## 9. Limitaciones conocidas
 

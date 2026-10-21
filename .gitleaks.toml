@@ -1,9 +1,0 @@
-# Configuración de gitleaks para writer.
-#
-# El único hallazgo histórico conocido es un falso positivo de `generic-api-key`
-# sobre los literales de ruta del fixture E2E (`'01-capitulo'` y
-# `'001-primera-escena.md'`). No hay credenciales en el repositorio.
-
-[allowlist]
-description = "Literales de ruta del fixture E2E, no credenciales"
-regexes = ['''001-primera-escena\.md''']

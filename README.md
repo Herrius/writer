@@ -29,7 +29,7 @@ pruebas en Windows/macOS son las tareas externas.
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 88 pruebas
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 92 pruebas
 (33 unitarias, 28 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
 cáscara Tauri y 55 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Además, 7 flujos

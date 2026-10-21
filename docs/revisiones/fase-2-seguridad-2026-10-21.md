@@ -39,11 +39,13 @@ El gate se detuvo en `gitleaks git` con código 1; por eso ejecuté las comproba
 | `gitleaks` solo archivos versionados | `git archive HEAD \| tar -x -C /tmp/... && gitleaks dir ...` | **Falla**: 1 hallazgo, el mismo falso positivo del test. No hay secretos reales en el árbol versionado. |
 | `zizmor` | `zizmor .` | **Falla**: código 3, `fatal: no audit was performed`, `no inputs collected`. No existe `.github/` ni workflows que auditar. |
 
-Detalle del falso positivo: `e2e-tauri/tauri.test.mjs:19` contiene:
+Detalle del falso positivo: `e2e-tauri/tauri.test.mjs:19` contiene literales de
+ruta del fixture (redactados aquí para no reintroducir el falso positivo en el
+propio informe):
 
 ```js
-  '01-capitulo',
-  '001-primera-escena.md',
+  '<carpeta-del-capítulo>',
+  '<archivo-de-escena>.md',
 ```
 
 No es una credencial. `gitleaks dir` tampoco respeta `.gitignore`: recorre `target/` y `node_modules/`, lo que hace que el gate dependa de artefactos locales y produzca falsos positivos. El acta r4 y `docs/ci.md` presentan el gate como ejecutable, pero tal como está configurado no puede quedar verde (SEC-03).

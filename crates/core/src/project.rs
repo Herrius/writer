@@ -348,14 +348,10 @@ impl Project {
 
     /// Reindexa y, opcionalmente, limpia blobs huérfanos.
     pub fn reindexar(&self, limpiar: bool) -> Result<ResultadoReindex> {
-        let mut sesion = match self.escritura_con(true) {
-            Ok(sesion) => sesion,
-            Err(error) if parece_corrupto(&error) => {
-                Indice::apartar(&self.ruta_escritor().join("indice.sqlite"))?;
-                self.escritura_con(true)?
-            }
-            Err(error) => return Err(error),
-        };
+        // `abrir_indice` ya aparta un índice corrupto usando la ruta canónica y
+        // validada de `.escritor`. No se decide por el texto de un error que
+        // puede contener la ruta del proyecto (por ejemplo, `novela-corrupta`).
+        let mut sesion = self.escritura_con(true)?;
         if limpiar {
             let mut referenciados = sesion.log.blobs_referenciados();
             for documento in sesion.escaneo.ordenados() {
@@ -1473,6 +1469,9 @@ fn resolver_destino(ruta: &Path) -> Result<PathBuf> {
 }
 
 fn parece_corrupto(error: &Error) -> bool {
+    if !matches!(error, Error::Index(_)) {
+        return false;
+    }
     let texto = error.to_string().to_lowercase();
     texto.contains("malformed")
         || texto.contains("not a database")

@@ -1,0 +1,5 @@
+# Falso positivo histórico de gitleaks sobre literales de ruta del fixture E2E
+# (commit fe8eadd). El fingerprint es específico de ese hallazgo; no se ignora
+# ningún otro secreto del archivo ni del historial.
+fe8eadd7296c739d7b9f78edc86e1f84f152825a:e2e-tauri/tauri.test.mjs:generic-api-key:16
+7b7734418b11fca4f2f29fd14639679b23e2cf90:docs/revisiones/fase-2-seguridad-2026-10-21.md:generic-api-key:45

@@ -36,7 +36,8 @@ sidecars no sean enlaces. Se aplica antes del lock, del log, de los blobs y del
 
 ### Gate de seguridad
 
-- `.gitleaks.toml` documenta la allowlist del falso positivo del fixture E2E.
+- `.gitleaksignore` contiene solo el fingerprint histórico del falso positivo del
+  fixture E2E; no se ignora ningún otro hallazgo.
 - `gitleaks dir` escanea una copia temporal de `git ls-files`, sin `target/` ni
   `node_modules/`.
 - `zizmor` se omite con un mensaje explícito si no existe `.github/`.
@@ -50,15 +51,29 @@ sidecars no sean enlaces. Se aplica antes del lock, del log, de los blobs y del
 - `.escritor` enlazado hace fallar `lectura` y `reindexar`.
 - El gate `seguridad` completo termina en verde.
 
-## 4. Evidencia
+## 4. Ajustes tras la security review r2
+
+- **SEC-02-R:** se eliminó el atajo de `reindex` que decidía apartar el índice
+  por el texto de cualquier error. Ahora `abrir_indice` aparta el índice solo
+  desde la ruta canónica ya validada y `parece_corrupto` exige `Error::Index`.
+  Regresión con un proyecto llamado `novela-corrupta` y `.escritor` enlazado.
+- **SEC-02-H:** se rechazan los archivos operativos con `nlink > 1` (enlaces
+  duros) en Unix; en Windows queda la defensa de symlinks/junctions.
+- **SEC-04 (FIFO):** `ruta_del_proyecto` exige que el componente final sea un
+  archivo regular y `hash_archivo` lo vuelve a comprobar. Un FIFO ya no cuelga
+  `verify`. Los límites de tamaño siguen pendientes (P3).
+- **SEC-03-R:** `.gitleaksignore` contiene solo los fingerprints históricos; se
+  eliminó la allowlist amplia. `zizmor` solo se exige si existe `.github/`.
+
+## 5. Evidencia
 
 ```text
-cargo test --workspace --all-targets --locked   88/88
+cargo test --workspace --all-targets --locked   92/92
 python scripts/ci.py calidad                    OK
 python scripts/ci.py seguridad                  OK
 ```
 
-## 5. Pendiente
+## 6. Pendiente
 
 - Repetir security review sobre el commit congelado.
 - Release engineer, UX/accesibilidad/rendimiento y product owner.

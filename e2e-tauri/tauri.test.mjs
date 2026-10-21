@@ -12,13 +12,9 @@ if (!proyecto || !aplicacion) {
   throw new Error('faltan WRITER_E2E_PROJECT o WRITER_DESKTOP_BIN');
 }
 
-const escena = path.join(
-  proyecto,
-  'manuscrito',
-  '01-libro',
-  '01-capitulo',
-  '001-primera-escena.md',
-);
+const carpetaCapitulo = '01-capitulo';
+const archivoEscena = '001-primera-escena.md';
+const escena = path.join(proyecto, 'manuscrito', '01-libro', carpetaCapitulo, archivoEscena);
 const textoGuardado = 'Texto E2E Tauri.';
 const textoCierre = 'PENDIENTE VENTANA.';
 

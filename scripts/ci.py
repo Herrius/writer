@@ -404,8 +404,15 @@ HERRAMIENTAS = {
 
 
 def _exigir_herramientas() -> None:
+    requeridas = {
+        nombre: pista
+        for nombre, pista in HERRAMIENTAS.items()
+        if nombre != "zizmor" or (RAIZ / ".github").is_dir()
+    }
     ausentes = [
-        f"{nombre} ({pista})" for nombre, pista in HERRAMIENTAS.items() if shutil.which(nombre) is None
+        f"{nombre} ({pista})"
+        for nombre, pista in requeridas.items()
+        if shutil.which(nombre) is None
     ]
     if ausentes:
         raise Fallo("faltan herramientas de seguridad: " + " | ".join(ausentes))
@@ -458,17 +465,12 @@ def seguridad() -> None:
             "check",
         ]
     )
-    configuracion = str(RAIZ / ".gitleaks.toml")
-    ejecutar(
-        ["gitleaks", "git", ".", "--redact", "--no-banner", "--config", configuracion]
-    )
+    ejecutar(["gitleaks", "git", ".", "--redact", "--no-banner"])
     with tempfile.TemporaryDirectory() as temporal:
         arbol = Path(temporal) / "versionados"
         arbol.mkdir()
         _copiar_versionados(arbol)
-        ejecutar(
-            ["gitleaks", "dir", str(arbol), "--redact", "--no-banner", "--config", configuracion]
-        )
+        ejecutar(["gitleaks", "dir", str(arbol), "--redact", "--no-banner"])
     if (RAIZ / ".github").is_dir():
         ejecutar(["zizmor", "."])
     else:

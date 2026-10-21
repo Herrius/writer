@@ -237,9 +237,16 @@ pub fn ruta_del_proyecto(raiz: &Path, relativa: &str) -> Result<PathBuf> {
                         salida.display()
                     )));
                 }
-                if indice + 1 < componentes.len() && !metadatos.is_dir() {
+                if indice + 1 < componentes.len() {
+                    if !metadatos.is_dir() {
+                        return Err(Error::Integrity(format!(
+                            "un componente de la ruta no es un directorio: {}",
+                            salida.display()
+                        )));
+                    }
+                } else if !metadatos.is_file() {
                     return Err(Error::Integrity(format!(
-                        "un componente de la ruta no es un directorio: {}",
+                        "la ruta no es un archivo regular: {}",
                         salida.display()
                     )));
                 }
@@ -284,6 +291,20 @@ pub fn archivo_real(ruta: &Path) -> Result<PathBuf> {
     std::fs::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
 }
 
+#[cfg(unix)]
+fn es_enlace_duro(metadatos: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    metadatos.nlink() > 1
+}
+
+#[cfg(not(unix))]
+fn es_enlace_duro(_metadatos: &std::fs::Metadata) -> bool {
+    // En Windows los enlaces duros también existen, pero `nlink` no está
+    // disponible de forma estable en todas las versiones objetivo. La defensa
+    // principal sigue siendo el rechazo de symlinks/junctions.
+    false
+}
+
 /// Valida `.escritor` y sus rutas operativas antes de abrirlas o crearlas.
 ///
 /// Devuelve `None` si `.escritor` no existe. La raíz puede ser un alias, pero
@@ -325,6 +346,12 @@ pub fn validar_escritor(raiz: &Path) -> Result<Option<PathBuf>> {
                 if metadatos.file_type().is_symlink() {
                     return Err(Error::Integrity(format!(
                         "se rechaza una ruta operativa enlazada: {}",
+                        operativa.display()
+                    )));
+                }
+                if !es_directorio && es_enlace_duro(&metadatos) {
+                    return Err(Error::Integrity(format!(
+                        "se rechaza una ruta operativa con enlaces duros: {}",
                         operativa.display()
                     )));
                 }

@@ -321,6 +321,88 @@ fn recuperacion_no_escribe_fuera_del_proyecto_por_un_enlace() {
 
 #[cfg(unix)]
 #[test]
+fn reindex_no_toca_el_indice_externo_con_un_proyecto_corrupto() {
+    use std::os::unix::fs::symlink;
+
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela-corrupta");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+
+    let escritor_externo = directorio.path().join("escritor-real");
+    std::fs::rename(raiz.join(".escritor"), &escritor_externo).expect("mover .escritor");
+    let indice = escritor_externo.join("indice.sqlite");
+    let wal = escritor_externo.join("indice.sqlite-wal");
+    let shm = escritor_externo.join("indice.sqlite-shm");
+    std::fs::write(&indice, b"INDICE-EXTERNO").expect("indice externo");
+    std::fs::write(&wal, b"WAL-EXTERNO").expect("wal externo");
+    std::fs::write(&shm, b"SHM-EXTERNO").expect("shm externo");
+    symlink(&escritor_externo, raiz.join(".escritor")).expect("enlace .escritor");
+
+    let error = proyecto
+        .reindexar(false)
+        .expect_err("reindex debe rechazar .escritor enlazado");
+    assert!(error.to_string().contains(".escritor"));
+    assert_eq!(
+        std::fs::read(&indice).expect("indice intacto"),
+        b"INDICE-EXTERNO"
+    );
+    assert_eq!(std::fs::read(&wal).expect("wal intacto"), b"WAL-EXTERNO");
+    assert_eq!(std::fs::read(&shm).expect("shm intacto"), b"SHM-EXTERNO");
+    let corruptos: Vec<_> = std::fs::read_dir(&escritor_externo)
+        .expect("leer escritor")
+        .filter_map(Result::ok)
+        .filter(|entrada| entrada.file_name().to_string_lossy().contains("corrupto-"))
+        .collect();
+    assert!(corruptos.is_empty(), "no debe apartar el índice externo");
+}
+
+#[cfg(unix)]
+#[test]
+fn rechaza_enlaces_duros_en_rutas_operativas() {
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+
+    let victima = directorio.path().join("victima");
+    std::fs::write(&victima, b"SENTINELA").expect("victima");
+    let bloqueo = raiz.join(".escritor/bloqueo");
+    std::fs::remove_file(&bloqueo).expect("quitar lock");
+    std::fs::hard_link(&victima, &bloqueo).expect("enlace duro");
+
+    let error = proyecto
+        .lectura()
+        .expect_err("lectura debe rechazar el enlace duro");
+    assert!(error.to_string().contains("enlaces duros"));
+    assert_eq!(
+        std::fs::read(&victima).expect("victima intacta"),
+        b"SENTINELA"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn rechaza_un_fifo_en_una_ruta_de_efecto() {
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    let proyecto = Project::new(&raiz);
+    proyecto.init("Novela", None, None).expect("init");
+    let fifo = raiz.join("manuscrito/01-libro/01-capitulo/fifo.md");
+    let estado = std::process::Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .expect("mkfifo");
+    assert!(estado.success());
+
+    let error =
+        writer_core::fsutil::ruta_del_proyecto(&raiz, "manuscrito/01-libro/01-capitulo/fifo.md")
+            .expect_err("un FIFO no es un archivo regular");
+    assert!(error.to_string().contains("archivo regular"));
+}
+
+#[cfg(unix)]
+#[test]
 fn rechaza_enlaces_en_rutas_de_proyecto_y_escritor() {
     use std::os::unix::fs::symlink;
 

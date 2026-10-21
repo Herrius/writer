@@ -45,6 +45,18 @@ pub fn coincide(bytes: &[u8], esperado: &str) -> bool {
 
 /// Calcula el hash de un archivo, o `None` si no existe.
 pub fn hash_archivo(ruta: &std::path::Path) -> Result<Option<String>> {
+    match std::fs::symlink_metadata(ruta) {
+        Ok(metadatos) => {
+            if !metadatos.file_type().is_file() {
+                return Err(Error::Integrity(format!(
+                    "se esperaba un archivo regular: {}",
+                    ruta.display()
+                )));
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(Error::Io(error).with_path(ruta)),
+    }
     match std::fs::read(ruta) {
         Ok(bytes) => Ok(Some(hash(&bytes))),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
