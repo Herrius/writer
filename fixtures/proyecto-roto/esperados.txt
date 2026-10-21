@@ -1,0 +1,14 @@
+# Un error esperado por línea. Se compara como subcadena contra los errores
+# que devuelve `python scripts/generar-fixtures.py --verificar --json`.
+falta 'id'
+'id' no es un ULID válido
+'id' duplicado
+frontmatter sin cerrar
+indentación fuera del subconjunto YAML v1
+'pov' apunta a un id inexistente
+'refs' apunta a un id inexistente
+'orden' 20 repetido
+una escena debe estar en manuscrito/libro/capitulo/
+no coincide con la carpeta
+retorno de carro aislado
+comillas simples no admitidas

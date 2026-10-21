@@ -1,0 +1,307 @@
+# HANDOFF — estado para retomar
+
+- **Fecha:** 2026-10-21
+- **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
+- **Fase actual:** Fase 2 (Interfaz), tercera rebanada terminada.
+- **Siguiente tarea:** exportación DOCX básica y diálogo de destino.
+- **No hay repositorio Git en esta copia** (ver “Pendientes de publicación”).
+
+## 1. Resumen
+
+La Fase 1 está cerrada en local Linux:
+
+- motor + CLI completos;
+- escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
+- 70 pruebas de núcleo en verde (29 unitarias + 18 de integración + 23 de CLI);
+- MSRV del núcleo verificada con Rust 1.89.0;
+- `cargo-deny` en verde para el núcleo.
+
+La Fase 2 tiene tres rebanadas verticales:
+
+1. cáscara Tauri, workspace pnpm, tipos generados, árbol y lectura con Tiptap;
+2. corpus golden Markdown, editor editable, autosave y conflictos por hash;
+3. **búsqueda FTS5, línea de tiempo e historial con reversión**.
+
+Estado actual de la UI:
+
+- workspace **pnpm** con `ui/` y `apps/desktop/`;
+- cáscara **Tauri 2.12.4** con comandos que llaman a `writer-core`;
+- UI **React 19 + Vite 7 + Tiptap 3**;
+- árbol de escenas por libro/capítulo y notas por tipo;
+- panel con pestañas **Editor** (editable) / **Markdown** (solo lectura) /
+  **Historial**;
+- búsqueda FTS5 en la barra lateral con `Ctrl+F`, fragmento resaltado y salto al
+  documento;
+- historial por revisión: metadatos, contenido de cada archivo y reversión con
+  confirmación;
+- el borrador sobrevive al cambio de pestaña y la reversión bloquea la edición
+  durante toda la transición;
+- respuestas antiguas del historial se descartan y la confirmación queda ligada
+  a proyecto, revisión y `opId`;
+- si el proyecto queda sin documentos, la pestaña Historial sigue disponible;
+- la búsqueda se repite al cambiar la revisión y el fallback sin `.escritor`
+  usa un índice FTS5 en memoria, con la misma tokenización (Unicode descompuesto
+  y guiones incluidos);
+- autosave a los 900 ms y guardado explícito con `Ctrl+S` / `Cmd+S`;
+- estados: `guardado`, `cambios sin guardar`, `guardando…`, `conflicto`,
+  `modo recuperación`, `proyecto ocupado`, `error al guardar`, `solo lectura`;
+- conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
+- documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
+  lectura para no perder contenido;
+- 33 pruebas de UI (16 de corpus, 5 de compatibilidad y 12 de autosave, búsqueda,
+  historial y regresiones de borrador/reversión);
+- 2 pruebas de la cáscara Tauri;
+- gate `python scripts/ci.py interfaz` en verde.
+
+## 2. Regla obligatoria: pnpm, nunca npm/npx
+
+`npm` y `npx` están **prohibidos** en este proyecto. No regenerar
+`package-lock.json`.
+
+- Gestor: **pnpm 12.14.0** (`packageManager` en `package.json`).
+- Lockfile: `pnpm-lock.yaml` (raíz).
+- Workspace: `pnpm-workspace.yaml` con `ui` y `apps/desktop`.
+- `pnpm-workspace.yaml` autoriza únicamente el build de `esbuild`.
+
+```bash
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+# o instalar el binario oficial de pnpm; no usar npm
+```
+
+Comandos:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm ui:test      # corpus + compatibilidad + autosave
+pnpm ui:dev       # UI en navegador con demo
+pnpm dev          # Tauri + Vite
+pnpm ui:build
+pnpm check        # tauri build --no-bundle
+```
+
+## 3. Estructura relevante
+
+```text
+writer/
+  Cargo.toml                 # workspace Rust: core + CLI
+  package.json               # workspace pnpm y scripts
+  pnpm-workspace.yaml
+  pnpm-lock.yaml
+  crates/core/               # motor
+  crates/cli/                # binario writer
+  apps/desktop/              # Tauri
+    src-tauri/
+      Cargo.toml             # workspace Rust propio (fuera del raíz)
+      Cargo.lock
+      tauri.conf.json
+      capabilities/default.json
+      icons/
+      src/lib.rs             # comandos + DTOs ts-rs
+      src/main.rs
+  ui/
+    src/App.tsx              # árbol, autosave, estados, conflictos
+    src/EditorMarkdown.tsx   # Tiptap editable
+    src/api.ts               # puente Tauri + demo
+    src/editor/extensions.ts # esquema único del editor
+    src/markdown/
+      compatibilidad.ts      # construcciones bloqueadas
+      roundtrip.test.ts      # corpus golden
+      corpus/                # 16 parejas entrada/esperado
+    src/types/               # generado por ts-rs
+    src/styles.css
+  docs/
+    markdown-v1.md           # contrato del editor
+    adr/0001-editor-tiptap.md
+    iteraciones/03-fase-2.md
+    iteraciones/04-fase-2.md
+```
+
+`apps/desktop/src-tauri` está **excluido** del workspace Rust raíz para que
+`cargo test --workspace` no necesite WebKit/WebView2. Tiene su propio
+`Cargo.lock`. El núcleo mantiene MSRV 1.89; la cáscara Tauri requiere Rust 1.90.
+
+## 4. Qué está implementado
+
+### Núcleo
+
+- `Project::escribir_cuerpo_con_base(id, cuerpo, hash_base)`:
+  - compara `hash_base` con el hash del archivo actual dentro de la sesión de
+    escritura;
+  - devuelve `Error::Conflict` y no escribe si cambió;
+  - devuelve `ResultadoGuardado { revision, hash_archivo }`.
+- `Project::escribir_cuerpo` sigue existiendo para la CLI sin comprobación.
+- `verify::Documento::hash()` expone el hash del archivo escaneado.
+
+### Comandos Tauri
+
+En `apps/desktop/src-tauri/src/lib.rs`:
+
+- `abrir_proyecto(ruta)`: resumen, revisión, conteos, errores y avisos.
+- `listar(ruta, notas)`: escenas y notas, con `hashArchivo`.
+- `leer(ruta, objetivo)`: cuerpo Markdown, metadatos y `hashArchivo`.
+- `verificar(ruta)`: recuento y diagnósticos.
+- `buscar(ruta, consulta, limite)`: resultados FTS5 con fragmento resaltado.
+- `historial(ruta)`: revisiones con metadatos y rutas afectadas.
+- `mostrar(ruta, revision)`: contenido de los archivos de una revisión.
+- `revertir(ruta, revision)`: crea una revisión nueva y devuelve los errores
+  pendientes.
+- `escribir(ruta, objetivo, cuerpo, hashBase)`: devuelve
+  `GuardadoDto { revision, hashArchivo }`.
+- Errores estructurados `ErrorDto { tipo, mensaje }`; `TipoError` distingue
+  `conflicto`, `recuperacion`, `ocupado`, `io`, `esquema`, etc.
+
+### UI
+
+- Abrir proyecto con diálogo nativo (`tauri-plugin-dialog`).
+- `Ctrl+O` / `Cmd+O`, `Ctrl+S` / `Cmd+S`, `Ctrl+F` / `Cmd+F` para buscar.
+- Árbol lateral:
+  - manuscrito agrupado por libro/capítulo;
+  - notas agrupadas por tipo.
+- Buscador FTS5: reemplaza el árbol mientras hay consulta, muestra tipo, ruta y
+  fragmento con la coincidencia resaltada; al pulsar un resultado se abre el
+  documento.
+- Pestaña **Historial**:
+  - revisiones del proyecto de más reciente a más antigua;
+  - marca de revisión actual;
+  - detalle con metadatos y contenido de cada archivo afectado;
+  - reversión en dos pasos, con aviso de que crea una revisión nueva.
+- Editor Tiptap editable con el esquema de `ui/src/editor/extensions.ts`.
+- Autosave con debounce y cola serializada (si llegan cambios mientras se
+  guarda, se drenan antes de continuar).
+- Cambiar de documento o abrir otro proyecto espera al guardado pendiente.
+- Aviso del navegador al cerrar con cambios sin guardar.
+- Banner de error con **Reintentar**, **Recargar desde disco** y **Copiar mi
+  texto**.
+- Diagnóstico de verificación y de compatibilidad Markdown.
+- Modo demo en navegador con persistencia en memoria.
+
+### Tipos
+
+Los DTOs se exportan a `ui/src/types/`. Regenerar:
+
+```bash
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml exportar_tipos_typescript
+```
+
+Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
+
+## 5. Contrato Markdown
+
+- Esquema aceptado: párrafos, títulos ATX, énfasis, negrita, tachado, código,
+  listas, citas, bloques de código, enlaces, separadores y saltos.
+- Corpus: `ui/src/markdown/corpus/` (16 parejas).
+- Prueba: `ui/src/markdown/roundtrip.test.ts`.
+- Normalizaciones aceptadas: setext → ATX, referencias → inline, salto con
+  barra → dos espacios, código indentado → cercado, escapado de literales y
+  entidades.
+- Construcciones bloqueadas: HTML, imágenes, tablas, listas de tareas y notas al
+  pie.
+- Detalle completo: [`docs/markdown-v1.md`](docs/markdown-v1.md).
+
+## 6. Verificación ejecutada al dejar el proyecto
+
+```text
+python scripts/ci.py calidad      OK
+python scripts/ci.py interfaz     OK
+python scripts/ci.py producto     OK
+cargo test --workspace --all-targets --locked   70/70
+pnpm ui:test                      33/33
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
+cargo-deny (núcleo)               OK
+cargo-deny (desktop)              OK
+pnpm check                        OK
+pnpm --version                    12.14.0
+```
+
+`cargo-deny` del desktop tiene una excepción documentada en `deny.toml`:
+`RUSTSEC-2024-0370` (`proc-macro-error`, unmaintained) llega por gtk-rs/Tauri en
+Linux y no tiene reemplazo compatible con Tauri 2.12. No es una vulnerabilidad
+explotable en writer; revisar al actualizar Tauri/gtk-rs.
+
+No se probó visualmente con un navegador real ni con un E2E de escritorio. Las
+pruebas de autosave usan un editor de prueba y la API simulada. `pnpm dev`
+compila y arranca; en este entorno Wayland el `WebProcess` de WebKit falla, y con
+`GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1` el proceso se mantiene vivo
+sin inspección visual.
+
+## 7. Qué falta — orden recomendado
+
+### Siguiente tarea inmediata
+
+1. **Exportación DOCX básica** (criterio 14):
+   - comando CLI `export docx` antes que la UI;
+   - motor: títulos, párrafos, énfasis, listas, citas, código, enlaces y
+     separadores;
+   - diálogo de destino en la UI y estados de error.
+2. **Cuarentena visible**:
+   - listar `.escritor/cuarentena` y explicar cada archivo;
+   - descartar o conservar sin tocar el proyecto.
+
+### Resto de Fase 2
+
+- Marcas propias de Tiptap (personajes, tramas, comentarios).
+- Toolbar de formato y recuento de palabras.
+- `bundle.active=true`, iconos completos e instaladores.
+- E2E con Playwright/Tauri.
+- Integrar `interfaz` en CI remoto (hoy no hay `.github/`).
+- Probar en Windows y macOS.
+
+## 8. Pendientes de publicación / entorno
+
+- **No hay repositorio Git** en esta copia; no se puede commit ni CI remoto.
+- Falta `.github/` (workflows y Dependabot). `.gitignore`, `.editorconfig` y
+  `.gitattributes` ya existen.
+- `gitleaks` y `zizmor` no se ejecutaron aquí (herramientas ausentes y sin `.git`).
+- La carpeta está en MEGA; excluir `target/`, `node_modules/` y `ui/dist/` de la
+  sincronización o mover el repo fuera de MEGA.
+- `ui/dist/` está ignorado; si se clona en limpio, ejecutar `pnpm ui:build`
+  antes de `cargo check` del desktop (Tauri embebe la UI).
+
+## 9. Limitaciones conocidas
+
+- Ventana CAS no atómica: *last-writer-wins* ante un editor que escriba
+  exactamente entre la comprobación del hash y el reemplazo.
+- El hash base detecta cambios externos anteriores al guardado, no resuelve
+  edición simultánea.
+- SMB/NFS no soportados para escritura.
+- `write` de la CLI cambia el cuerpo, no el frontmatter.
+- El historial no se compacta en v1.
+- El serializador de Tiptap escapa literales y entidades; el significado se
+  conserva, la representación no.
+- La búsqueda usa el índice; si editas archivos por fuera del motor, ejecuta
+  `reindex` para que FTS5 refleje el disco.
+- Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;
+  es correcto para fixtures y proyectos de solo lectura, no para uso intensivo
+  con miles de escenas.
+- Sin toolbar: el formato se introduce con los atajos Markdown de StarterKit.
+- Los fixtures generados incluyen comentarios HTML de relleno; el editor los
+  abre en solo lectura. Para probar edición usa la demo o un proyecto real.
+
+Las garantías completas están en `README.md` y `docs/protocolo-commit.md`.
+
+## 10. Cómo retomar después de mover la carpeta
+
+Las rutas de Tauri son relativas (`../../ui`, `../../../ui/dist`), así que no
+hay que reescribir configuración por mover el proyecto.
+
+```bash
+cd writer
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm ui:test
+pnpm ui:build
+
+# Núcleo
+cargo test --workspace --all-targets --locked
+
+# Interfaz
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+python scripts/ci.py interfaz
+
+# App de escritorio
+pnpm dev
+```
+
+Si `pnpm` no está en PATH, instalarlo de nuevo con el instalador oficial de
+pnpm. **No usar npm ni npx.**

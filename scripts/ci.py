@@ -1,0 +1,478 @@
+#!/usr/bin/env python3
+"""Orquestador de gates de writer.
+
+Una sola definición de las comprobaciones, ejecutable en local y en CI.
+Los grupos son:
+
+  calidad    Rust: formato, lints y tests (los mismos flags que en CI).
+  interfaz   pnpm: instalación reproducible, tipos TS, build de UI y cáscara Tauri.
+  producto   Características del software: esquema, fixtures, determinismo,
+             hallazgos esperados del fixture roto, documentación y presupuesto.
+  seguridad  Cadena de suministro y secretos: cargo-deny, gitleaks y zizmor.
+
+Uso:
+    python scripts/ci.py calidad
+    python scripts/ci.py interfaz
+    python scripts/ci.py producto --presupuesto 60
+    python scripts/ci.py seguridad
+    python scripts/ci.py todo
+
+Códigos de salida: 0 = verde, 1 = gate roto, 2 = uso o herramienta ausente.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+from urllib.parse import unquote
+
+RAIZ = Path(__file__).resolve().parent.parent
+GENERADOR = RAIZ / "scripts" / "generar-fixtures.py"
+FIXTURES = RAIZ / "fixtures"
+PEQUENO = FIXTURES / "proyecto-pequeno"
+ROTO = FIXTURES / "proyecto-roto"
+DOC_ESQUEMA = RAIZ / "docs" / "esquema-v1.md"
+ESPERADOS = ROTO / "esperados.txt"
+
+# Parámetros canónicos del fixture versionado (ver fixtures/README.md).
+ESCENAS_PEQUENO = 3
+SEMILLA_PEQUENO = 1
+ESCENAS_RENDIMIENTO = 1000
+PRESUPUESTO_POR_DEFECTO = 60.0
+
+
+class Fallo(Exception):
+    """Un gate no se cumple."""
+
+
+def _entorno() -> dict[str, str]:
+    entorno = os.environ.copy()
+    entorno["RUSTFLAGS"] = "-D warnings"
+    entorno.setdefault("CARGO_TERM_COLOR", "never")
+    return entorno
+
+
+def ejecutar(
+    comando: list[str],
+    *,
+    capturar: bool = False,
+    timeout: float | None = None,
+) -> subprocess.CompletedProcess[str]:
+    print("$ " + " ".join(comando), flush=True)
+    try:
+        proceso = subprocess.run(
+            comando,
+            cwd=RAIZ,
+            env=_entorno(),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=capturar,
+            timeout=timeout,
+        )
+    except FileNotFoundError as error:
+        raise Fallo(f"herramienta no encontrada: {comando[0]}") from error
+    except subprocess.TimeoutExpired as error:
+        raise Fallo(f"tiempo agotado ({timeout} s): {' '.join(comando)}") from error
+    if not capturar and proceso.returncode != 0:
+        raise Fallo(f"falló con código {proceso.returncode}: {' '.join(comando)}")
+    return proceso
+
+
+def python(*argumentos: str, capturar: bool = False) -> subprocess.CompletedProcess[str]:
+    return ejecutar([sys.executable, str(GENERADOR), *argumentos], capturar=capturar)
+
+
+def _cargo(*argumentos: str) -> None:
+    ejecutar(["cargo", *argumentos])
+
+
+# --------------------------------------------------------------------------- #
+# Calidad
+# --------------------------------------------------------------------------- #
+
+
+def calidad() -> None:
+    _cargo("fmt", "--all", "--check")
+    _cargo("clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings")
+    _cargo("test", "--workspace", "--all-targets", "--locked")
+
+
+# --------------------------------------------------------------------------- #
+# Interfaz
+# --------------------------------------------------------------------------- #
+
+
+def interfaz() -> None:
+    if shutil.which("pnpm") is None:
+        raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
+    ejecutar(["pnpm", "install", "--frozen-lockfile"])
+    ejecutar(["pnpm", "typecheck"])
+    ejecutar(["pnpm", "ui:test"])
+    ejecutar(["pnpm", "ui:build"])
+    ejecutar(
+        [
+            "cargo",
+            "fmt",
+            "--manifest-path",
+            str(RAIZ / "apps" / "desktop" / "src-tauri" / "Cargo.toml"),
+            "--check",
+        ]
+    )
+    ejecutar(
+        [
+            "cargo",
+            "clippy",
+            "--manifest-path",
+            str(RAIZ / "apps" / "desktop" / "src-tauri" / "Cargo.toml"),
+            "--all-targets",
+            "--",
+            "-D",
+            "warnings",
+        ]
+    )
+    ejecutar(
+        [
+            "cargo",
+            "check",
+            "--manifest-path",
+            str(RAIZ / "apps" / "desktop" / "src-tauri" / "Cargo.toml"),
+            "--locked",
+        ]
+    )
+    ejecutar(
+        [
+            "cargo",
+            "test",
+            "--manifest-path",
+            str(RAIZ / "apps" / "desktop" / "src-tauri" / "Cargo.toml"),
+            "--locked",
+        ]
+    )
+    print("Interfaz: tipos, build de UI, cáscara Tauri y comandos OK", flush=True)
+
+
+# --------------------------------------------------------------------------- #
+# Producto
+# --------------------------------------------------------------------------- #
+
+
+def _huellas(raiz: Path) -> dict[str, str]:
+    return {
+        ruta.relative_to(raiz).as_posix(): hashlib.sha256(ruta.read_bytes()).hexdigest()
+        for ruta in sorted(raiz.rglob("*"))
+        if ruta.is_file()
+    }
+
+
+def _comparar_arboles(esperado: Path, generado: Path) -> None:
+    referencia = _huellas(esperado)
+    obtenido = _huellas(generado)
+    faltan = sorted(set(referencia) - set(obtenido))
+    sobran = sorted(set(obtenido) - set(referencia))
+    distintos = sorted(clave for clave in referencia.keys() & obtenido.keys() if referencia[clave] != obtenido[clave])
+    problemas: list[str] = []
+    if faltan:
+        problemas.append(f"faltan {len(faltan)} archivo(s): {', '.join(faltan[:5])}")
+    if sobran:
+        problemas.append(f"sobran {len(sobran)} archivo(s): {', '.join(sobran[:5])}")
+    if distintos:
+        problemas.append(f"{len(distintos)} archivo(s) distintos: {', '.join(distintos[:5])}")
+    if problemas:
+        raise Fallo(
+            "el fixture versionado no coincide con el generador: "
+            + "; ".join(problemas)
+            + f". Regenera con: python scripts/generar-fixtures.py --destino {PEQUENO} "
+            f"--escenas {ESCENAS_PEQUENO} --semilla {SEMILLA_PEQUENO} --forzar"
+        )
+
+
+def determinismo() -> None:
+    with tempfile.TemporaryDirectory() as temporal:
+        destino = Path(temporal) / "proyecto-pequeno"
+        python(
+            "--destino",
+            str(destino),
+            "--escenas",
+            str(ESCENAS_PEQUENO),
+            "--semilla",
+            str(SEMILLA_PEQUENO),
+        )
+        _comparar_arboles(PEQUENO, destino)
+    print(f"Determinismo: OK ({ESCENAS_PEQUENO} escenas, semilla {SEMILLA_PEQUENO})", flush=True)
+
+
+def _leer_esperados() -> list[str]:
+    if not ESPERADOS.is_file():
+        raise Fallo(f"falta {ESPERADOS}")
+    return [
+        linea.strip()
+        for linea in ESPERADOS.read_text(encoding="utf-8").splitlines()
+        if linea.strip() and not linea.lstrip().startswith("#")
+    ]
+
+
+def hallazgos_esperados() -> None:
+    proceso = python("--verificar", str(ROTO), "--json", capturar=True)
+    if proceso.returncode == 0:
+        raise Fallo("el fixture roto no produjo errores; el verificador se ha vuelto ciego")
+    try:
+        datos = json.loads(proceso.stdout)
+    except json.JSONDecodeError as error:
+        raise Fallo(f"salida del verificador no es JSON: {error}") from error
+
+    errores = datos.get("errores", [])
+    esperados = _leer_esperados()
+    restantes = list(errores)
+    faltan: list[str] = []
+    for esperado in esperados:
+        for indice, error in enumerate(restantes):
+            if esperado in error:
+                del restantes[indice]
+                break
+        else:
+            faltan.append(esperado)
+
+    problemas: list[str] = []
+    if faltan:
+        problemas.append("no se detectaron: " + " | ".join(faltan))
+    if restantes:
+        problemas.append("errores no esperados: " + " | ".join(restantes))
+    if len(errores) != len(esperados):
+        problemas.append(f"se esperaban {len(esperados)} errores y hay {len(errores)}")
+    if problemas:
+        raise Fallo("fixture roto fuera del contrato: " + "; ".join(problemas))
+    print(
+        f"Hallazgos esperados: OK ({len(esperados)} errores, {len(datos.get('avisos', []))} avisos)",
+        flush=True,
+    )
+
+
+def rendimiento(presupuesto: float) -> None:
+    with tempfile.TemporaryDirectory() as temporal:
+        destino = Path(temporal) / "proyecto-1000"
+        inicio = time.monotonic()
+        generacion = python("--destino", str(destino), "--escenas", str(ESCENAS_RENDIMIENTO), capturar=True)
+        if generacion.returncode != 0:
+            raise Fallo(f"no se pudo generar el fixture de rendimiento: {generacion.stderr.strip()}")
+        verificacion = python("--verificar", str(destino), capturar=True)
+        if verificacion.returncode != 0:
+            raise Fallo(f"el fixture de rendimiento no verifica: {verificacion.stdout.strip()}")
+        duracion = time.monotonic() - inicio
+    if duracion > presupuesto:
+        raise Fallo(
+            f"generación + verificación de {ESCENAS_RENDIMIENTO} escenas: "
+            f"{duracion:.1f} s > {presupuesto:.0f} s"
+        )
+    print(
+        f"Rendimiento: OK ({ESCENAS_RENDIMIENTO} escenas generadas y verificadas "
+        f"en {duracion:.1f} s de {presupuesto:.0f} s)",
+        flush=True,
+    )
+
+
+RE_ENLACE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+DIRECTORIOS_IGNORADOS = {".git", "target", "node_modules", ".venv", "__pycache__"}
+
+
+def enlaces_documentacion() -> None:
+    problemas: list[str] = []
+    for ruta in sorted(RAIZ.rglob("*.md")):
+        partes = set(ruta.relative_to(RAIZ).parts)
+        if partes & DIRECTORIOS_IGNORADOS or "proyecto-1000" in partes:
+            continue
+        texto = ruta.read_text(encoding="utf-8", errors="replace")
+        dentro_de_bloque = False
+        for numero, linea in enumerate(texto.splitlines(), start=1):
+            if linea.strip().startswith("```"):
+                dentro_de_bloque = not dentro_de_bloque
+                continue
+            if dentro_de_bloque:
+                continue
+            for destino in RE_ENLACE.findall(linea):
+                if destino.startswith(("#", "http://", "https://", "mailto:", "tel:")):
+                    continue
+                limpio = unquote(destino.split("#", 1)[0])
+                if not limpio:
+                    continue
+                objetivo = (ruta.parent / limpio).resolve()
+                if not objetivo.exists():
+                    problemas.append(f"{ruta.relative_to(RAIZ)}:{numero}: enlace roto -> {destino}")
+    if problemas:
+        raise Fallo("enlaces rotos en la documentación: " + " | ".join(problemas))
+    print("Documentación: enlaces relativos OK", flush=True)
+
+
+def motor() -> None:
+    """Verifica los fixtures con el binario Rust, no solo con el script Python."""
+    ejecutar(
+        [
+            "cargo",
+            "run",
+            "--quiet",
+            "--locked",
+            "--bin",
+            "writer",
+            "--",
+            "verify",
+            str(PEQUENO),
+        ]
+    )
+    proceso = ejecutar(
+        [
+            "cargo",
+            "run",
+            "--quiet",
+            "--locked",
+            "--bin",
+            "writer",
+            "--",
+            "verify",
+            str(ROTO),
+            "--json",
+        ],
+        capturar=True,
+    )
+    if proceso.returncode == 0:
+        raise Fallo("el verificador Rust no detectó los defectos del fixture roto")
+    try:
+        datos = json.loads(proceso.stdout)
+    except json.JSONDecodeError as error:
+        raise Fallo(f"salida del verificador Rust no es JSON: {error}") from error
+    errores = datos.get("errores", [])
+    esperados = _leer_esperados()
+    faltan = [esperado for esperado in esperados if not any(esperado in error for error in errores)]
+    if faltan:
+        raise Fallo("el verificador Rust no detectó: " + " | ".join(faltan))
+    if len(errores) != len(esperados):
+        raise Fallo(
+            f"el verificador Rust devolvió {len(errores)} errores; "
+            f"el contrato fija {len(esperados)}"
+        )
+    print(
+        f"CLI Rust: fixture pequeño OK · {len(errores)} hallazgos esperados en el roto",
+        flush=True,
+    )
+
+
+def producto(presupuesto: float) -> None:
+    python("--autoprueba")
+    python("--verificar-docs", str(DOC_ESQUEMA))
+    python("--verificar", str(PEQUENO))
+    determinismo()
+    hallazgos_esperados()
+    rendimiento(presupuesto)
+    motor()
+    enlaces_documentacion()
+
+
+# --------------------------------------------------------------------------- #
+# Seguridad
+# --------------------------------------------------------------------------- #
+
+HERRAMIENTAS = {
+    "cargo-deny": "cargo install cargo-deny --locked (o usa la acción en CI)",
+    "gitleaks": "winget install Gitleaks.Gitleaks · brew install gitleaks",
+    "zizmor": "winget install zizmor.zizmor · pipx install zizmor",
+}
+
+
+def _exigir_herramientas() -> None:
+    ausentes = [
+        f"{nombre} ({pista})" for nombre, pista in HERRAMIENTAS.items() if shutil.which(nombre) is None
+    ]
+    if ausentes:
+        raise Fallo("faltan herramientas de seguridad: " + " | ".join(ausentes))
+
+
+def seguridad() -> None:
+    _exigir_herramientas()
+    ejecutar(
+        [
+            "cargo",
+            "deny",
+            "--all-features",
+            "--manifest-path",
+            str(RAIZ / "Cargo.toml"),
+            "check",
+        ]
+    )
+    ejecutar(
+        [
+            "cargo",
+            "deny",
+            "--manifest-path",
+            str(RAIZ / "apps" / "desktop" / "src-tauri" / "Cargo.toml"),
+            "check",
+        ]
+    )
+    ejecutar(["gitleaks", "git", ".", "--redact", "--no-banner"])
+    ejecutar(["gitleaks", "dir", ".", "--redact", "--no-banner"])
+    ejecutar(["zizmor", "."])
+
+
+# --------------------------------------------------------------------------- #
+# CLI
+# --------------------------------------------------------------------------- #
+
+GRUPOS = {
+    "calidad": calidad,
+    "interfaz": interfaz,
+    "producto": producto,
+    "seguridad": seguridad,
+}
+
+
+def main(argv: list[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+    parser = argparse.ArgumentParser(
+        description="Ejecuta los gates de writer en local o en CI.",
+        epilog=__doc__.split("Uso:")[0].strip(),
+    )
+    parser.add_argument(
+        "grupo",
+        nargs="?",
+        default="todo",
+        choices=[*GRUPOS, "todo"],
+        help="grupo de comprobaciones (por defecto: todo)",
+    )
+    parser.add_argument(
+        "--presupuesto",
+        type=float,
+        default=PRESUPUESTO_POR_DEFECTO,
+        metavar="SEGUNDOS",
+        help=f"presupuesto de rendimiento (por defecto {PRESUPUESTO_POR_DEFECTO:.0f} s)",
+    )
+    opciones = parser.parse_args(argv)
+
+    grupos = list(GRUPOS) if opciones.grupo == "todo" else [opciones.grupo]
+    try:
+        for grupo in grupos:
+            print(f"\n== {grupo.upper()} ==", flush=True)
+            inicio = time.monotonic()
+            if grupo == "producto":
+                producto(opciones.presupuesto)
+            else:
+                GRUPOS[grupo]()
+            print(f"== {grupo}: OK en {time.monotonic() - inicio:.1f} s ==", flush=True)
+    except Fallo as error:
+        print(f"\nGATE ROTO: {error}", file=sys.stderr)
+        return 1
+    print("\nTodos los gates en verde.", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

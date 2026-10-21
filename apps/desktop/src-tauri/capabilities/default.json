@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Capacidades de la ventana principal de writer",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:default"]
+}

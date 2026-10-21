@@ -1,0 +1,405 @@
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import App from './App';
+import {
+  abrirProyecto,
+  buscar,
+  escribir,
+  historial,
+  leer,
+  listar,
+  mostrar,
+  revertir,
+} from './api';
+import type { DocumentoDto } from './types/DocumentoDto';
+import type { ProyectoDto } from './types/ProyectoDto';
+import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
+
+vi.mock('./EditorMarkdown', () => ({
+  EditorMarkdown: ({
+    markdown,
+    editable,
+    onCambio,
+  }: {
+    markdown: string;
+    editable: boolean;
+    onCambio: (markdown: string) => void;
+  }) => (
+    <textarea
+      aria-label="editor de prueba"
+      defaultValue={markdown}
+      disabled={!editable}
+      onChange={(evento) => onCambio(evento.target.value)}
+    />
+  ),
+}));
+
+vi.mock('./api', () => ({
+  esTauri: false,
+  elegirProyecto: vi.fn(),
+  abrirProyecto: vi.fn(),
+  listar: vi.fn(),
+  leer: vi.fn(),
+  verificar: vi.fn(),
+  escribir: vi.fn(),
+  buscar: vi.fn(),
+  historial: vi.fn(),
+  mostrar: vi.fn(),
+  revertir: vi.fn(),
+  errorDe: (fallo: unknown) => {
+    if (typeof fallo === 'object' && fallo !== null && 'tipo' in fallo && 'mensaje' in fallo) {
+      return fallo;
+    }
+    return { tipo: 'otro', mensaje: String(fallo) };
+  },
+}));
+
+const abrirMock = vi.mocked(abrirProyecto);
+const listarMock = vi.mocked(listar);
+const leerMock = vi.mocked(leer);
+const escribirMock = vi.mocked(escribir);
+const buscarMock = vi.mocked(buscar);
+const historialMock = vi.mocked(historial);
+const mostrarMock = vi.mocked(mostrar);
+const revertirMock = vi.mocked(revertir);
+
+const proyecto: ProyectoDto = {
+  raiz: '/tmp/novela',
+  titulo: 'Novela',
+  id: '01PROYECTO0000000000000000',
+  autor: null,
+  idioma: 'es',
+  revision: 1,
+  escenas: 1,
+  notas: 0,
+  errores: [],
+  avisos: [],
+};
+
+const documento: DocumentoDto = {
+  tipo: 'escena',
+  id: '01DOCUMENTO000000000000000',
+  ruta: 'manuscrito/01-libro/01-capitulo/001-uno.md',
+  titulo: 'Uno',
+  cuerpo: 'Texto original.\n',
+  hashArchivo: 'blake3:original',
+  orden: 10,
+  estado: 'borrador',
+  clase: null,
+};
+
+function diferida<T>() {
+  let resolver!: (valor: T) => void;
+  let rechazar!: (error: unknown) => void;
+  const promesa = new Promise<T>((resolverPromesa, rechazarPromesa) => {
+    resolver = resolverPromesa;
+    rechazar = rechazarPromesa;
+  });
+  return { promesa, resolver, rechazar };
+}
+
+function detalleDe(revision: number): RevisionDetalleDto {
+  return {
+    revision,
+    opId: `op-${revision}`,
+    ts: '2026-10-21T00:00:00Z',
+    autor: 'humano',
+    scope: 'prosa',
+    contenidos: [
+      {
+        ruta: documento.ruta,
+        contenido: `---\nid: ${documento.id}\n---\n\nTexto de la revisión ${revision}.\n`,
+      },
+    ],
+  };
+}
+
+function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDto = proyecto) {
+  abrirMock.mockResolvedValue(resumen);
+  listarMock.mockResolvedValue([documentoActivo]);
+  leerMock.mockResolvedValue({ ...documentoActivo });
+  escribirMock.mockImplementation(async (_ruta, _id, cuerpo) => ({
+    revision: 2,
+    hashArchivo: `blake3:${cuerpo.length}`,
+  }));
+  buscarMock.mockResolvedValue([
+    {
+      id: documentoActivo.id,
+      ruta: documentoActivo.ruta,
+      titulo: documentoActivo.titulo,
+      tipo: documentoActivo.tipo,
+      fragmento: '…una luz sobre el [puerto]…',
+    },
+  ]);
+  historialMock.mockResolvedValue([
+    {
+      revision: 1,
+      opId: 'op-1',
+      ts: '2026-10-20T17:00:00Z',
+      autor: 'humano',
+      scope: 'estructura',
+      efectos: 1,
+      rutas: [documentoActivo.ruta],
+    },
+    {
+      revision: 2,
+      opId: 'op-2',
+      ts: '2026-10-20T17:01:00Z',
+      autor: 'humano',
+      scope: 'prosa',
+      efectos: 1,
+      rutas: [documentoActivo.ruta],
+    },
+  ]);
+  mostrarMock.mockImplementation(async (_ruta, revision) => ({
+    revision,
+    opId: `op-${revision}`,
+    ts: '2026-10-20T17:01:00Z',
+    autor: 'humano',
+    scope: 'prosa',
+    contenidos: [
+      {
+        ruta: documentoActivo.ruta,
+        contenido: `---\nid: ${documentoActivo.id}\n---\n\nTexto de la revisión ${revision}.\n`,
+      },
+    ],
+  }));
+  revertirMock.mockResolvedValue({ revision: 3, erroresPendientes: [] });
+}
+
+async function abrirDemo(): Promise<HTMLTextAreaElement> {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Ver demo' }));
+  return screen.findByRole('textbox', { name: 'editor de prueba' });
+}
+
+function estadoGuardado(): string {
+  return screen.getByRole('status', { name: 'Estado de guardado' }).textContent ?? '';
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  preparar();
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+describe('autosave de la interfaz', () => {
+  it('guarda tras el debounce y actualiza la revisión', async () => {
+    const editor = await abrirDemo();
+    fireEvent.change(editor, { target: { value: 'Texto cambiado.\n' } });
+    expect(estadoGuardado()).toBe('cambios sin guardar');
+
+    await waitFor(
+      () => {
+        expect(escribirMock).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 3000 },
+    );
+    expect(escribirMock).toHaveBeenCalledWith(
+      '/tmp/novela',
+      documento.id,
+      'Texto cambiado.\n',
+      'blake3:original',
+    );
+    await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
+    expect(screen.getAllByText('revisión 2').length).toBeGreaterThan(0);
+  });
+
+  it('guarda de inmediato con Ctrl+S', async () => {
+    const editor = await abrirDemo();
+    fireEvent.change(editor, { target: { value: 'Guardado inmediato.\n' } });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+
+    await waitFor(() => expect(escribirMock).toHaveBeenCalledTimes(1));
+    expect(estadoGuardado()).toBe('guardado');
+  });
+
+  it('entra en conflicto, bloquea la edición y permite recargar', async () => {
+    escribirMock.mockRejectedValueOnce({
+      tipo: 'conflicto',
+      mensaje: 'el documento cambió fuera del editor',
+    });
+    const editor = await abrirDemo();
+    fireEvent.change(editor, { target: { value: 'Texto en conflicto.\n' } });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+
+    await screen.findByText('No se pudo guardar.');
+    await waitFor(() => expect(estadoGuardado()).toBe('conflicto'));
+    expect(editor.disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recargar desde disco' }));
+    expect(estadoGuardado()).toBe('conflicto');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y descartar' }));
+    await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
+    expect(screen.getByText(/Documento recargado desde disco/)).toBeTruthy();
+  });
+
+  it('abre en solo lectura si el proyecto tiene errores', async () => {
+    preparar(documento, { ...proyecto, errores: ['fallo de prueba'] });
+    const editor = await abrirDemo();
+    expect(estadoGuardado()).toBe('solo lectura');
+    expect(editor.disabled).toBe(true);
+  });
+
+  it('bloquea documentos con Markdown que el editor no conserva', async () => {
+    preparar({ ...documento, cuerpo: '# Título\n\n![foto](foto.png)\n' });
+    const editor = await abrirDemo();
+    expect(estadoGuardado()).toBe('solo lectura');
+    expect(editor.disabled).toBe(true);
+    expect(screen.getByText(/Markdown que el editor no conserva/)).toBeTruthy();
+    expect(screen.getByText(/imágenes/)).toBeTruthy();
+  });
+
+  it('busca en el proyecto y muestra el fragmento resaltado', async () => {
+    await abrirDemo();
+    const buscador = screen.getByRole('textbox', { name: 'Buscar en el proyecto' });
+    fireEvent.change(buscador, { target: { value: 'puerto' } });
+
+    await waitFor(
+      () => expect(buscarMock).toHaveBeenCalledWith('/tmp/novela', 'puerto', 30),
+      { timeout: 3000 },
+    );
+    const resaltado = await screen.findByText('puerto');
+    expect(resaltado.tagName).toBe('MARK');
+    expect(screen.getByText('…una luz sobre el')).toBeTruthy();
+  });
+
+  it('muestra el historial y revierte una revisión con confirmación', async () => {
+    await abrirDemo();
+    fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
+
+    await screen.findByText('Revisiones del proyecto');
+    await screen.findByText('r2');
+    fireEvent.click(screen.getByRole('button', { name: /r2/ }));
+
+    await screen.findByText('Revisión 2');
+    await screen.findByText(/Texto de la revisión 2/);
+    fireEvent.click(screen.getByRole('button', { name: 'Revertir esta revisión' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reversión' }));
+
+    await waitFor(() => expect(revertirMock).toHaveBeenCalledWith('/tmp/novela', 2));
+    await screen.findByText(/Revisión 2 revertida en la revisión 3/);
+  });
+
+  it('conserva el borrador al cambiar de pestaña antes del autosave', async () => {
+    const editor = await abrirDemo();
+    fireEvent.change(editor, { target: { value: 'Borrador uno.\n' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Editor' }));
+
+    const remontado = await screen.findByRole('textbox', { name: 'editor de prueba' });
+    expect((remontado as HTMLTextAreaElement).value).toBe('Borrador uno.\n');
+
+    fireEvent.change(remontado, { target: { value: 'Borrador uno. Dos.\n' } });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    await waitFor(() =>
+      expect(escribirMock).toHaveBeenCalledWith(
+        '/tmp/novela',
+        documento.id,
+        'Borrador uno. Dos.\n',
+        'blake3:original',
+      ),
+    );
+  });
+
+  it('bloquea la edición durante una reversión', async () => {
+    const pendiente = diferida<{ revision: number; erroresPendientes: string[] }>();
+    revertirMock.mockReturnValueOnce(pendiente.promesa);
+    await abrirDemo();
+    fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
+    await screen.findByText('r2');
+    fireEvent.click(screen.getByRole('button', { name: /r2/ }));
+    await screen.findByText('Revisión 2');
+    fireEvent.click(screen.getByRole('button', { name: 'Revertir esta revisión' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reversión' }));
+    await waitFor(() => expect(revertirMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByText(/Revirtiendo la revisión/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editor' }));
+    const editor = screen.getByRole('textbox', {
+      name: 'editor de prueba',
+    }) as HTMLTextAreaElement;
+    expect(editor.disabled).toBe(true);
+    fireEvent.change(editor, { target: { value: 'Texto durante la reversión.\n' } });
+
+    await act(async () => {
+      pendiente.resolver({ revision: 3, erroresPendientes: [] });
+    });
+    await screen.findByText(/Revisión 2 revertida en la revisión 3/);
+    expect(escribirMock).not.toHaveBeenCalled();
+  });
+
+  it('descarta respuestas antiguas del historial antes de confirmar', async () => {
+    const respuesta1 = diferida<RevisionDetalleDto>();
+    const respuesta2 = diferida<RevisionDetalleDto>();
+    mostrarMock.mockImplementation((_ruta, revision) =>
+      revision === 1 ? respuesta1.promesa : respuesta2.promesa,
+    );
+    await abrirDemo();
+    fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
+    await screen.findByText('r2');
+
+    fireEvent.click(screen.getByRole('button', { name: /r1/ }));
+    fireEvent.click(screen.getByRole('button', { name: /r2/ }));
+    await act(async () => {
+      respuesta2.resolver(detalleDe(2));
+    });
+    await screen.findByText('Revisión 2');
+    fireEvent.click(screen.getByRole('button', { name: 'Revertir esta revisión' }));
+
+    await act(async () => {
+      respuesta1.resolver(detalleDe(1));
+    });
+    expect(screen.getByText('Revisión 2')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reversión' }));
+    await waitFor(() => expect(revertirMock).toHaveBeenCalledWith('/tmp/novela', 2));
+  });
+
+  it('mantiene el historial cuando el proyecto queda sin documentos', async () => {
+    abrirMock.mockResolvedValue({ ...proyecto, escenas: 0, notas: 0 });
+    listarMock.mockResolvedValue([]);
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ver demo' }));
+
+    await screen.findByText('El proyecto no tiene documentos válidos.');
+    const botonHistorial = screen.getByRole('button', { name: 'Historial' });
+    expect(botonHistorial.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(botonHistorial);
+    await screen.findByText('Revisiones del proyecto');
+  });
+
+  it('repite la búsqueda cuando cambia la revisión', async () => {
+    await abrirDemo();
+    const buscador = screen.getByRole('textbox', { name: 'Buscar en el proyecto' });
+    fireEvent.change(buscador, { target: { value: 'puerto' } });
+    await waitFor(
+      () => expect(buscarMock).toHaveBeenCalledTimes(1),
+      { timeout: 3000 },
+    );
+
+    buscarMock.mockResolvedValueOnce([
+      {
+        id: documento.id,
+        ruta: documento.ruta,
+        titulo: documento.titulo,
+        tipo: documento.tipo,
+        fragmento: '…el [faro] del puerto…',
+      },
+    ]);
+    const editor = screen.getByRole('textbox', { name: 'editor de prueba' });
+    fireEvent.change(editor, { target: { value: 'Puerto nuevo.\n' } });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+
+    await waitFor(() => expect(escribirMock).toHaveBeenCalled());
+    await waitFor(
+      () => expect(buscarMock).toHaveBeenCalledTimes(2),
+      { timeout: 3000 },
+    );
+    expect(await screen.findByText('faro')).toBeTruthy();
+  });
+});

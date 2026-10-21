@@ -1,0 +1,19 @@
+# Fixture roto (a propósito)
+
+Proyecto que incumple el esquema v1 de todas las formas que `writer verify` debe
+detectar. **No regenerar y no "arreglar"**: es la prueba de regresión negativa.
+
+- `esperados.txt` lista los errores que deben aparecer, uno por línea, como
+  subcadena del mensaje del verificador.
+- El número de errores debe coincidir exactamente con el número de líneas: si
+  `verify` deja de detectar un caso o detecta uno nuevo, el gate falla.
+- Los avisos (BOM, `palabras` a mano, campos y estados desconocidos) se
+  imprimen, pero no se comparan.
+- `012-retorno-carro.md` contiene un CR aislado a propósito; está marcado como
+  `-text` en `.gitattributes` para que Git no lo normalice.
+
+Ejecutar:
+
+```bash
+python scripts/generar-fixtures.py --verificar fixtures/proyecto-roto
+```

@@ -1,0 +1,42 @@
+# Rust
+**/target/
+**/*.rs.bk
+
+# Fixtures de rendimiento (se regeneran)
+/fixtures/proyecto-1000/
+
+# Datos operativos del motor (índice, blobs, log)
+.escritor/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / pnpm
+node_modules/
+ui/dist/
+apps/desktop/src-tauri/gen/
+.pnpm-store/
+coverage/
+*.tsbuildinfo
+.pnpm-debug.log*
+*.log
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Sistemas operativos y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

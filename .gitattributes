@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+*.md text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+
+# El fixture roto incluye un CR aislado deliberado: Git no debe normalizarlo.
+fixtures/proyecto-roto/** -text

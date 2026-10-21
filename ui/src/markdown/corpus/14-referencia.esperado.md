@@ -1,0 +1,1 @@
+[texto](https://example.com)

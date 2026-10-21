@@ -1,0 +1,15 @@
+{
+  "name": "writer-workspace",
+  "private": true,
+  "version": "0.2.0",
+  "packageManager": "pnpm@12.14.0",
+  "scripts": {
+    "dev": "pnpm --dir apps/desktop dev",
+    "build": "pnpm --dir apps/desktop build",
+    "check": "pnpm --dir apps/desktop check",
+    "ui:dev": "pnpm --dir ui dev",
+    "ui:build": "pnpm --dir ui build",
+    "ui:test": "pnpm --dir ui test",
+    "typecheck": "pnpm --dir ui typecheck"
+  }
+}

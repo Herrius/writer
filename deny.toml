@@ -1,0 +1,50 @@
+# Política de dependencias y cadena de suministro (cargo-deny).
+# Se ejecuta en `scripts/ci.py seguridad` y en el job de seguridad del CI.
+
+[graph]
+# Los tres objetivos que soportamos; evita colar dependencias de plataformas
+# que no construimos.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+    "aarch64-apple-darwin",
+]
+all-features = true
+
+[advisories]
+# Una versión yanked no se usa ni aunque esté en el lock.
+yanked = "deny"
+ignore = [
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error figura como unmaintained y llega por gtk-rs/tauri en Linux; no hay reemplazo compatible en la cadena de Tauri 2.12 y no es una vulnerabilidad explotable en writer. Revisar al actualizar Tauri o gtk-rs." },
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "MPL-2.0",
+    "CC0-1.0",
+]
+confidence-threshold = 0.9
+exceptions = []
+# Sin dependencias externas todavía: no todas las licencias permitidas aparecen.
+unused-allowed-license = "allow"
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

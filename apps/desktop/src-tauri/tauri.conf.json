@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "writer",
+  "version": "0.2.0",
+  "identifier": "com.writer.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm --dir ../../ui dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm --dir ../../ui build",
+    "frontendDist": "../../../ui/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "writer",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "all"
+  }
+}
