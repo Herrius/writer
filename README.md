@@ -391,7 +391,7 @@ Seis grupos de gates, ejecutables también en local con `python scripts/ci.py`:
 | `calidad` | `fmt`, `clippy -D warnings`, `cargo test --locked` en Windows, Linux y macOS |
 | `interfaz` | `pnpm install --frozen-lockfile`, tipos TS, corpus/autosave, build de Vite y `cargo check` de la cáscara Tauri |
 | `e2e` | Playwright sobre la demo: autosave, búsqueda, historial, marcas, cuarentena y DOCX |
-| `empaquetado` | `pnpm build`: binario release e instaladores de la plataforma |
+| `empaquetado` | `pnpm build` y verificación de estructura, permisos, lanzador, iconos y md5/digests de deb/rpm |
 | `producto` | esquema, autopruebas, determinismo de fixtures, 12 hallazgos esperados, presupuesto de 1.000 escenas, enlaces y CLI Rust |
 | `seguridad` | `cargo-deny` (advisories, licencias, bans, orígenes), `gitleaks` (historial y árbol) y `zizmor` (workflows) |
 

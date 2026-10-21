@@ -26,12 +26,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 from pathlib import Path
@@ -50,6 +52,15 @@ ESCENAS_PEQUENO = 3
 SEMILLA_PEQUENO = 1
 ESCENAS_RENDIMIENTO = 1000
 PRESUPUESTO_POR_DEFECTO = 60.0
+BUNDLE = (
+    RAIZ
+    / "apps"
+    / "desktop"
+    / "src-tauri"
+    / "target"
+    / "release"
+    / "bundle"
+)
 
 
 class Fallo(Exception):
@@ -426,6 +437,126 @@ def seguridad() -> None:
 # CLI
 # --------------------------------------------------------------------------- #
 
+def _ar_contenido(archivo: Path, miembro: str) -> bytes:
+    ar = shutil.which("ar")
+    if ar is None:
+        raise Fallo("falta `ar` para inspeccionar el .deb")
+    proceso = subprocess.run(
+        [ar, "p", str(archivo), miembro],
+        capture_output=True,
+        check=False,
+    )
+    if proceso.returncode != 0:
+        raise Fallo(
+            f"no se pudo extraer {miembro} de {archivo.name}: "
+            + proceso.stderr.decode("utf-8", "replace").strip()
+        )
+    return proceso.stdout
+
+
+def _comprobar_deb() -> None:
+    paquetes = sorted((BUNDLE / "deb").glob("*.deb"))
+    if not paquetes:
+        raise Fallo("empaquetado: no se generó ningún .deb")
+    paquete = paquetes[-1]
+    datos = _ar_contenido(paquete, "data.tar.gz")
+    with tarfile.open(fileobj=io.BytesIO(datos), mode="r:gz") as tar:
+        miembros = {m.name.lstrip("./"): m for m in tar.getmembers()}
+        binario = miembros.get("usr/bin/writer-desktop")
+        if binario is None or not binario.isfile():
+            raise Fallo("el .deb no contiene usr/bin/writer-desktop")
+        if not binario.mode & 0o111:
+            raise Fallo("el ejecutable del .deb no tiene permiso de ejecución")
+        escritorio = miembros.get("usr/share/applications/writer.desktop")
+        if escritorio is None:
+            raise Fallo("el .deb no contiene writer.desktop")
+        contenido = tar.extractfile(escritorio)
+        if contenido is None or b"Exec=writer-desktop" not in contenido.read():
+            raise Fallo("writer.desktop no apunta a writer-desktop")
+        iconos = [
+            nombre
+            for nombre in miembros
+            if nombre.startswith("usr/share/icons/hicolor/") and nombre.endswith(".png")
+        ]
+        if len(iconos) < 3:
+            raise Fallo("el .deb no incluye los iconos esperados")
+
+        control = _ar_contenido(paquete, "control.tar.gz")
+        with tarfile.open(fileobj=io.BytesIO(control), mode="r:gz") as control_tar:
+            md5 = control_tar.extractfile("md5sums")
+            if md5 is not None:
+                for linea in md5.read().decode("utf-8").splitlines():
+                    if not linea.strip():
+                        continue
+                    esperado, ruta = re.split(r"\s+", linea.strip(), maxsplit=1)
+                    ruta = ruta.lstrip("./")
+                    miembro = miembros.get(ruta)
+                    if miembro is None:
+                        raise Fallo(f"md5sums apunta a un archivo ausente: {ruta}")
+                    archivo = tar.extractfile(miembro)
+                    if archivo is None:
+                        raise Fallo(f"no se pudo leer {ruta} del .deb")
+                    actual = hashlib.md5(archivo.read()).hexdigest()
+                    if actual != esperado:
+                        raise Fallo(f"checksum incorrecto en el .deb: {ruta}")
+    print(f"Empaquetado: {paquete.name} verificado (estructura, permisos, md5)")
+
+
+def _comprobar_rpm() -> None:
+    paquetes = sorted((BUNDLE / "rpm").glob("*.rpm"))
+    if not paquetes:
+        raise Fallo("empaquetado: no se generó ningún .rpm")
+    paquete = paquetes[-1]
+    rpm = shutil.which("rpm")
+    if rpm is None:
+        raise Fallo("falta `rpm` para inspeccionar el paquete")
+    listado = subprocess.run(
+        [rpm, "-qplv", str(paquete)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if listado.returncode != 0:
+        raise Fallo(f"rpm -qplv falló: {listado.stderr.strip()}")
+    lineas = listado.stdout.splitlines()
+    binario = next(
+        (linea for linea in lineas if linea.endswith(" /usr/bin/writer-desktop")),
+        None,
+    )
+    if binario is None or not binario.split()[0].startswith("-rwx"):
+        raise Fallo("el RPM no contiene un writer-desktop ejecutable")
+    if not any(linea.endswith(" /usr/share/applications/writer.desktop") for linea in lineas):
+        raise Fallo("el RPM no contiene writer.desktop")
+    iconos = [
+        linea
+        for linea in lineas
+        if "/usr/share/icons/hicolor/" in linea and linea.endswith(".png")
+    ]
+    if len(iconos) < 3:
+        raise Fallo("el RPM no incluye los iconos esperados")
+    firma = subprocess.run(
+        [rpm, "-K", "--nosignature", str(paquete)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if firma.returncode != 0:
+        raise Fallo(f"los digests del RPM no son válidos: {firma.stderr.strip()}")
+    print(f"Empaquetado: {paquete.name} verificado (estructura, permisos, digests)")
+
+
+def _comprobar_paquetes() -> None:
+    if not sys.platform.startswith("linux"):
+        print("Empaquetado: verificación estructural omitida fuera de Linux")
+        return
+    _comprobar_deb()
+    _comprobar_rpm()
+
+
 def e2e() -> None:
     if shutil.which("pnpm") is None:
         raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
@@ -437,6 +568,7 @@ def empaquetado() -> None:
     if shutil.which("pnpm") is None:
         raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
     ejecutar(["pnpm", "build"])
+    _comprobar_paquetes()
 
 
 GRUPOS = {

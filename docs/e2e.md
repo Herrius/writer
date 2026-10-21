@@ -9,8 +9,10 @@
 Playwright arranca Vite en `http://127.0.0.1:1420` y prueba la UI en **modo
 demo** (sin Tauri). Cubre:
 
-1. abrir la demo, editar y esperar el autosave;
-2. búsqueda y salto al resultado;
+1. abrir la demo, editar, esperar el autosave, cambiar de documento y volver
+   para comprobar que el texto exacto persiste;
+2. búsqueda de `llave` y salto a **otro** documento (`La llave`), comprobando
+   título y cuerpo;
 3. historial y detalle de una revisión;
 4. aplicar personaje, sustituirlo por trama y comprobar que no se anidan;
 5. cuarentena visible y descarte en dos pasos;

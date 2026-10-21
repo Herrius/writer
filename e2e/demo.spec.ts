@@ -17,16 +17,25 @@ test('abre la demo, edita y guarda con el autosave', async ({ page }) => {
     'guardado',
     { timeout: 5000 },
   );
+
+  // Cambiar de documento y volver: el texto debe venir de la persistencia,
+  // no solo del estado visual del editor.
+  await page.locator('.documento').filter({ hasText: 'La llave' }).click();
+  await expect(page.getByRole('heading', { name: 'La llave' })).toBeVisible();
+  await page.locator('.documento').filter({ hasText: 'El umbral' }).click();
+  await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
+  await expect(page.locator('.ProseMirror')).toHaveText('Texto E2E de prueba.');
 });
 
-test('busca y abre un resultado', async ({ page }) => {
+test('busca y salta a otro documento', async ({ page }) => {
   await abrirDemo(page);
-  await page.getByRole('textbox', { name: 'Buscar en el proyecto' }).fill('faro');
-  const resultado = page.locator('.resultado').first();
+  await page.getByRole('textbox', { name: 'Buscar en el proyecto' }).fill('llave');
+  const resultado = page.locator('.resultado').filter({ hasText: 'La llave' });
   await expect(resultado).toBeVisible();
-  await expect(resultado).toContainText('faro');
+  await expect(resultado).toContainText('llave');
   await resultado.click();
-  await expect(page.locator('.ProseMirror')).toContainText('faro');
+  await expect(page.getByRole('heading', { name: 'La llave' })).toBeVisible();
+  await expect(page.locator('.ProseMirror')).toContainText('cajón de la cocina');
 });
 
 test('muestra el historial y el detalle de una revisión', async ({ page }) => {

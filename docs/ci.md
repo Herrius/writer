@@ -70,7 +70,7 @@ comandos Tauri ni el filesystem real. Detalle: [`e2e.md`](e2e.md).
 
 | Comprobación | Qué detecta |
 |---|---|
-| `pnpm build` | Que Tauri compile el binario release y genere los instaladores de la plataforma. |
+| `pnpm build` y verificación | Que Tauri compile y que el `.deb`/`.rpm` contenga binario ejecutable, lanzador, iconos y checksums/digests correctos. |
 
 En Linux genera `.deb` y `.rpm`; AppImage queda pendiente por `linuxdeploy`.
 Windows/macOS requieren sus toolchains. Detalle:

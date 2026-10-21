@@ -232,7 +232,7 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
 python scripts/ci.py e2e          OK (6/6, Chromium)
-python scripts/ci.py empaquetado  OK (deb + rpm)
+python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
 cargo test --workspace --all-targets --locked   84/84
 pnpm ui:test                      50/50

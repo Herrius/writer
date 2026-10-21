@@ -10,8 +10,10 @@
 
 - `playwright.config.ts` arranca Vite y prueba Chromium headless.
 - `e2e/demo.spec.ts` cubre 6 flujos:
-  1. abrir demo, editar y esperar autosave;
-  2. búsqueda y salto al resultado;
+  1. abrir demo, editar, esperar autosave, cambiar de documento y volver para
+     comprobar el texto exacto;
+  2. búsqueda de `llave` y salto a **otro** documento, comprobando título y
+     cuerpo;
   3. historial y detalle de revisión;
   4. marcas de personaje → trama sin anidar;
   5. cuarentena visible y descarte;
@@ -37,10 +39,22 @@ target/release/bundle/rpm/writer-0.2.0-1.x86_64.rpm
 - El `.deb` incluye binario, `.desktop` e iconos; el `.rpm` se verificó con
   `rpm -qpl`.
 - Gate nuevo `python scripts/ci.py empaquetado` (`pnpm build`).
+- El gate inspecciona estructura, permisos, `.desktop`, iconos y
+  `md5sums`/digests de los paquetes; no se limita a compilar.
 - AppImage falla por falta de `linuxdeploy`; queda documentado y fuera del
   target Linux.
 
-## 3. Decisiones
+## 3. Correcciones de la revisión
+
+- **Autosave persistente (P2):** el E2E ya no se conforma con el estado
+  `guardado`; cambia a `La llave`, vuelve a `El umbral` y exige el texto exacto.
+- **Búsqueda con salto real (P2):** busca `llave`, abre `La llave` y comprueba
+  título y cuerpo, en lugar de abrir el documento que ya estaba activo.
+- **Empaquetado estructural (P2):** el gate verifica contenido, permisos,
+  lanzador, iconos y checksums/digests de deb/rpm con `ar`, `tarfile`, `rpm
+  -qplv` y `rpm -K`.
+
+## 4. Decisiones
 
 | # | Decisión | Motivo |
 |---|---|---|
@@ -50,7 +64,7 @@ target/release/bundle/rpm/writer-0.2.0-1.x86_64.rpm
 | 4 | Iconos desde el icono existente | Evita introducir un asset nuevo sin revisión visual. |
 | 5 | E2E y empaquetado como gates separados | Se pueden ejecutar y diagnosticar por separado. |
 
-## 4. Evidencia
+## 5. Evidencia
 
 ```text
 $ pnpm e2e
@@ -66,6 +80,10 @@ $ rpm -qpl .../writer-0.2.0-1.x86_64.rpm
 /usr/share/applications/writer.desktop
 /usr/share/icons/hicolor/...
 
+$ python scripts/ci.py empaquetado
+Empaquetado: writer_0.2.0_amd64.deb verificado (estructura, permisos, md5)
+Empaquetado: writer-0.2.0-1.x86_64.rpm verificado (estructura, permisos, digests)
+
 $ cargo test --workspace --all-targets --locked
 84/84
 
@@ -77,7 +95,7 @@ $ python scripts/ci.py e2e                     OK
 $ python scripts/ci.py empaquetado             OK
 ```
 
-## 5. Limitaciones
+## 6. Limitaciones
 
 - El E2E es de navegador, no de Tauri: no ejercita comandos, lock, escritura
   atómica ni diálogos nativos.
@@ -87,7 +105,7 @@ $ python scripts/ci.py empaquetado             OK
 - Chromium de Playwright no se versiona; hay que instalarlo con
   `pnpm e2e:install`.
 
-## 6. Pendiente
+## 7. Pendiente
 
 - E2E de escritorio con `tauri-driver`/WebdriverIO o WebView2.
 - AppImage y firma/notarización.

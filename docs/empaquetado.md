@@ -27,8 +27,12 @@ target/release/bundle/deb/writer_0.2.0_amd64.deb
 target/release/bundle/rpm/writer-0.2.0-1.x86_64.rpm
 ```
 
-El `.deb` incluye el binario, el `.desktop` y los iconos en
-`/usr/share/icons/hicolor/`. El `.rpm` se verificó con `rpm -qpl`.
+El gate `empaquetado` no solo ejecuta `pnpm build`: inspecciona los paquetes.
+
+- `.deb`: `ar` + `tarfile`, binario ejecutable, `.desktop`, iconos y `md5sums`.
+- `.rpm`: `rpm -qplv` para estructura/permisos y `rpm -K --nosignature` para
+  digests.
+- Fuera de Linux, la verificación estructural se omite.
 
 ## 3. AppImage
 
