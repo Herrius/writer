@@ -54,6 +54,7 @@ vi.mock('./api', () => ({
   exportarDocx: vi.fn(),
   cuarentena: vi.fn(),
   descartarCuarentena: vi.fn(),
+  proyectoE2e: vi.fn().mockResolvedValue(null),
   errorDe: (fallo: unknown) => {
     if (typeof fallo === 'object' && fallo !== null && 'tipo' in fallo && 'mensaje' in fallo) {
       return fallo;

@@ -708,6 +708,52 @@ button.guardar:disabled {
   opacity: 0.45;
 }
 
+.formato {
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--tinta);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.formato:hover {
+  background: var(--papel-2);
+}
+
+.formato.activo {
+  border-color: #e2c9b8;
+  background: var(--acento-suave);
+  color: var(--acento);
+}
+
+.formato.cursiva {
+  font-style: italic;
+}
+
+.formato.tachado {
+  text-decoration: line-through;
+}
+
+.toolbar-separador {
+  width: 1px;
+  height: 1.4rem;
+  margin: 0 0.2rem;
+  background: var(--linea);
+}
+
+.editor-contador {
+  margin-left: auto;
+  color: var(--tinta-suave);
+  font-size: 0.67rem;
+  white-space: nowrap;
+}
+
 .comentario-form {
   display: inline-flex;
   gap: 0.3rem;

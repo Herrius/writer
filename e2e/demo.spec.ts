@@ -38,6 +38,18 @@ test('busca y salta a otro documento', async ({ page }) => {
   await expect(page.locator('.ProseMirror')).toContainText('cajón de la cocina');
 });
 
+test('aplica formato y muestra el recuento de palabras', async ({ page }) => {
+  await abrirDemo(page);
+  const editor = page.locator('.ProseMirror');
+  await editor.click();
+  await page.keyboard.press('Control+A');
+  await page.getByRole('button', { name: 'Negrita' }).click();
+  await expect(page.getByRole('button', { name: 'Negrita' })).toHaveClass(/activo/);
+  await expect(page.locator('.editor-contador')).toHaveText(/\d+ palabras/);
+  await page.getByRole('button', { name: 'Markdown' }).click();
+  await expect(page.locator('pre.fuente')).toContainText('**');
+});
+
 test('muestra el historial y el detalle de una revisión', async ({ page }) => {
   await abrirDemo(page);
   await page.getByRole('button', { name: 'Historial' }).click();

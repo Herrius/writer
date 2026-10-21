@@ -21,6 +21,7 @@ local, no es un gate**. Todo se orquesta desde `scripts/ci.py`.
 python scripts/ci.py calidad
 python scripts/ci.py interfaz
 python scripts/ci.py e2e
+python scripts/ci.py e2e-tauri
 python scripts/ci.py empaquetado
 python scripts/ci.py producto
 python scripts/ci.py seguridad
@@ -57,14 +58,16 @@ Se ejecuta en **Windows, Linux y macOS**; el código manipula rutas, locks y
 Requiere **pnpm 12** y, en Linux, las bibliotecas de Tauri (`webkit2gtk-4.1`,
 `gtk3`, `libappindicator-gtk3`, `librsvg`, `patchelf`). `npm` y `npx` no se usan.
 
-### E2E (`e2e`)
+### E2E (`e2e` y `e2e-tauri`)
 
 | Comprobación | Qué detecta |
 |---|---|
-| `pnpm e2e` | 6 flujos de la demo en Chromium: autosave, búsqueda, historial, marcas, cuarentena y DOCX. |
+| `pnpm e2e` | 7 flujos de la demo en Chromium: autosave persistente, búsqueda con salto, formato/recuento, historial, marcas, cuarentena y DOCX. |
+| `pnpm e2e:tauri` | 1 flujo real de escritorio en Linux: abrir proyecto, escribir, `Ctrl+S` y verificar el archivo en disco. |
 
-Requiere Chromium de Playwright (`pnpm e2e:install`). Cubre el navegador, no los
-comandos Tauri ni el filesystem real. Detalle: [`e2e.md`](e2e.md).
+Requiere Chromium de Playwright (`pnpm e2e:install`) y, para Tauri,
+`tauri-driver` 2.0.6 + `WebKitWebDriver` en Linux. Detalle:
+[`e2e.md`](e2e.md).
 
 ### Empaquetado (`empaquetado`)
 
@@ -128,6 +131,7 @@ Endurecimiento del propio CI:
 | `calidad`: fmt, clippy, test | Job `calidad` en 3 sistemas |
 | `interfaz`: pnpm, tipos, corpus, autosave, búsqueda, historial, Vite y Tauri | Job `interfaz` en Linux (y build de escritorio en la matriz) |
 | `e2e`: Playwright sobre la demo | Job `e2e` en Linux con Chromium |
+| `e2e-tauri`: WebDriver sobre la app real | Job `e2e-tauri` en Linux con WebKitWebDriver |
 | `empaquetado`: Tauri release + instaladores | Job `empaquetado` en la matriz |
 | `producto`: esquema y características | Job `producto` en Windows y Linux |
 | `seguridad`: cargo-deny, gitleaks, zizmor | Job `seguridad` con `cargo-deny-action`, `gitleaks-action` y `zizmor-action` |

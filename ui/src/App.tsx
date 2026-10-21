@@ -14,6 +14,7 @@ import {
   leer,
   listar,
   mostrar as pedirRevision,
+  proyectoE2e,
   revertir as revertirRevision,
 } from './api';
 import type { BusquedaDto } from './types/BusquedaDto';
@@ -716,6 +717,23 @@ export default function App() {
   };
 
   accionesRef.current = { guardar: guardarAhora, abrir };
+
+  useEffect(() => {
+    if (!esTauri) {
+      return;
+    }
+    let cancelado = false;
+    void proyectoE2e()
+      .then((ruta) => {
+        if (!cancelado && ruta) {
+          void cargar(ruta);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     const termino = consulta.trim();

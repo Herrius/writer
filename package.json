@@ -12,9 +12,11 @@
     "ui:dev": "pnpm --dir ui dev",
     "ui:build": "pnpm --dir ui build",
     "ui:test": "pnpm --dir ui test",
-    "typecheck": "pnpm --dir ui typecheck"
+    "typecheck": "pnpm --dir ui typecheck",
+    "e2e:tauri": "bash scripts/e2e-tauri.sh"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1"
+    "@playwright/test": "1.64.1",
+    "webdriverio": "10.1.0"
   }
 }

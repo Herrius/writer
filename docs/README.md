@@ -35,9 +35,10 @@
   marcas propias.
 - [`iteraciones/08-fase-2.md`](iteraciones/08-fase-2.md) — E2E de navegador y
   empaquetado deb/rpm.
+- [`iteraciones/09-fase-2.md`](iteraciones/09-fase-2.md) — toolbar, recuento,
+  E2E de escritorio y cierre de la Fase 2.
 
 Pendiente por fase:
 
-- Fase 2: E2E de escritorio (Tauri/WebDriver), AppImage, firma y probar
-  Windows/macOS.
+- Fase 2: validación externa (AppImage, firma, Windows/macOS y CI remoto).
 - Fase 3: `protocolo-patches.md` y contrato del servidor MCP.

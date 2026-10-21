@@ -1,51 +1,64 @@
-# E2E — Playwright sobre la demo
+# E2E — navegador y escritorio
 
 - **Fecha:** 2026-10-21
 - **Estado:** vigente para la Fase 2
-- **Ámbito:** `e2e/` y `playwright.config.ts`
+- **Ámbito:** `e2e/`, `e2e-tauri/`, `playwright.config.ts` y
+  `scripts/e2e-tauri.sh`
 
-## 1. Alcance
+## 1. E2E de navegador (Playwright)
 
 Playwright arranca Vite en `http://127.0.0.1:1420` y prueba la UI en **modo
-demo** (sin Tauri). Cubre:
+demo** (sin Tauri). Cubre 7 flujos:
 
 1. abrir la demo, editar, esperar el autosave, cambiar de documento y volver
-   para comprobar que el texto exacto persiste;
-2. búsqueda de `llave` y salto a **otro** documento (`La llave`), comprobando
-   título y cuerpo;
-3. historial y detalle de una revisión;
-4. aplicar personaje, sustituirlo por trama y comprobar que no se anidan;
-5. cuarentena visible y descarte en dos pasos;
-6. exportación DOCX (diálogo `prompt` simulado).
-
-No prueba comandos Tauri ni escritura real en disco. Esa parte sigue pendiente
-con `tauri-driver`/WebdriverIO.
-
-## 2. Comandos
+   para comprobar el texto exacto;
+2. búsqueda de `llave` y salto a **otro** documento, comprobando título y
+   cuerpo;
+3. aplicar formato y comprobar el recuento de palabras;
+4. historial y detalle de una revisión;
+5. aplicar personaje, sustituirlo por trama y comprobar que no se anidan;
+6. cuarentena visible y descarte en dos pasos;
+7. exportación DOCX con diálogo simulado.
 
 ```bash
-pnpm e2e:install   # descarga Chromium de Playwright (una vez)
-pnpm e2e           # 6 pruebas
+pnpm e2e:install   # Chromium de Playwright (una vez)
+pnpm e2e
 python scripts/ci.py e2e
 ```
 
-Requisitos: pnpm 12 y Chromium de Playwright. No se usa `npm`/`npx`.
+## 2. E2E de escritorio (Tauri/WebDriver, Linux)
 
-## 3. Configuración
+`e2e-tauri/tauri.test.mjs` usa `tauri-driver` + `WebKitWebDriver` y la app real:
 
-- `playwright.config.ts` define `webServer` con `pnpm --dir ui dev`.
-- `reuseExistingServer` está activo fuera de CI.
-- Un trabajador, Chromium headless, trazas solo en fallo.
-- Los artefactos de `test-results/` y `playwright-report/` están ignorados.
+1. crea un proyecto temporal con la CLI;
+2. arranca la app con `WRITER_E2E_PROJECT` (hook de prueba);
+3. abre la primera escena;
+4. escribe `Texto E2E Tauri.`;
+5. guarda con `Ctrl+S`;
+6. verifica el archivo Markdown en disco y el título de la escena.
 
-## 4. Limitaciones
+```bash
+cargo install tauri-driver --version 2.0.6 --locked
+pnpm e2e:tauri
+python scripts/ci.py e2e-tauri
+```
 
-- La demo mantiene estado en memoria; recargar la página lo reinicia.
-- No se prueba el diálogo nativo de Tauri ni el filesystem real.
-- No hay E2E de Tauri todavía.
-- Chromium de Playwright se descarga fuera del repositorio.
+Requisitos: Linux, `WebKitWebDriver`, `tauri-driver`, X11
+(`GDK_BACKEND=x11`) y las dependencias de Tauri ya necesarias para compilar.
 
-## 5. Pendiente
+El hook `WRITER_E2E_PROJECT` solo se activa si la variable de entorno existe; en
+uso normal la app no abre ningún proyecto automáticamente.
 
-- E2E de escritorio con `tauri-driver` y WebdriverIO (Linux) o WebView2 (Windows).
-- Probar el flujo real de abrir proyecto, guardar, exportar y descartar cuarentena.
+## 3. Limitaciones
+
+- El E2E de navegador usa la demo en memoria; recargar reinicia el estado.
+- El E2E de Tauri es Linux-only y no cubre diálogos nativos ni Windows/macOS.
+- Chromium de Playwright y `tauri-driver` se instalan fuera del repositorio.
+- El E2E de escritorio no prueba DOCX, búsqueda ni cuarentena; esos flujos se
+  cubren en navegador.
+
+## 4. Pendiente
+
+- E2E de escritorio en Windows (WebView2) y macOS.
+- Un flujo de escritorio que abra un proyecto con el diálogo nativo.
+- Empaquetar y probar la app instalada, no solo el binario de `target/`.

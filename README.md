@@ -8,8 +8,8 @@ Este repositorio está en **Fase 2 (Interfaz, v0.2)** del plan. El motor y la CL
 (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el árbol,
 permite leer y **editar con autosave**, busca con FTS5, ofrece historial con
 reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
-tramas y comentarios, y se empaqueta en deb/rpm. El E2E de escritorio y AppImage
-son las siguientes tareas.
+tramas y comentarios, y se empaqueta en deb/rpm. AppImage, firma y las pruebas
+en Windows/macOS son las siguientes tareas.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -22,7 +22,7 @@ son las siguientes tareas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **En curso: árbol, autosave, conflictos, corpus, búsqueda FTS5, historial, DOCX, cuarentena, marcas, E2E de navegador y empaquetado deb/rpm; E2E Tauri, AppImage y firma pendientes** |
+| 2 | Interfaz Tauri (v0.2) | **Completada en local Linux: árbol, autosave, conflictos, corpus, búsqueda FTS5, historial, DOCX, cuarentena, marcas, toolbar, E2E de navegador y escritorio, deb/rpm. Pendiente externo: AppImage, firma, Windows/macOS y CI remoto** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
@@ -31,8 +31,8 @@ recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
 exportación Markdown e inyección de fallos. El conjunto Rust acumula 84 pruebas
 (33 unitarias, 26 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
 cáscara Tauri y 50 pruebas de UI (corpus Markdown, compatibilidad, autosave,
-búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Además, 6 flujos
-E2E de navegador con Playwright.
+búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Además, 7 flujos
+E2E de navegador con Playwright y 1 flujo E2E de escritorio con Tauri/WebDriver.
 
 ## Requisitos
 
@@ -126,7 +126,8 @@ pnpm dev            # Tauri + Vite
 pnpm typecheck      # comprobación TypeScript
 pnpm ui:test        # corpus Markdown, compatibilidad y autosave
 pnpm e2e:install    # Chromium de Playwright (una vez)
-pnpm e2e            # 6 flujos de la demo
+pnpm e2e            # 7 flujos de la demo
+pnpm e2e:tauri      # E2E real Linux (tauri-driver + WebKitWebDriver)
 pnpm ui:build       # build estático de la UI
 pnpm check          # Tauri build --no-bundle
 pnpm build          # binario + instaladores (deb/rpm en Linux)
@@ -147,8 +148,9 @@ pnpm build          # binario + instaladores (deb/rpm en Linux)
   diálogo nativo de destino. Contrato: [`docs/docx-v1.md`](docs/docx-v1.md).
 - Panel de **Cuarentena** con archivo, motivo, ruta original y descarte en dos
   pasos. Contrato: [`docs/cuarentena.md`](docs/cuarentena.md).
-- Toolbar de marcas sobre la selección: personaje, trama, comentario y quitar
-  marca. Sintaxis y reglas: [`docs/marcas-v1.md`](docs/marcas-v1.md).
+- Toolbar de formato (negrita, cursiva, tachado, H2, cita, listas, código),
+  marcas de personaje/trama/comentario y recuento de palabras en el editor.
+  Sintaxis de marcas: [`docs/marcas-v1.md`](docs/marcas-v1.md).
 - Autosave a los 900 ms y con `Ctrl+S` / `Cmd+S`; estados `guardado`,
   `cambios sin guardar`, `guardando`, `conflicto`, `recuperación`, `ocupado`,
   `error` y `solo lectura`.
@@ -283,8 +285,8 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   El informe se reemplaza de forma atómica y descartar nunca toca el original.
 - Descartar una copia de cuarentena no repara el archivo original; `verify`
   sigue mostrando el error.
-- El E2E es de navegador (Chromium, modo demo), no de Tauri; no ejercita
-  comandos ni escritura real.
+- El E2E de navegador usa la demo; el de escritorio es Linux-only y no prueba
+  diálogos nativos ni la app instalada.
 - El empaquetado genera deb/rpm en Linux; AppImage, firma y Windows/macOS quedan
   pendientes.
 
@@ -307,6 +309,7 @@ python scripts/ci.py todo
 python scripts/ci.py calidad
 python scripts/ci.py interfaz
 python scripts/ci.py e2e
+python scripts/ci.py e2e-tauri
 python scripts/ci.py empaquetado
 python scripts/ci.py producto
 python scripts/ci.py seguridad
@@ -384,13 +387,14 @@ comprobaciones de `docs/esquema-v1.md`. El verificador Rust reproduce los mismos
 
 ## CI
 
-Seis grupos de gates, ejecutables también en local con `python scripts/ci.py`:
+Siete grupos de gates, ejecutables también en local con `python scripts/ci.py`:
 
 | Grupo | Qué comprueba |
 |---|---|
 | `calidad` | `fmt`, `clippy -D warnings`, `cargo test --locked` en Windows, Linux y macOS |
 | `interfaz` | `pnpm install --frozen-lockfile`, tipos TS, corpus/autosave, build de Vite y `cargo check` de la cáscara Tauri |
-| `e2e` | Playwright sobre la demo: autosave, búsqueda, historial, marcas, cuarentena y DOCX |
+| `e2e` | Playwright sobre la demo: autosave persistente, búsqueda, formato, historial, marcas, cuarentena y DOCX |
+| `e2e-tauri` | Tauri/WebDriver en Linux: abrir proyecto, escribir, `Ctrl+S` y verificar el archivo |
 | `empaquetado` | `pnpm build` y verificación de estructura, permisos, lanzador, iconos y md5/digests de deb/rpm |
 | `producto` | esquema, autopruebas, determinismo de fixtures, 12 hallazgos esperados, presupuesto de 1.000 escenas, enlaces y CLI Rust |
 | `seguridad` | `cargo-deny` (advisories, licencias, bans, orígenes), `gitleaks` (historial y árbol) y `zizmor` (workflows) |

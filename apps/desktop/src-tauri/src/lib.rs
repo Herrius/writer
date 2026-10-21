@@ -384,6 +384,14 @@ fn descartar_cuarentena(ruta: String, archivo: String) -> Result<(), ErrorDto> {
         .map_err(error)
 }
 
+/// Solo se usa en E2E: permite abrir un proyecto por variable de entorno.
+#[tauri::command]
+fn proyecto_e2e() -> Option<String> {
+    std::env::var("WRITER_E2E_PROJECT")
+        .ok()
+        .filter(|ruta| !ruta.trim().is_empty())
+}
+
 #[tauri::command]
 fn escribir(
     ruta: String,
@@ -475,6 +483,7 @@ pub fn run() {
             exportar_docx,
             cuarentena,
             descartar_cuarentena,
+            proyecto_e2e,
             escribir
         ])
         .run(tauri::generate_context!())

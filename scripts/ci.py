@@ -7,6 +7,7 @@ Los grupos son:
   calidad    Rust: formato, lints y tests (los mismos flags que en CI).
   interfaz   pnpm: instalación reproducible, tipos TS, build de UI y cáscara Tauri.
   e2e        Playwright: flujos de demo en Chromium.
+  e2e-tauri  Tauri/WebDriver: flujo real de escritorio en Linux.
   empaquetado Tauri: binario e instaladores de la plataforma.
   producto   Características del software: esquema, fixtures, determinismo,
              hallazgos esperados del fixture roto, documentación y presupuesto.
@@ -564,6 +565,22 @@ def e2e() -> None:
     ejecutar(["pnpm", "e2e"])
 
 
+def e2e_tauri() -> None:
+    if not sys.platform.startswith("linux"):
+        print("E2E Tauri: omitido fuera de Linux")
+        return
+    if shutil.which("tauri-driver") is None:
+        raise Fallo(
+            "falta tauri-driver (cargo install tauri-driver --version 2.0.6 --locked)"
+        )
+    if shutil.which("WebKitWebDriver") is None:
+        raise Fallo("falta WebKitWebDriver")
+    if shutil.which("pnpm") is None:
+        raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
+    ejecutar(["pnpm", "install", "--frozen-lockfile"])
+    ejecutar(["pnpm", "e2e:tauri"])
+
+
 def empaquetado() -> None:
     if shutil.which("pnpm") is None:
         raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
@@ -575,6 +592,7 @@ GRUPOS = {
     "calidad": calidad,
     "interfaz": interfaz,
     "e2e": e2e,
+    "e2e-tauri": e2e_tauri,
     "empaquetado": empaquetado,
     "producto": producto,
     "seguridad": seguridad,

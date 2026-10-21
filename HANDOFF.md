@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 (Interfaz), sexta rebanada terminada.
-- **Siguiente tarea:** E2E de escritorio (Tauri/WebDriver), AppImage y firma.
+- **Fase actual:** Fase 2 (Interfaz) cerrada en local Linux.
+- **Siguiente tarea:** AppImage, firma/notarización y validación Windows/macOS.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -23,7 +23,10 @@ La Fase 2 tiene seis rebanadas verticales:
 3. búsqueda FTS5, línea de tiempo e historial con reversión;
 4. exportación DOCX básica desde CLI y UI;
 5. cuarentena visible y marcas propias (personajes, tramas, comentarios);
-6. **E2E de navegador con Playwright y empaquetado deb/rpm**.
+6. **E2E de navegador y escritorio, toolbar/recuento y empaquetado deb/rpm**.
+
+**La Fase 2 queda cerrada en local Linux.** Pendiente de validación externa:
+AppImage, firma/notarización, Windows/macOS y CI remoto.
 
 Estado actual de la UI:
 
@@ -38,8 +41,8 @@ Estado actual de la UI:
 - exportación DOCX con casilla de notas y diálogo nativo de destino;
 - panel de **Cuarentena** con motivo, ruta original y descarte en dos pasos; la
   ruta, el informe y las copias se validan contra enlaces simbólicos;
-- toolbar de marcas: personaje, trama, comentario y quitar marca; aplicar una
-  nueva sustituye la anterior y el comentario valida `|`/`]]`;
+- toolbar de formato y marcas, con recuento de palabras; aplicar una marca nueva
+  sustituye la anterior y el comentario valida `|`/`]]`;
 - historial por revisión: metadatos, contenido de cada archivo y reversión con
   confirmación;
 - el borrador sobrevive al cambio de pestaña y la reversión bloquea la edición
@@ -58,7 +61,8 @@ Estado actual de la UI:
   lectura para no perder contenido;
 - 50 pruebas de UI (17 de corpus, 5 de compatibilidad y 28 de autosave, búsqueda,
   historial, DOCX, cuarentena, marcas y regresiones);
-- 6 flujos E2E de navegador con Playwright;
+- 7 flujos E2E de navegador con Playwright y 1 flujo E2E de escritorio con
+  Tauri/WebDriver;
 - empaquetado deb/rpm generado y verificado en Linux;
 - 2 pruebas de la cáscara Tauri;
 - gate `python scripts/ci.py interfaz` en verde, además de `e2e` y
@@ -191,7 +195,7 @@ En `apps/desktop/src-tauri/src/lib.rs`:
 - **Cuarentena** en el panel: copias de archivos inválidos, con descarte en dos
   pasos; los originales no se tocan.
 - Editor Tiptap editable con el esquema de `ui/src/editor/extensions.ts` y
-  toolbar para marcar personajes, tramas y comentarios.
+  toolbar de formato, marcas y recuento de palabras.
 - Autosave con debounce y cola serializada (si llegan cambios mientras se
   guarda, se drenan antes de continuar).
 - Cambiar de documento o abrir otro proyecto espera al guardado pendiente.
@@ -231,7 +235,8 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 ```text
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
-python scripts/ci.py e2e          OK (6/6, Chromium)
+python scripts/ci.py e2e          OK (7/7, Chromium)
+python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
 cargo test --workspace --all-targets --locked   84/84
@@ -258,16 +263,15 @@ sin inspección visual.
 
 ### Siguiente tarea inmediata
 
-1. **E2E de escritorio**: `tauri-driver`/WebdriverIO (Linux) o WebView2 (Windows)
-   para abrir proyecto, editar, guardar, exportar y descartar cuarentena reales.
-2. **AppImage y firma**: instalar `linuxdeploy`, añadir `appimage` al target Linux
+1. **AppImage y firma**: instalar `linuxdeploy`, añadir `appimage` al target Linux
    y definir firma/notarización.
+2. **Windows/macOS**: compilar y probar E2E/paquetes en esas plataformas.
 
 ### Resto de Fase 2
 
-- Toolbar de formato y recuento de palabras.
-- Integrar `interfaz`, `e2e` y `empaquetado` en CI remoto (hoy no hay `.github/`).
-- Probar en Windows y macOS.
+- Integrar `interfaz`, `e2e`, `e2e-tauri` y `empaquetado` en CI remoto (hoy no
+  hay `.github/`).
+- Probar visualmente la app instalada y la toolbar de formato.
 
 ## 8. Pendientes de publicación / entorno
 
@@ -284,6 +288,8 @@ sin inspección visual.
 - Los instaladores quedan en `apps/desktop/src-tauri/target/release/bundle/`
   (ignorado). Linux genera deb/rpm; AppImage requiere `linuxdeploy`.
 - Chromium de Playwright se instala fuera del repo con `pnpm e2e:install`.
+- El E2E de Tauri requiere `tauri-driver` 2.0.6 y `WebKitWebDriver` en Linux;
+  no se versionan.
 
 ## 9. Limitaciones conocidas
 
@@ -307,12 +313,11 @@ sin inspección visual.
 - Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;
   es correcto para fixtures y proyectos de solo lectura, no para uso intensivo
   con miles de escenas.
-- Sin toolbar: el formato se introduce con los atajos Markdown de StarterKit.
-- El E2E es de navegador, no de Tauri; no ejercita comandos ni escritura real.
-- AppImage, firma, notarización y updater quedan pendientes; Windows/macOS no se
-  probaron en este entorno.
-- La toolbar solo cubre marcas; negrita, cursiva y listas se introducen con los
-  atajos Markdown de StarterKit.
+- La toolbar cubre formato básico (negrita, cursiva, tachado, H2, cita, listas,
+  código) y marcas; no hay diálogo de enlace.
+- El E2E de escritorio es Linux-only y no prueba diálogos nativos ni la app
+  instalada; AppImage, firma, notarización y updater quedan pendientes.
+- Windows/macOS no se probaron en este entorno.
 - Las marcas no se anidan, el comentario no admite `|` ni `]]` y el texto marcado
   no admite `]]`; los ULID deben empezar por `0`–`7`. El DOCX limpia solo prosa y
   conserva código y escapado.
@@ -333,6 +338,7 @@ pnpm typecheck
 pnpm ui:test
 pnpm e2e:install
 pnpm e2e
+pnpm e2e:tauri
 pnpm ui:build
 pnpm build
 
@@ -343,6 +349,7 @@ cargo test --workspace --all-targets --locked
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 python scripts/ci.py interfaz
 python scripts/ci.py e2e
+python scripts/ci.py e2e-tauri
 python scripts/ci.py empaquetado
 
 # App de escritorio

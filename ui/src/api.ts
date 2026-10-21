@@ -281,6 +281,13 @@ export async function descartarCuarentena(ruta: string, archivo: string): Promis
   return invoke<void>('descartar_cuarentena', { ruta, archivo });
 }
 
+export async function proyectoE2e(): Promise<string | null> {
+  if (!esTauri) {
+    return null;
+  }
+  return invoke<string | null>('proyecto_e2e');
+}
+
 export async function escribir(
   ruta: string,
   objetivo: string,
