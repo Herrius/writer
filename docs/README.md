@@ -40,7 +40,8 @@
 - [`iteraciones/10-fase-2.md`](iteraciones/10-fase-2.md) — correcciones de los
   hallazgos de la QA independiente.
 - [`revisiones/README.md`](revisiones/README.md) — pipeline secuencial de
-  revisión por roles y registro de la Fase 2.
+  revisión por roles y registro de la Fase 2. Incluye el informe QA que bloqueó
+  la primera congelación y el acta r2 con las correcciones.
 
 Pendiente por fase:
 

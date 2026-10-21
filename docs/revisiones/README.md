@@ -58,7 +58,9 @@ congelación es `fase-2-00-congelado.md`.
 | Rol | Informe | Decisión |
 |---|---|---|
 | Congelación | [`fase-2-00-congelado.md`](fase-2-00-congelado.md) | — |
-| QA independiente | pendiente | — |
+| QA independiente (r1) | [`fase-2-qa-2026-10-21.md`](fase-2-qa-2026-10-21.md) | bloqueado |
+| Congelación r2 | [`fase-2-00-congelado-r2.md`](fase-2-00-congelado-r2.md) | — |
+| QA independiente (r2) | pendiente | — |
 | Security reviewer | pendiente | — |
 | Release engineer | pendiente | — |
 | UX / accesibilidad / rendimiento | pendiente | — |
