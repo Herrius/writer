@@ -23,7 +23,7 @@ pruebas en Windows/macOS son las tareas externas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **QA r3 aprobada con observaciones; correcciones de seguridad SEC-01/SEC-02 aplicadas y pendientes de repetir seguridad, release, UX y aceptación** |
+| 2 | Interfaz Tauri (v0.2) | **QA y seguridad aprobadas con observaciones; pendiente release, UX y aceptación del product owner** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 

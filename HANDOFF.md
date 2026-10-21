@@ -2,10 +2,9 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 con QA r3 aprobada y las correcciones de seguridad
-  SEC-01/SEC-02 aplicadas; pendiente repetir seguridad.
-- **Siguiente tarea:** Security reviewer sobre el nuevo commit congelado;
-  después release, UX y aceptación del product owner.
+- **Fase actual:** Fase 2 con QA r3 y seguridad r3 aprobadas con observaciones;
+  pendiente release, UX y aceptación del product owner.
+- **Siguiente tarea:** Release engineer sobre la r6; después UX y product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
