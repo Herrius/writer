@@ -248,6 +248,17 @@ export function Inicio({
     if (fondo) {
       fondo.inert = true;
     }
+    return () => {
+      if (fondo) {
+        fondo.inert = false;
+      }
+    };
+  }, [modalAbierto]);
+
+  useEffect(() => {
+    if (!modalAbierto) {
+      return;
+    }
     const manejarTeclado = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
         if (exploradorAbierto) {
@@ -295,9 +306,6 @@ export function Inicio({
     document.addEventListener('keydown', manejarTeclado);
     return () => {
       document.removeEventListener('keydown', manejarTeclado);
-      if (fondo) {
-        fondo.inert = false;
-      }
     };
   }, [modalAbierto, guardando, exploradorAbierto, exploradorCargando]);
 

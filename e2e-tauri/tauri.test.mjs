@@ -180,7 +180,7 @@ try {
       throw new Error('falta WRITER_E2E_CREATE_DIR para el escenario de creación');
     }
     await esperarPanel(navegador);
-    await (await navegador.$('.crear-tarjeta')).click();
+    await navegador.execute(() => document.querySelector('.crear-tarjeta')?.click());
     const dialogo = await navegador.$('[role="dialog"]');
     await dialogo.waitForDisplayed({ timeout: 5000 });
 
@@ -188,27 +188,56 @@ try {
     await titulo.click();
     await navegador.keys(['Control', 'a']);
     await navegador.keys('Proyecto GUI');
-    await (await navegador.$('.modal-ruta button')).click();
+    const examinar = await navegador.$('.modal-ruta button');
+    await examinar.click();
 
-    const ruta = await navegador.$('.explorador-cabecera input');
-    await ruta.waitForDisplayed({ timeout: 10_000 });
-    await ruta.click();
-    await navegador.keys(['Control', 'a']);
-    await navegador.keys(crearDir);
-    await navegador.keys(['Enter']);
-    await navegador.waitUntil(
-      async () => (await (await navegador.$('.explorador-ruta')).getText()) === crearDir,
-      {
-        timeout: 10_000,
-        interval: 100,
-        timeoutMsg: 'el explorador no navegó a la carpeta temporal',
-      },
-    );
-    await navegador.saveScreenshot('/tmp/opencode/iteracion-17-explorador.png').catch(() => {});
-    await (await navegador.$('.modal-proyecto-pie .boton-primario')).click();
-    const guardarAbrir = await navegador.$('button=Guardar y abrir');
-    await guardarAbrir.waitForDisplayed({ timeout: 5000 });
-    await guardarAbrir.click();
+    let carpetaPulsada = false;
+    for (let intento = 0; intento < 6 && !carpetaPulsada; intento += 1) {
+      try {
+        const carpetas = await navegador.$$('.explorador-directorio');
+        if (carpetas.length > 0) {
+          await carpetas[0].click();
+          carpetaPulsada = true;
+        }
+      } catch {
+        await navegador.pause(200);
+      }
+    }
+    if (!carpetaPulsada) {
+      throw new Error('no se pudo entrar en la carpeta del explorador');
+    }
+    await navegador.pause(500);
+
+    let carpetaUsada = false;
+    for (let intento = 0; intento < 6 && !carpetaUsada; intento += 1) {
+      try {
+        const usar = await navegador.$('.modal-proyecto-pie .boton-primario');
+        await usar.waitForEnabled({ timeout: 1500 });
+        await usar.click();
+        carpetaUsada = true;
+      } catch {
+        await navegador.pause(200);
+      }
+    }
+    if (!carpetaUsada) {
+      throw new Error('no se pudo usar la carpeta del explorador');
+    }
+
+    let formularioVisible = false;
+    for (let intento = 0; intento < 10 && !formularioVisible; intento += 1) {
+      try {
+        const guardarAbrir = await navegador.$('.modal-proyecto-pie button[type="submit"]');
+        formularioVisible = await guardarAbrir.isDisplayed();
+        if (formularioVisible) {
+          await guardarAbrir.click();
+        }
+      } catch {
+        await navegador.pause(200);
+      }
+    }
+    if (!formularioVisible) {
+      throw new Error('no se volvió al formulario tras elegir la carpeta');
+    }
 
     await esperarProyecto(navegador);
     const raiz = path.join(crearDir, 'proyecto-gui');

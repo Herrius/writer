@@ -262,7 +262,10 @@ fn listar_directorios(ruta: Option<String>) -> Result<ListadoDirectoriosDto, Err
         .unwrap_or_else(directorio_inicial);
     let real = std::fs::canonicalize(&solicitada).map_err(|fallo| ErrorDto {
         tipo: TipoError::Io,
-        mensaje: format!("no se pudo abrir la carpeta {}: {fallo}", solicitada.display()),
+        mensaje: format!(
+            "no se pudo abrir la carpeta {}: {fallo}",
+            solicitada.display()
+        ),
     })?;
     let metadatos = std::fs::metadata(&real).map_err(|fallo| ErrorDto {
         tipo: TipoError::Io,
@@ -309,7 +312,7 @@ fn listar_directorios(ruta: Option<String>) -> Result<ListadoDirectoriosDto, Err
             break;
         }
     }
-    directorios.sort_by(|a, b| a.nombre.to_lowercase().cmp(&b.nombre.to_lowercase()));
+    directorios.sort_by_key(|directorio| directorio.nombre.to_lowercase());
     let padre = real
         .parent()
         .filter(|padre| *padre != real.as_path())
@@ -751,10 +754,8 @@ mod tests {
             Some(raiz.to_str().expect("ruta utf-8"))
         );
 
-        let error = listar_directorios(Some(
-            raiz.join("archivo.txt").display().to_string(),
-        ))
-        .expect_err("un archivo no es carpeta");
+        let error = listar_directorios(Some(raiz.join("archivo.txt").display().to_string()))
+            .expect_err("un archivo no es carpeta");
         assert_eq!(error.tipo, TipoError::Entrada);
     }
 

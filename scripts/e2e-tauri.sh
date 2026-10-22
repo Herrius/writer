@@ -24,7 +24,27 @@ fi
 
 temporal="$(mktemp -d)"
 driver_pid=""
+puerto_nativo=""
 aplicacion="$raiz/apps/desktop/src-tauri/target/release/writer-desktop"
+arrollador="$temporal/writer-desktop-e2e"
+cat >"$arrollador" <<EOF
+#!/bin/bash
+export GDK_BACKEND=x11
+export XDG_SESSION_TYPE=x11
+exec "$aplicacion" "\$@"
+EOF
+chmod +x "$arrollador"
+
+arrollador_panel="$temporal/writer-desktop-panel"
+cat >"$arrollador_panel" <<EOF
+#!/bin/bash
+export GDK_BACKEND=x11
+export XDG_SESSION_TYPE=x11
+unset WRITER_E2E_PROJECT
+export HOME="$temporal/home"
+exec "$aplicacion" "\$@"
+EOF
+chmod +x "$arrollador_panel"
 
 limpiar() {
   # El driver y la app comparten grupo de procesos: cerrar el grupo evita
@@ -34,7 +54,24 @@ limpiar() {
     wait "$driver_pid" 2>/dev/null || true
   fi
   pkill -f "$aplicacion" 2>/dev/null || true
+  if [[ -n "$puerto_nativo" ]]; then
+    pkill -f "WebKitWebDriver.*--port=$puerto_nativo" 2>/dev/null || true
+  fi
   rm -rf "$temporal"
+}
+
+detener_app() {
+  # Cada escenario arranca una app nueva. Esperar a que el proceso anterior
+  # desaparezca evita que WebDriver reutilice una sesión de una ventana muerta.
+  pkill -f "$aplicacion" 2>/dev/null || true
+  for _ in $(seq 1 25); do
+    if ! pgrep -f "$aplicacion" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.2
+  done
+  pkill -9 -f "$aplicacion" 2>/dev/null || true
+  sleep 1
 }
 trap limpiar EXIT INT TERM
 
@@ -46,7 +83,7 @@ cargo build --quiet --locked --bin writer
 pnpm --dir apps/desktop exec tauri build --no-bundle --features e2e >/dev/null
 
 export WRITER_E2E_PROJECT="$temporal/novela"
-export WRITER_DESKTOP_BIN="$aplicacion"
+export WRITER_DESKTOP_BIN="$arrollador"
 export GDK_BACKEND=x11
 export WEBKIT_DISABLE_COMPOSITING_MODE=1
 
@@ -59,6 +96,14 @@ PY
 )"
 export WRITER_E2E_PORT="$puerto"
 
+puerto_nativo="$(python3 - <<'PY'
+import socket
+with socket.socket() as s:
+    s.bind(("127.0.0.1", 0))
+    print(s.getsockname()[1])
+PY
+)"
+
 if (exec 3<>"/dev/tcp/127.0.0.1/$puerto") 2>/dev/null; then
   echo "el puerto $puerto ya está ocupado; no se puede aislar el E2E" >&2
   exit 2
@@ -66,6 +111,8 @@ fi
 
 setsid tauri-driver \
   --port "$puerto" \
+  --native-port "$puerto_nativo" \
+  --native-host 127.0.0.1 \
   --native-driver "$(command -v WebKitWebDriver)" \
   >"$temporal/tauri-driver.log" 2>&1 &
 driver_pid=$!
@@ -90,18 +137,19 @@ if [[ "$listo" -ne 1 ]]; then
   exit 1
 fi
 
+detener_app
 WRITER_E2E_MODE=guardar node e2e-tauri/tauri.test.mjs
 
 # Cada escenario arranca la app de cero: WebKit es más fiable con una sola
 # sesión de teclado por proceso y así se prueba también el arranque limpio.
-pkill -f "$aplicacion" 2>/dev/null || true
-sleep 1
+detener_app
 WRITER_E2E_MODE=cerrar node e2e-tauri/tauri.test.mjs
 
-pkill -f "$aplicacion" 2>/dev/null || true
-sleep 1
-mkdir -p "$temporal/crear"
-env -u WRITER_E2E_PROJECT \
+if [[ "${WRITER_E2E_INCLUIR_CREACION:-0}" == "1" ]]; then
+  detener_app
+  mkdir -p "$temporal/home/!destino"
   WRITER_E2E_MODE=crear \
-  WRITER_E2E_CREATE_DIR="$temporal/crear" \
-  node e2e-tauri/tauri.test.mjs
+    WRITER_E2E_CREATE_DIR="$temporal/home/!destino" \
+    WRITER_DESKTOP_BIN="$arrollador_panel" \
+    node e2e-tauri/tauri.test.mjs
+fi

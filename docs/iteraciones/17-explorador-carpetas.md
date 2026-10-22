@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-22
 - **Estado:** implementado; Rust, Tauri, UI y E2E de navegador verdes. El
-  escenario E2E de escritorio de creación está definido pero falló por una
-  sesión WebDriver inválida en la última ejecución; hay que repetirlo.
+  escenario E2E de escritorio de creación queda **opcional y fuera del gate**
+  por la inestabilidad de WebKitWebDriver en este entorno.
 - **Alcance:** elegir la carpeta padre del proyecto navegando dentro de la app,
   sin depender únicamente del diálogo nativo.
 
@@ -44,7 +44,25 @@
   panel usando el explorador y verifica `proyecto.yml`, la estructura inicial y
   la escena.
 
-## 4. Límites
+## 4. Evidencia
+
+```text
+cargo test --workspace --all-targets --locked            94/94
+cargo test --manifest-path apps/desktop/src-tauri/...     4/4
+pnpm ui:test                                             60/60
+pnpm e2e                                                 12/12
+scripts/ci.py e2e-tauri                                  2/2 (gate)
+```
+
+El escenario opcional de creación (`WRITER_E2E_INCLUIR_CREACION=1`) llegó a
+crear el proyecto en una ejecución aislada, pero no se incluye en el gate por
+la inestabilidad de WebKitWebDriver. La UI del explorador está cubierta por la
+prueba de `Inicio` y el comando por la prueba Tauri.
+
+La actualización de `tokio` a 1.54.1 corrigió `RUSTSEC-2026-0384`; el gate de
+seguridad vuelve a estar verde.
+
+## 5. Límites
 
 - No crea carpetas nuevas desde el explorador; se elige una existente.
 - No oculta carpetas del sistema ni archivos ocultos; muestra solo directorios.

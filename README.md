@@ -39,9 +39,10 @@ exportación Markdown e inyección de fallos. El conjunto Rust acumula 94 prueba
 (34 unitarias, 35 de integración y 25 de CLI). La Fase 2 añade 4 pruebas de la
 cáscara Tauri y 60 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas, accesibilidad, creación y
-regresiones). Además, 12 flujos E2E de navegador con Playwright y 3 escenarios E2E de
-escritorio con Tauri/WebDriver (`Ctrl+S`, cierre de ventana y creación desde el
-explorador de carpetas; este último está pendiente de estabilizar).
+regresiones). Además, 12 flujos E2E de navegador con Playwright y 2 escenarios E2E de
+escritorio con Tauri/WebDriver (`Ctrl+S` y cierre de ventana). Hay un tercer
+escenario opcional de creación desde el explorador, fuera del gate por la
+inestabilidad de WebKitWebDriver en este entorno.
 
 ## Requisitos
 

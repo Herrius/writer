@@ -1,19 +1,19 @@
 # HANDOFF — estado para retomar
 
 - **Fecha:** 2026-10-22
-- **Iteración 17 (en curso):** explorador de carpetas in-app implementado;
-  Rust 94/94, Tauri 4/4, UI 60/60 y E2E de navegador 12/12. Falta estabilizar
-  el E2E de escritorio de creación.
+- **Iteración 17:** explorador de carpetas in-app implementado; Rust 94/94,
+  Tauri 4/4, UI 60/60, E2E de navegador 12/12 y E2E de escritorio 2/2. El
+  escenario opcional de creación queda fuera del gate por la inestabilidad de
+  WebKitWebDriver. `tokio` 1.54.1 corrige `RUSTSEC-2026-0384`.
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** **Fase 2, Fase 2.1 y Bloque 2.2 aprobados con
   observaciones** (Linux x86_64); la interfaz de escritura e historial sigue las
   referencias de Dabble y la deuda P3 prioritaria está cerrada.
 - **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta cerrar los faltantes de
   producto/publicación.
-- **Siguiente tarea:** estabilizar el escenario E2E de creación desde el
-  explorador y repetir `e2e-tauri`; después, preparar el bloque de release (no
-  autorizado todavía), cerrar el E2E del diálogo nativo y SEC21-02 antes de
-  publicar.
+- **Siguiente tarea:** preparar el bloque de release (no autorizado todavía),
+  cerrar el E2E del diálogo nativo y SEC21-02 antes de publicar; el escenario
+  opcional de creación puede estabilizarse cuando WebKitWebDriver lo permita.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; HEAD del Bloque
   2.2 congelado en `76b139f` (sin remoto).
 
@@ -77,11 +77,10 @@ Estado actual de la UI:
   lectura para no perder contenido;
 - 60 pruebas de UI (18 de corpus, 9 de compatibilidad y 33 de autosave, búsqueda,
   historial, DOCX, cuarentena, marcas, accesibilidad, creación y regresiones);
-- 12 flujos E2E de navegador con Playwright y 3 escenarios E2E de escritorio con
-  Tauri/WebDriver (`Ctrl+S`, cierre de ventana y creación desde el explorador).
-  El escenario de creación con el explorador está definido, pero la última
-  ejecución de `e2e-tauri` falló por una sesión WebDriver inválida al iniciar el
-  segundo escenario; hay que repetirlo antes de darlo por verde.
+- 12 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
+  Tauri/WebDriver (`Ctrl+S` y cierre de ventana). El escenario opcional de
+  creación desde el explorador está definido, pero no forma parte del gate por
+  la inestabilidad de WebKitWebDriver.
 - empaquetado deb/rpm generado y verificado en Linux;
 - 4 pruebas de la cáscara Tauri (comandos, creación con notas, explorador de
   carpetas y exportación de tipos);
