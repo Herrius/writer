@@ -93,6 +93,39 @@ test('muestra y descarta una copia de cuarentena', async ({ page }) => {
   await expect(page.getByText('Cuarentena (1)')).toHaveCount(0);
 });
 
+test('permite saltar al contenido y navegar el árbol con flechas', async ({ page }) => {
+  await abrirDemo(page);
+  await page.keyboard.press('Tab');
+  const salto = page.getByRole('link', { name: 'Saltar al contenido' });
+  await expect(salto).toBeFocused();
+  await expect(salto).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#panel-principal')).toBeFocused();
+
+  const activo = page.locator('.documento.activo');
+  await expect(activo).toHaveAttribute('tabindex', '0');
+  await expect(page.locator('.documento:not(.activo)').first()).toHaveAttribute(
+    'tabindex',
+    '-1',
+  );
+  await activo.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.documento').nth(1)).toBeFocused();
+});
+
+test('muestra un anillo de foco en el editor', async ({ page }) => {
+  await abrirDemo(page);
+  const editor = page.locator('.ProseMirror');
+  await editor.focus();
+  await page.keyboard.press('Shift');
+  const estilos = await editor.evaluate((elemento) => {
+    const calculado = getComputedStyle(elemento);
+    return { estilo: calculado.outlineStyle, ancho: calculado.outlineWidth };
+  });
+  expect(estilos.estilo).not.toBe('none');
+  expect(parseFloat(estilos.ancho)).toBeGreaterThan(0);
+});
+
 test('exporta DOCX desde la demo', async ({ page }) => {
   page.on('dialog', async (dialogo) => {
     await dialogo.accept('/tmp/writer-e2e.docx');

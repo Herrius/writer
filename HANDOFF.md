@@ -2,9 +2,10 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 con QA, seguridad y release aprobados con
-  observaciones; pendiente UX y aceptación del product owner.
-- **Siguiente tarea:** UX/accesibilidad/rendimiento; después product owner.
+- **Fase actual:** Fase 2 con QA, seguridad y release aprobados; correcciones
+  de UX aplicadas; pendiente repetir UX y aceptación del product owner.
+- **Siguiente tarea:** UX/accesibilidad/rendimiento sobre el nuevo commit;
+  después product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -63,9 +64,9 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 55 pruebas de UI (18 de corpus, 9 de compatibilidad y 28 de autosave, búsqueda,
-  historial, DOCX, cuarentena, marcas y regresiones);
-- 7 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
+- 57 pruebas de UI (18 de corpus, 9 de compatibilidad y 30 de autosave, búsqueda,
+  historial, DOCX, cuarentena, marcas, accesibilidad y regresiones);
+- 9 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
   Tauri/WebDriver (`Ctrl+S` y cierre de ventana);
 - empaquetado deb/rpm generado y verificado en Linux;
 - 2 pruebas de la cáscara Tauri;
@@ -239,12 +240,12 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 ```text
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
-python scripts/ci.py e2e          OK (7/7, Chromium)
+python scripts/ci.py e2e          OK (9/9, Chromium)
 python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
 cargo test --workspace --all-targets --locked   92/92
-pnpm ui:test                      55/55
+pnpm ui:test                      57/57
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK

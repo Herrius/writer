@@ -8,7 +8,7 @@
 ## 1. E2E de navegador (Playwright)
 
 Playwright arranca Vite en `http://127.0.0.1:1420` y prueba la UI en **modo
-demo** (sin Tauri). Cubre 7 flujos:
+demo** (sin Tauri). Cubre 9 flujos:
 
 1. abrir la demo, editar, esperar el autosave, cambiar de documento y volver
    para comprobar el texto exacto;
@@ -18,7 +18,10 @@ demo** (sin Tauri). Cubre 7 flujos:
 4. historial y detalle de una revisión;
 5. aplicar personaje, sustituirlo por trama y comprobar que no se anidan;
 6. cuarentena visible y descarte en dos pasos;
-7. exportación DOCX con diálogo simulado.
+7. enlace «Saltar al contenido» y navegación del árbol con flechas y
+   `tabindex` itinerante;
+8. anillo de foco visible en el editor;
+9. exportación DOCX con diálogo simulado.
 
 ```bash
 pnpm e2e:install   # Chromium de Playwright (una vez)

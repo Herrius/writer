@@ -78,6 +78,20 @@ describe('EditorMarkdown con marcas', () => {
     expect(screen.getByText('1 palabras')).toBeTruthy();
   });
 
+  it('no cuenta la sintaxis de las marcas en el recuento', async () => {
+    render(
+      <EditorMarkdown
+        markdown={`[[personaje:${personajes[0].id}|Marta]] llega al faro.`}
+        editable
+        personajes={personajes}
+        tramas={tramas}
+        onCambio={() => {}}
+      />,
+    );
+    await screen.findByRole('toolbar', { name: 'Marcas del texto' });
+    expect(screen.getByText('4 palabras')).toBeTruthy();
+  });
+
   it('resuelve el título de la marca y avisa de referencias desconocidas', async () => {
     render(
       <EditorMarkdown

@@ -208,7 +208,7 @@ export async function historial(ruta: string): Promise<RevisionDto[]> {
   if (!esTauri) {
     const rutas = demoDocumentos.map((documento) => documento.ruta);
     const revisiones: RevisionDto[] = [];
-    for (let revision = demoProyecto.revision; revision >= 1 && revisiones.length < 5; revision -= 1) {
+    for (let revision = 1; revision <= demoProyecto.revision && revisiones.length < 5; revision += 1) {
       revisiones.push({
         revision,
         opId: `demo-op-${revision}`,

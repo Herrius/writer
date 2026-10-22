@@ -271,6 +271,9 @@ describe('autosave de la interfaz', () => {
     await screen.findByText('No se pudo guardar.');
     await waitFor(() => expect(estadoGuardado()).toBe('conflicto'));
     expect(editor.disabled).toBe(true);
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute('role')).toBe('alert'),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Recargar desde disco' }));
     expect(estadoGuardado()).toBe('conflicto');
@@ -293,6 +296,26 @@ describe('autosave de la interfaz', () => {
     expect(editor.disabled).toBe(true);
     expect(screen.getByText(/Markdown que el editor no conserva/)).toBeTruthy();
     expect(screen.getByText(/imágenes/)).toBeTruthy();
+  });
+
+  it('agrupa las escenas por libro y capítulo sin fundir las categorías', async () => {
+    const segunda: DocumentoDto = {
+      ...documento,
+      id: '01DOCUMENTO000000000000001',
+      ruta: 'manuscrito/02-libro/01-capitulo/001-dos.md',
+      titulo: 'Dos',
+    };
+    abrirMock.mockResolvedValue({ ...proyecto, escenas: 2 });
+    listarMock.mockResolvedValue([documento, segunda]);
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ver demo' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Libro 1 / Capítulo 1' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Libro 2 / Capítulo 1' }),
+    ).toBeTruthy();
   });
 
   it('busca en el proyecto y muestra el fragmento resaltado', async () => {

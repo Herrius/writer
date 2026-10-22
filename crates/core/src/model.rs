@@ -609,11 +609,43 @@ pub fn leer_plano(ruta: &Path) -> Result<(Campos, Vec<String>)> {
     Ok((campos, lectura.avisos))
 }
 
-/// Cuenta palabras como secuencias maximales de caracteres alfanuméricos.
+/// Devuelve el texto visible de las marcas propias, sin su sintaxis.
+///
+/// `[[personaje:ULID|Marta]]` cuenta como «Marta»; una construcción que no sea
+/// una marca válida se conserva literal.
+fn texto_sin_marcas(cuerpo: &str) -> String {
+    let mut salida = String::with_capacity(cuerpo.len());
+    let mut resto = cuerpo;
+    while let Some(inicio) = resto.find("[[") {
+        salida.push_str(&resto[..inicio]);
+        let tras = &resto[inicio + 2..];
+        let Some(fin) = tras.find("]]") else {
+            salida.push_str(&resto[inicio..]);
+            return salida;
+        };
+        let interior = &tras[..fin];
+        let es_marca = interior.split_once('|').is_some_and(|(prefijo, _)| {
+            prefijo.starts_with("personaje:")
+                || prefijo.starts_with("trama:")
+                || prefijo.starts_with("comentario:")
+        });
+        if let Some((_, contenido)) = interior.split_once('|').filter(|_| es_marca) {
+            salida.push_str(contenido);
+        } else {
+            salida.push_str(&resto[inicio..inicio + 2 + fin + 2]);
+        }
+        resto = &tras[fin + 2..];
+    }
+    salida.push_str(resto);
+    salida
+}
+
+/// Cuenta palabras visibles como secuencias maximales de caracteres alfanuméricos.
 pub fn contar_palabras(cuerpo: &str) -> i64 {
+    let visible = texto_sin_marcas(cuerpo);
     let mut total = 0_i64;
     let mut dentro = false;
-    for caracter in cuerpo.chars() {
+    for caracter in visible.chars() {
         if caracter.is_alphanumeric() {
             if !dentro {
                 total += 1;
@@ -857,5 +889,13 @@ mod tests {
     fn palabras() {
         assert_eq!(contar_palabras("Hola, mundo.  ¿Qué tal?"), 4);
         assert_eq!(contar_palabras(""), 0);
+        assert_eq!(
+            contar_palabras("[[personaje:01KDVDNBYG20KW71NVRK6P2FHG|Marta]] llega."),
+            2
+        );
+        assert_eq!(
+            contar_palabras("[[comentario:revisar|Marta]] y [[otra|cosa]]"),
+            4
+        );
     }
 }

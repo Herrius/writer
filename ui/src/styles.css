@@ -1201,3 +1201,92 @@ button.guardar:disabled {
     max-height: 35vh;
   }
 }
+
+/* Accesibilidad y legibilidad (QA UX r1). */
+.saltar-contenido {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.4rem;
+  background: var(--papel);
+  color: var(--rojo);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.saltar-contenido:focus {
+  top: 1rem;
+}
+
+.editor-content .ProseMirror:focus-visible {
+  outline: 3px solid var(--rojo);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.panel > .banner-error {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 0.4rem 1rem rgba(50, 43, 35, 0.12);
+}
+
+.editor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--papel);
+}
+
+.resultado-tipo,
+.resultado-ruta,
+.documento-meta,
+.detalle-cabecera p,
+.revision-meta,
+.statusbar,
+.modo,
+.nota-modo {
+  font-size: 0.75rem;
+}
+
+.modo-demo {
+  color: #6d4c15;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Texto auxiliar legible: mínimo ~12 px (UX-04). */
+.marca span,
+.proyecto-cabecera span,
+.resultado-tipo,
+.resultado-ruta,
+.resultado-fragmento,
+.sidebar-titulo,
+.grupo h3,
+.documento-meta,
+.cuarentena-datos span,
+.kicker,
+.chips span,
+.revision-meta,
+.revision-rutas,
+.detalle-cabecera p,
+.editor-contador,
+.editor-error,
+.statusbar,
+.nota-modo,
+.vacio,
+.diagnostico,
+.banner-error,
+.banner-info {
+  font-size: 0.78rem;
+}

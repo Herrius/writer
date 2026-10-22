@@ -2,5 +2,10 @@
   "identifier": "default",
   "description": "Capacidades de la ventana principal de writer",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-destroy", "dialog:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-destroy",
+    "core:webview:allow-set-webview-zoom",
+    "dialog:default"
+  ]
 }

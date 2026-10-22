@@ -43,6 +43,8 @@
   QA r2: permiso de cierre y títulos de marcas con decoraciones.
 - [`iteraciones/12-fase-2.md`](iteraciones/12-fase-2.md) — correcciones de
   seguridad: confinamiento de rutas y `.escritor` real.
+- [`iteraciones/13-fase-2.md`](iteraciones/13-fase-2.md) — correcciones de UX,
+  accesibilidad y rendimiento.
 - [`revisiones/README.md`](revisiones/README.md) — pipeline secuencial de
   revisión por roles y registro de la Fase 2. Incluye el informe QA que bloqueó
   la primera congelación y el acta r2 con las correcciones.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   abrirProyecto,
   buscar as buscarEnProyecto,
@@ -52,34 +52,58 @@ type ConfirmacionReversion = {
 
 const RETARDO_AUTOGUARDADO = 900;
 
-function humanizar(carpeta: string): string {
-  const sinPrefijo = carpeta.replace(/^\d+-/, '').replace(/[-_]/g, ' ');
-  return sinPrefijo.charAt(0).toUpperCase() + sinPrefijo.slice(1);
+type GrupoDocumentos = {
+  clave: string;
+  etiqueta: string;
+  documentos: DocumentoDto[];
+};
+
+function etiquetaCarpeta(carpeta: string): string {
+  const coincidencia = /^(\d+)[-_](.+)$/.exec(carpeta);
+  const numero = coincidencia?.[1] ? Number(coincidencia[1]) : null;
+  const nombre = (coincidencia?.[2] ?? carpeta)
+    .replace(/[-_]/g, ' ')
+    .replace(/\bcapitulo\b/gi, 'capítulo')
+    .replace(/\blibro\b/gi, 'libro');
+  const capitalizada = nombre
+    .split(' ')
+    .filter(Boolean)
+    .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
+    .join(' ');
+  return numero === null ? capitalizada : `${capitalizada} ${numero}`;
 }
 
-function grupoEscena(documento: DocumentoDto): string {
+function grupoEscena(documento: DocumentoDto): { clave: string; etiqueta: string } {
   const partes = documento.ruta.split('/');
   if (partes.length < 4) {
-    return 'Sin clasificar';
+    return { clave: 'sin-clasificar', etiqueta: 'Sin clasificar' };
   }
-  return `${humanizar(partes[1])} / ${humanizar(partes[2])}`;
+  return {
+    clave: `${partes[1]}/${partes[2]}`,
+    etiqueta: `${etiquetaCarpeta(partes[1])} / ${etiquetaCarpeta(partes[2])}`,
+  };
 }
 
 function agrupar(
   documentos: DocumentoDto[],
   clave: (documento: DocumentoDto) => string,
-): Array<[string, DocumentoDto[]]> {
-  const mapa = new Map<string, DocumentoDto[]>();
+  etiqueta: (documento: DocumentoDto) => string,
+): GrupoDocumentos[] {
+  const mapa = new Map<string, GrupoDocumentos>();
   for (const documento of documentos) {
     const grupo = clave(documento);
-    const lista = mapa.get(grupo);
-    if (lista) {
-      lista.push(documento);
+    const existente = mapa.get(grupo);
+    if (existente) {
+      existente.documentos.push(documento);
     } else {
-      mapa.set(grupo, [documento]);
+      mapa.set(grupo, {
+        clave: grupo,
+        etiqueta: etiqueta(documento),
+        documentos: [documento],
+      });
     }
   }
-  return Array.from(mapa.entries());
+  return Array.from(mapa.values());
 }
 
 function etiquetaTipo(documento: DocumentoDto): string {
@@ -171,6 +195,7 @@ export default function App() {
   const [confirmarRecarga, setConfirmarRecarga] = useState(false);
 
   const [consulta, setConsulta] = useState('');
+  const [focoArbol, setFocoArbol] = useState<string | null>(null);
   const [resultados, setResultados] = useState<BusquedaDto[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
@@ -198,6 +223,7 @@ export default function App() {
   const detalleSeq = useRef(0);
   const busquedaSeq = useRef(0);
   const buscadorRef = useRef<HTMLInputElement | null>(null);
+  const bannerErrorRef = useRef<HTMLDivElement | null>(null);
   const proyectoRef = useRef<ProyectoDto | null>(null);
   const activoRef = useRef<DocumentoDto | null>(null);
   const puedeEditarRef = useRef(false);
@@ -239,9 +265,52 @@ export default function App() {
     () => documentos.filter((documento) => documento.tipo === 'nota'),
     [documentos],
   );
-  const gruposEscenas = useMemo(() => agrupar(escenas, grupoEscena), [escenas]);
+  const idArbolTabbable = focoArbol ?? activo?.id ?? documentos[0]?.id ?? null;
+
+  const moverFocoArbol = (documento: DocumentoDto, destino: 'siguiente' | 'anterior' | 'inicio' | 'fin') => {
+    const indice = documentos.findIndex((candidato) => candidato.id === documento.id);
+    if (indice < 0 || documentos.length === 0) {
+      return;
+    }
+    const siguienteIndice =
+      destino === 'inicio'
+        ? 0
+        : destino === 'fin'
+          ? documentos.length - 1
+          : destino === 'siguiente'
+            ? Math.min(documentos.length - 1, indice + 1)
+            : Math.max(0, indice - 1);
+    const siguiente = documentos[siguienteIndice];
+    setFocoArbol(siguiente.id);
+    window.setTimeout(() => document.getElementById(`doc-${siguiente.id}`)?.focus(), 0);
+  };
+
+  const manejarTeclaArbol = (evento: ReactKeyboardEvent, documento: DocumentoDto) => {
+    if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+      evento.preventDefault();
+      moverFocoArbol(documento, evento.key === 'ArrowDown' ? 'siguiente' : 'anterior');
+    } else if (evento.key === 'Home' || evento.key === 'End') {
+      evento.preventDefault();
+      moverFocoArbol(documento, evento.key === 'Home' ? 'inicio' : 'fin');
+    }
+  };
+
+  const gruposEscenas = useMemo(
+    () =>
+      agrupar(
+        escenas,
+        (documento) => grupoEscena(documento).clave,
+        (documento) => grupoEscena(documento).etiqueta,
+      ),
+    [escenas],
+  );
   const gruposNotas = useMemo(
-    () => agrupar(notas, (documento) => documento.clase ?? 'notas'),
+    () =>
+      agrupar(
+        notas,
+        (documento) => documento.clase ?? 'notas',
+        (documento) => etiquetaCarpeta(documento.clase ?? 'notas'),
+      ),
     [notas],
   );
   const personajes = useMemo(
@@ -842,6 +911,12 @@ export default function App() {
         evento.preventDefault();
         buscadorRef.current?.focus();
         buscadorRef.current?.select();
+      } else if (evento.altKey && evento.key.toLowerCase() === 'e') {
+        evento.preventDefault();
+        setVista('editor');
+        window.setTimeout(() => {
+          (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
+        }, 0);
       }
     };
     window.addEventListener('keydown', alPulsar);
@@ -911,6 +986,12 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (errorGuardado) {
+      bannerErrorRef.current?.focus();
+    }
+  }, [errorGuardado]);
+
   const cuerpoVisible =
     activo && pendienteRef.current?.id === activo.id
       ? pendienteRef.current.cuerpo
@@ -941,7 +1022,11 @@ export default function App() {
           {!esTauri && (
             <p className="nota-modo">Estás en el navegador: la demo usa datos de ejemplo.</p>
           )}
-          {error && <pre className="banner-error">{error}</pre>}
+          {error && (
+            <pre className="banner-error" role="alert">
+              {error}
+            </pre>
+          )}
         </div>
       </div>
     );
@@ -961,6 +1046,9 @@ export default function App() {
 
   return (
     <div className="aplicacion">
+      <a className="saltar-contenido" href="#panel-principal">
+        Saltar al contenido
+      </a>
       <header className="topbar">
         <div className="marca">
           writer <span>v0.2</span>
@@ -1006,6 +1094,9 @@ export default function App() {
               value={consulta}
               onChange={(evento) => setConsulta(evento.target.value)}
               onKeyDown={(evento) => {
+                if (evento.nativeEvent.isComposing) {
+                  return;
+                }
                 if (evento.key === 'Escape') {
                   setConsulta('');
                 } else if (evento.key === 'Enter' && resultados.length > 0) {
@@ -1034,7 +1125,11 @@ export default function App() {
                 <span className="contador">{resultados.length}</span>
               </div>
               {buscando && <p className="vacio">Buscando…</p>}
-              {errorBusqueda && <pre className="banner-error">{errorBusqueda}</pre>}
+              {errorBusqueda && (
+                <pre className="banner-error" role="alert">
+                  {errorBusqueda}
+                </pre>
+              )}
               {!buscando && !errorBusqueda && resultados.length === 0 && (
                 <p className="vacio">Sin resultados para «{consulta.trim()}».</p>
               )}
@@ -1062,13 +1157,18 @@ export default function App() {
                 <span className="contador">{escenas.length}</span>
               </div>
               {gruposEscenas.length === 0 && <p className="vacio">Sin escenas.</p>}
-              {gruposEscenas.map(([grupo, lista]) => (
-                <section className="grupo" key={grupo}>
-                  <h3>{grupo}</h3>
+              {gruposEscenas.map(({ clave, etiqueta, documentos: lista }) => (
+                <section className="grupo" key={clave}>
+                  <h3>{etiqueta}</h3>
                   {lista.map((documento) => (
                     <button
                       key={documento.id}
+                      id={`doc-${documento.id}`}
                       className={`documento ${activo?.id === documento.id ? 'activo' : ''}`}
+                      tabIndex={idArbolTabbable === documento.id ? 0 : -1}
+                      aria-current={activo?.id === documento.id ? 'page' : undefined}
+                      onFocus={() => setFocoArbol(documento.id)}
+                      onKeyDown={(evento) => manejarTeclaArbol(evento, documento)}
                       onClick={() => void seleccionar(documento)}
                     >
                       <span className="documento-titulo">{documento.titulo}</span>
@@ -1086,13 +1186,18 @@ export default function App() {
                 <span className="contador">{notas.length}</span>
               </div>
               {gruposNotas.length === 0 && <p className="vacio">Sin notas.</p>}
-              {gruposNotas.map(([grupo, lista]) => (
-                <section className="grupo" key={grupo}>
-                  <h3>{humanizar(grupo)}</h3>
+              {gruposNotas.map(({ clave, etiqueta, documentos: lista }) => (
+                <section className="grupo" key={clave}>
+                  <h3>{etiqueta}</h3>
                   {lista.map((documento) => (
                     <button
                       key={documento.id}
+                      id={`doc-${documento.id}`}
                       className={`documento ${activo?.id === documento.id ? 'activo' : ''}`}
+                      tabIndex={idArbolTabbable === documento.id ? 0 : -1}
+                      aria-current={activo?.id === documento.id ? 'page' : undefined}
+                      onFocus={() => setFocoArbol(documento.id)}
+                      onKeyDown={(evento) => manejarTeclaArbol(evento, documento)}
                       onClick={() => void seleccionar(documento)}
                     >
                       <span className="documento-titulo">{documento.titulo}</span>
@@ -1105,8 +1210,12 @@ export default function App() {
           )}
         </aside>
 
-        <main className="panel">
-          {error && <pre className="banner-error">{error}</pre>}
+        <main className="panel" id="panel-principal" tabIndex={-1}>
+          {error && (
+            <pre className="banner-error" role="alert">
+              {error}
+            </pre>
+          )}
           {mensaje && (
             <div className="banner-info">
               <span>{mensaje}</span>
@@ -1121,7 +1230,12 @@ export default function App() {
             </div>
           )}
           {errorGuardado && (
-            <div className="banner-error">
+            <div
+              className="banner-error"
+              ref={bannerErrorRef}
+              role="alert"
+              tabIndex={-1}
+            >
               <strong>No se pudo guardar.</strong>
               <pre>{errorGuardado}</pre>
               <div className="banner-acciones">
@@ -1313,7 +1427,11 @@ export default function App() {
                     </button>
                   </div>
                   {cargandoHistorial && <p className="vacio">Cargando historial…</p>}
-                  {errorHistorial && <pre className="banner-error">{errorHistorial}</pre>}
+                  {errorHistorial && (
+                    <pre className="banner-error" role="alert">
+                      {errorHistorial}
+                    </pre>
+                  )}
                   {!cargandoHistorial && !errorHistorial && revisiones.length === 0 && (
                     <p className="vacio">Sin revisiones.</p>
                   )}
@@ -1344,7 +1462,11 @@ export default function App() {
                     </ol>
                     <div className="detalle-revision">
                       {cargandoDetalle && <p className="vacio">Cargando revisión…</p>}
-                      {errorDetalle && <pre className="banner-error">{errorDetalle}</pre>}
+                      {errorDetalle && (
+                        <pre className="banner-error" role="alert">
+                          {errorDetalle}
+                        </pre>
+                      )}
                       {detalleRevision ? (
                         <>
                           <header className="detalle-cabecera">

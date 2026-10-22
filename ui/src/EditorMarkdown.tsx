@@ -9,10 +9,17 @@ export type OpcionMarca = {
   titulo: string;
 };
 
+function textoSinMarcas(markdown: string): string {
+  return markdown.replace(
+    /\[\[(?:personaje|trama|comentario):[^|\]]*\|([\s\S]*?)\]\]/g,
+    '$1',
+  );
+}
+
 /**
  * Misma definición que `writer_core::model::contar_palabras`: secuencias
- * maximales de caracteres alfanuméricos Unicode. Se aplica al Markdown que se
- * persiste, no al texto visible, para que el contador coincida con el índice.
+ * maximales de caracteres alfanuméricos Unicode sobre el texto visible. La
+ * sintaxis de las marcas no cuenta; sí cuenta el texto marcado.
  */
 function contarPalabras(texto: string): number {
   let total = 0;
@@ -49,7 +56,9 @@ export function EditorMarkdown({
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
   const [comentarioTexto, setComentarioTexto] = useState('');
   const [errorComentario, setErrorComentario] = useState<string | null>(null);
-  const [palabras, setPalabras] = useState(() => contarPalabras(markdown));
+  const [palabras, setPalabras] = useState(() =>
+    contarPalabras(textoSinMarcas(markdown)),
+  );
 
   const editor = useEditor({
     extensions: extensionesEditor,
@@ -61,11 +70,12 @@ export function EditorMarkdown({
       attributes: {
         class: 'editor-prose',
         spellcheck: 'true',
+        'aria-label': 'Texto del documento',
       },
     },
     onUpdate: ({ editor: instancia }) => {
       const serializado = instancia.getMarkdown();
-      setPalabras(contarPalabras(serializado));
+      setPalabras(contarPalabras(instancia.getText()));
       alCambiar.current(serializado);
     },
   });
@@ -178,13 +188,14 @@ export function EditorMarkdown({
   };
 
   return (
-    <div className="editor-content" aria-label="Texto del documento">
+    <div className="editor-content">
       {editable && (
         <div className="editor-toolbar" role="toolbar" aria-label="Marcas del texto">
           <button
             type="button"
             className={`formato ${estado?.negrita ? 'activo' : ''}`}
             aria-label="Negrita"
+            aria-pressed={estado?.negrita ?? false}
             title="Negrita (Ctrl+B)"
             onClick={() => editor.chain().focus().toggleBold().run()}
           >
@@ -194,6 +205,7 @@ export function EditorMarkdown({
             type="button"
             className={`formato cursiva ${estado?.cursiva ? 'activo' : ''}`}
             aria-label="Cursiva"
+            aria-pressed={estado?.cursiva ?? false}
             title="Cursiva (Ctrl+I)"
             onClick={() => editor.chain().focus().toggleItalic().run()}
           >
@@ -203,6 +215,7 @@ export function EditorMarkdown({
             type="button"
             className={`formato tachado ${estado?.tachado ? 'activo' : ''}`}
             aria-label="Tachado"
+            aria-pressed={estado?.tachado ?? false}
             title="Tachado"
             onClick={() => editor.chain().focus().toggleStrike().run()}
           >
@@ -212,6 +225,7 @@ export function EditorMarkdown({
             type="button"
             className={`formato ${estado?.titulo2 ? 'activo' : ''}`}
             aria-label="Título de sección"
+            aria-pressed={estado?.titulo2 ?? false}
             title="Título de sección"
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           >
@@ -221,6 +235,7 @@ export function EditorMarkdown({
             type="button"
             className={`formato ${estado?.cita ? 'activo' : ''}`}
             aria-label="Cita"
+            aria-pressed={estado?.cita ?? false}
             title="Cita"
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
           >
@@ -230,6 +245,7 @@ export function EditorMarkdown({
             type="button"
             className={`formato ${estado?.lista ? 'activo' : ''}`}
             aria-label="Lista de viñetas"
+            aria-pressed={estado?.lista ?? false}
             title="Lista de viñetas"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
           >
@@ -239,6 +255,7 @@ export function EditorMarkdown({
             type="button"
             className={`formato ${estado?.ordenada ? 'activo' : ''}`}
             aria-label="Lista ordenada"
+            aria-pressed={estado?.ordenada ?? false}
             title="Lista ordenada"
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
           >
@@ -248,6 +265,7 @@ export function EditorMarkdown({
             type="button"
             className={`formato ${estado?.codigo ? 'activo' : ''}`}
             aria-label="Bloque de código"
+            aria-pressed={estado?.codigo ?? false}
             title="Bloque de código"
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
           >
@@ -301,6 +319,9 @@ export function EditorMarkdown({
                   setErrorComentario(null);
                 }}
                 onKeyDown={(evento) => {
+                  if (evento.nativeEvent.isComposing) {
+                    return;
+                  }
                   if (evento.key === 'Enter') {
                     evento.preventDefault();
                     aplicarComentario();
