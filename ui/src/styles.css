@@ -3115,14 +3115,6 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 }
 
 @media (max-width: 1100px) {
-  .dabble-workspace {
-    grid-template-columns: 230px minmax(0, 1fr);
-  }
-
-  .dabble-derecha {
-    display: none;
-  }
-
   .dabble-tab:nth-child(2) {
     display: none;
   }
