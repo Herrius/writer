@@ -1230,6 +1230,9 @@ button.guardar:disabled {
   position: sticky;
   top: 0;
   z-index: 20;
+  flex: 0 0 auto;
+  max-height: min(60vh, 24rem);
+  overflow: auto;
   box-shadow: 0 0.4rem 1rem rgba(50, 43, 35, 0.12);
 }
 
