@@ -1851,6 +1851,14 @@ button.guardar:disabled {
   gap: 1rem;
 }
 
+.inicio-sidebar-reserva {
+  flex: 1 1 auto;
+  min-height: 4rem;
+  border: 1px solid #ece7df;
+  border-radius: 0.55rem;
+  background: #fbfaf7;
+}
+
 .tarjeta-bienvenida {
   padding: 0.8rem;
   border: 1px solid #e2ddd4;
@@ -2096,6 +2104,10 @@ button.guardar:disabled {
   .inicio-sidebar {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inicio-sidebar-reserva {
+    display: none;
   }
 
   .proyectos {

@@ -12,7 +12,8 @@
 - Estado vacío con “No proyectos”, texto de bienvenida y “Abrir proyecto
   existente”.
 - Barra lateral con bienvenida, número de **recientes** (máximo 8) y palabras
-  registradas. El espacio restante queda reservado para contenido futuro.
+  registradas. El espacio restante queda reservado para contenido futuro, sin
+  texto ni controles; en la vista apilada (≤900 px) la reserva se oculta.
 - El panel no muestra meta diaria, “Proyectos personales” ni el cuaderno
   “Ideas”. La meta diaria y el cuaderno de Ideas pueden existir dentro del
   proyecto.

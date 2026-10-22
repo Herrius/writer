@@ -75,6 +75,26 @@ test('a 960 y 200 % no hay overflow y las alturas coinciden', async ({ page }) =
   ).toBe(true);
 });
 
+test('la barra lateral ocupa la altura del panel y reserva espacio vacío', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await abrirPanel(page);
+
+  const panel = await page.locator('.mis-proyectos').boundingBox();
+  const sidebar = await page.locator('.inicio-sidebar').boundingBox();
+  const reserva = await page.locator('.inicio-sidebar-reserva').boundingBox();
+  expect(panel).not.toBeNull();
+  expect(sidebar).not.toBeNull();
+  expect(reserva).not.toBeNull();
+  expect(Math.abs(panel!.height - sidebar!.height)).toBeLessThanOrEqual(1);
+  expect(reserva!.height).toBeGreaterThan(50);
+  expect(
+    await page.locator('.inicio-sidebar-reserva button, .inicio-sidebar-reserva input').count(),
+  ).toBe(0);
+
+  await page.setViewportSize({ width: 700, height: 800 });
+  await expect(page.locator('.inicio-sidebar-reserva')).toBeHidden();
+});
+
 test('la lista conserva la tarjeta de creación compacta', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await abrirPanel(page);

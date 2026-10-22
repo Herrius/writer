@@ -482,6 +482,7 @@ export function Inicio({
               </span>
             </div>
           </section>
+          <div className="inicio-sidebar-reserva" aria-hidden="true" />
         </aside>
       </div>
       </div>

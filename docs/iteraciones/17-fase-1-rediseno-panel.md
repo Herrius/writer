@@ -154,3 +154,41 @@ pnpm exec playwright test e2e/fase-1-panel.spec.ts   4/4
 - No se fija un ancho rígido de 160 px: se conserva la cuadrícula responsive.
 - La vista de lista mantiene su altura compacta y no usa la medida de
   cuadrícula.
+
+## F1.3 — Barra derecha a toda altura
+
+### Cambios
+
+- `ui/src/Inicio.tsx`: se añadió `.inicio-sidebar-reserva`, un bloque vacío con
+  `aria-hidden="true"`, sin texto ni controles.
+- `ui/src/styles.css`: la reserva usa `flex: 1 1 auto` para ocupar el espacio
+  libre y una estructura visual discreta (borde y fondo suaves). En `≤900 px`
+  se oculta porque la barra se apila debajo del panel.
+- `e2e/fase-1-panel.spec.ts`: comprueba que la barra mide lo mismo que el panel
+  a 1440, que la reserva tiene altura y que no contiene controles; a 700 px la
+  reserva está oculta.
+- `docs/inicio-v1.md` §1: contrato actualizado.
+
+### Medidas después del cambio
+
+| Escenario | Panel | Barra lateral | Reserva | Overflow |
+|---|---:|---:|---:|---|
+| 1440×900, un proyecto | 1052 × 425,02 | 300 × 425,02 | 300 × 219,64 | No |
+| 960×640, un proyecto | 647,63 × 479,75 | 250 × 479,75 | 250 × 274,38 | No |
+| 700×800, un proyecto | 661,63 × 407,09 | 661,63 × 189,38 (apilada) | Oculta | No |
+
+La barra iguala la altura del panel en 1440 y 960 (±0,01 px). En 700 px la
+columna se apila y la reserva no aplica.
+
+### Verificación
+
+```text
+pnpm typecheck                         OK
+pnpm ui:test                           60/60
+pnpm exec playwright test e2e/fase-1-panel.spec.ts   5/5
+```
+
+### Límites
+
+- La reserva no contiene controles ni texto; no simula una función.
+- En la vista apilada se oculta para no dejar un bloque vacío artificial.
