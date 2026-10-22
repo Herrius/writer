@@ -2,9 +2,10 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 con QA, seguridad, release (revalidado) y UX
-  aprobados; pendiente la firma del product owner.
-- **Siguiente tarea:** aceptación del product owner.
+- **Fase actual:** **Fase 2 aprobada y cerrada con observaciones** (Linux
+  x86_64); release público no autorizado.
+- **Siguiente tarea:** iniciar la Fase 3 (IA/MCP) con las condiciones del
+  product owner; antes, cerrar SEC-04-B/C y los límites de lectura.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -26,11 +27,13 @@ La Fase 2 tiene seis rebanadas verticales:
 5. cuarentena visible y marcas propias (personajes, tramas, comentarios);
 6. **E2E de navegador y escritorio, toolbar/recuento y empaquetado deb/rpm**.
 
-**La Fase 2 tiene las correcciones de QA r1 y r2, pero no está aprobada.**
-Debe repetirse QA sobre el nuevo commit y continuar el pipeline secuencial de §9
-del plan: seguridad, release, UX/accesibilidad/rendimiento y aceptación del
-product owner. La validación externa (AppImage, firma, Windows/macOS y CI
-remoto) queda para el cierre.
+**La Fase 2 está aprobada con observaciones como hito de producto en Linux
+x86_64.** QA r3, seguridad r3, release r2 y UX r5 cerraron sin P1/P2, y el
+product owner firmó la aceptación. El release público de `0.2.0` **no** está
+autorizado: antes hay que subir versión, revisar seguridad del commit exacto,
+firmar/checksums, decidir AppImage/updater, probar Windows/macOS o declarar
+Linux como único soporte, probar la app instalada, validar DOCX en Word y
+publicar CI remoto.
 
 Estado actual de la UI:
 
@@ -266,19 +269,25 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 
 ### Siguiente tarea inmediata
 
-1. **Pipeline de revisión por roles** (plan §9):
-   - repetir QA sobre el commit con las correcciones;
-   - security reviewer;
-   - release engineer;
-   - UX/accesibilidad/rendimiento;
-   - aceptación del product owner.
-2. **Validación externa**: AppImage, firma/notarización y Windows/macOS.
+1. **Fase 3 (IA/MCP)** con las condiciones del product owner:
+   - cerrar SEC-04-B/C (FIFO en blobs/journal) y centralizar lecturas con
+     límites de tamaño antes de MCP sobre proyectos no confiables;
+   - AI safety/privacy (BYOK, prompts, claves, inyección, costes, permisos MCP);
+   - políticas `auto`/`proponer`/`bloquear` en motor y servidor MCP;
+   - gate de Fase 3 (criterios 7, 8, 9, 12, 13) y pipeline completo.
+2. **Publicación**: identidad de versión, seguridad del commit exacto,
+   checksums/firma, AppImage/updater, Windows/macOS o soporte solo Linux, app
+   instalada, DOCX en Word/LibreOffice y CI remoto.
 
-### Resto de Fase 2
+### Deuda de Fase 2
 
+- 15 P3 y 4 P4 de UX (tabs ARIA, historial largo, cuarentena plegable,
+  búsqueda truncada, latencia de 1.000 marcas, onboarding, copy).
+- P3 de release (strip/rpaths, reproducibilidad, toolchain, versión).
+- P3 de seguridad (FIFO en blobs/journal, enlaces duros Windows, límites,
+  TOCTOU).
 - Integrar `interfaz`, `e2e`, `e2e-tauri` y `empaquetado` en CI remoto (hoy no
   hay `.github/`).
-- Probar visualmente la app instalada y la toolbar de formato.
 
 ## 8. Pendientes de publicación / entorno
 

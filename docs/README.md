@@ -45,6 +45,8 @@
   seguridad: confinamiento de rutas y `.escritor` real.
 - [`iteraciones/13-fase-2.md`](iteraciones/13-fase-2.md) — correcciones de UX,
   accesibilidad y rendimiento.
+- [`iteraciones/14-fase-2.md`](iteraciones/14-fase-2.md) — aceptación y cierre
+  de la Fase 2; condiciones de publicación y de Fase 3.
 - [`revisiones/README.md`](revisiones/README.md) — pipeline secuencial de
   revisión por roles y registro de la Fase 2. Incluye el informe QA que bloqueó
   la primera congelación y el acta r2 con las correcciones.

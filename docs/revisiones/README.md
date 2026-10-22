@@ -84,5 +84,4 @@ congelación es `fase-2-00-congelado.md`.
 | Congelación r13 (release UX) | [`fase-2-00-congelado-r13.md`](fase-2-00-congelado-r13.md) | — |
 | Release engineer (r2) | [`fase-2-release-2026-10-21-r2.md`](fase-2-release-2026-10-21-r2.md) | aprobado con observaciones |
 | Congelación r14 (product owner) | [`fase-2-00-congelado-r14.md`](fase-2-00-congelado-r14.md) | — |
-| Product owner | pendiente | — |
-| Product owner | pendiente | — |
+| Product owner | [`fase-2-product-owner-2026-10-21.md`](fase-2-product-owner-2026-10-21.md) | aprobado con observaciones (Fase 2 cerrada; release público no autorizado) |

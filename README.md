@@ -4,13 +4,15 @@ Motor de escritura con archivos como fuente de verdad: Markdown + frontmatter pa
 el proyecto, índice SQLite reconstruible y un log de operaciones que permite
 recuperarse de un corte sin perder ni medio cambio.
 
-Este repositorio está en **Fase 2 (Interfaz, v0.2)** del plan. El motor y la CLI
-(Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el árbol,
-permite leer y **editar con autosave**, busca con FTS5, ofrece historial con
-reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
-tramas y comentarios, y se empaqueta en deb/rpm. La Fase 2 está completada por
-el builder; falta el pipeline de revisión independiente. AppImage, firma y las
-pruebas en Windows/macOS son las tareas externas.
+Este repositorio ha cerrado la **Fase 2 (Interfaz, v0.2)** como hito de producto
+en **Linux x86_64**, con aceptación del product owner y observaciones. El motor
+y la CLI (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el
+árbol, permite leer y **editar con autosave**, busca con FTS5, ofrece historial
+con reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
+tramas y comentarios, y se empaqueta en deb/rpm. El **release público no está
+autorizado** todavía: AppImage, firma, updater, Windows/macOS, CI remoto y la
+prueba de la app instalada son condiciones de publicación. La Fase 3 (IA/MCP)
+está autorizada a comenzar con las condiciones del product owner.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -23,14 +25,14 @@ pruebas en Windows/macOS son las tareas externas.
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **QA, seguridad, release (revalidado) y UX aprobados; pendiente la firma del product owner** |
+| 2 | Interfaz Tauri (v0.2) | **Aprobada con observaciones (Linux x86_64). Release público no autorizado** |
 | 3 | IA + MCP (v0.3) | Pendiente |
 | 4 | Licencias + Pro (v0.4) | Pendiente |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
 exportación Markdown e inyección de fallos. El conjunto Rust acumula 92 pruebas
-(33 unitarias, 28 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
+(34 unitarias, 33 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
 cáscara Tauri y 57 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas, accesibilidad y regresiones).
 Además, 9 flujos E2E de navegador con Playwright y 2 escenarios E2E de
