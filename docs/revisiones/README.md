@@ -71,6 +71,6 @@ congelación es `fase-2-00-congelado.md`.
 | Security reviewer (r3) | [`fase-2-seguridad-2026-10-21-r3.md`](fase-2-seguridad-2026-10-21-r3.md) | aprobado con observaciones |
 | Congelación r7 (release) | [`fase-2-00-congelado-r7.md`](fase-2-00-congelado-r7.md) | — |
 | Release engineer | [`fase-2-release-2026-10-21.md`](fase-2-release-2026-10-21.md) | aprobado con observaciones |
-| Congelación r8 (UX) | pendiente | — |
+| Congelación r8 (UX) | [`fase-2-00-congelado-r8.md`](fase-2-00-congelado-r8.md) | — |
 | UX / accesibilidad / rendimiento | pendiente | — |
 | Product owner | pendiente | — |
