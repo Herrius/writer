@@ -7,11 +7,12 @@
   referencias de Dabble y la deuda P3 prioritaria está cerrada.
 - **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado
   y validado en Linux x86_64; Windows pendiente de build y pruebas.
-- **Plan completo:** **pospuesto de forma permanente hasta nuevo aviso**
-  (2026-10-22). No se inician fases, gates, releases ni tareas nuevas con el
-  plan anterior.
-- **Siguiente tarea:** ninguna dentro de este plan; esperar un plan nuevo y una
-  autorización expresa.
+- **Plan general anterior:** **pospuesto de forma permanente hasta nuevo aviso**
+  (2026-10-22). No se inician fases, gates ni releases con él.
+- **Plan activo de interfaz:** `Plan - Rediseño del panel de Proyectos.md`
+  (tarjeta de creación, limpieza de barra lateral y altura; Windows y Linux).
+- **Siguiente tarea:** Fase 1 del plan de rediseño (medición y contrato visual),
+  cuando se autorice el arranque.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
   Bloque 2.2 congelado en `76b139f` (sin remoto).
 
