@@ -1227,12 +1227,7 @@ button.guardar:disabled {
 }
 
 .panel > .banner-error {
-  position: sticky;
-  top: 0;
-  z-index: 20;
   flex: 0 0 auto;
-  max-height: min(60vh, 24rem);
-  overflow: auto;
   box-shadow: 0 0.4rem 1rem rgba(50, 43, 35, 0.12);
 }
 
@@ -1298,11 +1293,6 @@ button.guardar:disabled {
    panel taparía el contenido. En ese caso vuelve al flujo normal y deja que el
    panel haga scroll. */
 @media (max-height: 520px) {
-  .panel > .banner-error {
-    position: static;
-    max-height: none;
-  }
-
   .editor-toolbar {
     position: static;
   }

@@ -224,6 +224,7 @@ export default function App() {
   const busquedaSeq = useRef(0);
   const buscadorRef = useRef<HTMLInputElement | null>(null);
   const bannerErrorRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
   const proyectoRef = useRef<ProyectoDto | null>(null);
   const activoRef = useRef<DocumentoDto | null>(null);
   const puedeEditarRef = useRef(false);
@@ -988,7 +989,12 @@ export default function App() {
 
   useEffect(() => {
     if (errorGuardado) {
-      bannerErrorRef.current?.focus();
+      // El aviso está en el flujo normal para no tapar el documento con zoom
+      // alto. Al aparecer, el panel vuelve arriba y el foco va al aviso.
+      if (panelRef.current) {
+        panelRef.current.scrollTop = 0;
+      }
+      bannerErrorRef.current?.focus({ preventScroll: true });
     }
   }, [errorGuardado]);
 
@@ -1210,7 +1216,7 @@ export default function App() {
           )}
         </aside>
 
-        <main className="panel" id="panel-principal" tabIndex={-1}>
+        <main className="panel" id="panel-principal" tabIndex={-1} ref={panelRef}>
           {error && (
             <pre className="banner-error" role="alert">
               {error}
