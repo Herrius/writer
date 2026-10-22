@@ -33,9 +33,11 @@ pnpm e2e                          12/12
 cargo test --workspace            94/94
 ```
 
-## 4. Pendiente
+## 4. Pendiente y plataformas
 
-- Pipeline del Bloque 2.2: QA, seguridad, release, UX y product owner.
+- Pipeline del Bloque 2.2 completado; aprobado con observaciones.
 - SEC21-02 (TOCTOU de `.escritor`) queda como riesgo residual P3 aceptado hasta
   una revisión de release; el E2E del diálogo nativo sigue siendo una condición
   de validación de la app real.
+- Objetivo de producto: **Windows y Linux**. Lo implementado y probado hasta
+  ahora es Linux x86_64; Windows está pendiente de build, instalador y pruebas.

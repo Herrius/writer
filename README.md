@@ -10,11 +10,12 @@ y la CLI (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el
 árbol, permite leer y **editar con autosave**, busca con FTS5, ofrece historial
 con reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
 tramas y comentarios, y se empaqueta en deb/rpm. El **release público no está
-autorizado** todavía: AppImage, firma, updater, Windows/macOS, CI remoto y la
-prueba de la app instalada son condiciones de publicación. **El plan de fases
-queda pospuesto de forma permanente hasta nuevo aviso** (2026-10-22); el
-software se considera un **MVP local Linux** y no se inician nuevas fases ni
-releases con el plan anterior.
+autorizado** todavía: AppImage, firma, updater, Windows, CI remoto y la
+prueba de la app instalada son condiciones de publicación. **El objetivo del
+producto es Windows y Linux**; el estado actual está validado en **Linux
+x86_64** y Windows todavía no se ha construido ni probado. **El plan de fases
+queda pospuesto de forma permanente hasta nuevo aviso** (2026-10-22); no se
+inician nuevas fases ni releases con el plan anterior.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -29,7 +30,7 @@ releases con el plan anterior.
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
 | 2 | Interfaz Tauri (v0.2) | **Aprobada con observaciones (Linux x86_64). Release público no autorizado** |
 | 2.1 | Creación de proyectos y onboarding | **Aprobada con observaciones (Linux x86_64)** |
-| 2.2 | Interfaz de escritura e historial | **Aprobada con observaciones (Linux x86_64); release público no autorizado** |
+| 2.2 | Interfaz de escritura e historial | **Aprobada con observaciones (Linux x86_64; Windows pendiente); release público no autorizado** |
 | 3 | IA + MCP (v0.3) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
 | 4 | Licencias + Pro (v0.4) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
 | 5 | Sync (v0.5, opcional) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
@@ -303,7 +304,7 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   sigue mostrando el error.
 - El E2E de navegador usa la demo; el de escritorio es Linux-only y no prueba
   diálogos nativos ni la app instalada.
-- El empaquetado genera deb/rpm en Linux; AppImage, firma y Windows/macOS quedan
+- El empaquetado genera deb/rpm en Linux; AppImage, firma y Windows quedan
   pendientes.
 
 ## Pruebas y gates

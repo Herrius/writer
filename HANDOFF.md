@@ -5,13 +5,15 @@
 - **Fase actual:** **Fase 2, Fase 2.1 y Bloque 2.2 aprobados con
   observaciones** (Linux x86_64); la interfaz de escritura e historial sigue las
   referencias de Dabble y la deuda P3 prioritaria está cerrada.
+- **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado
+  y validado en Linux x86_64; Windows pendiente de build y pruebas.
 - **Plan completo:** **pospuesto de forma permanente hasta nuevo aviso**
-  (2026-10-22). El software queda como MVP local Linux; no se inician fases,
-  gates, releases ni tareas nuevas con el plan anterior.
+  (2026-10-22). No se inician fases, gates, releases ni tareas nuevas con el
+  plan anterior.
 - **Siguiente tarea:** ninguna dentro de este plan; esperar un plan nuevo y una
   autorización expresa.
-- **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; HEAD del Bloque
-  2.2 congelado en `76b139f` (sin remoto).
+- **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
+  Bloque 2.2 congelado en `76b139f` (sin remoto).
 
 ## 1. Resumen
 
@@ -36,7 +38,7 @@ La Fase 2 tiene seis rebanadas verticales:
 x86_64.** QA r3, seguridad r3, release r2 y UX r5 cerraron sin P1/P2, y el
 product owner firmó la aceptación. El release público de `0.2.0` **no** está
 autorizado: antes hay que subir versión, revisar seguridad del commit exacto,
-firmar/checksums, decidir AppImage/updater, probar Windows/macOS o declarar
+firmar/checksums, decidir AppImage/updater, construir y probar Windows,
 Linux como único soporte, probar la app instalada, validar DOCX en Word y
 publicar CI remoto.
 
@@ -274,7 +276,7 @@ explotable en writer; revisar al actualizar Tauri/gtk-rs.
 El E2E de navegador usa Chromium real sobre la demo. El E2E de escritorio se
 ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 `Ctrl+S` y el cierre real de la ventana. No se probó la app instalada desde el
-`.deb`/`.rpm`, ni los diálogos nativos, ni Windows/macOS.
+`.deb`/`.rpm`, ni los diálogos nativos, ni Windows.
 
 ## 7. Qué falta — orden recomendado
 
@@ -283,7 +285,7 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 1. **Faltantes de producto/publicación de la Fase 2** (fases 3–5 pospuestas):
    - robustez: SEC-04-B/C, límites de tamaño, TOCTOU, enlaces duros Windows;
    - publicación: versión, seguridad del commit exacto, checksums/firma,
-     AppImage/updater, Windows/macOS o soporte solo Linux, app instalada, DOCX
+     AppImage/updater, Windows y Linux, app instalada, DOCX
      en Word/LibreOffice y CI remoto;
    - producto/UX: onboarding, árbol plegable, historial largo, cuarentena
      plegable, búsqueda truncada, tabs ARIA, toolbar al 200 %, latencia de
@@ -348,7 +350,7 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
   código) y marcas; no hay diálogo de enlace.
 - El E2E de escritorio es Linux-only y no prueba diálogos nativos ni la app
   instalada; AppImage, firma, notarización y updater quedan pendientes.
-- Windows/macOS no se probaron en este entorno.
+- Windows no se probó en este entorno; el objetivo es Windows y Linux.
 - Las marcas no se anidan, el comentario no admite `|` ni `]]` y el texto marcado
   no admite `]]`; los ULID deben empezar por `0`–`7`. El DOCX limpia solo prosa y
   conserva código y escapado.

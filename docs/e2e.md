@@ -64,15 +64,14 @@ no autoabre proyectos ni conserva el hook activo.
 ## 3. Limitaciones
 
 - El E2E de navegador usa la demo en memoria; recargar reinicia el estado.
-- El E2E de Tauri es Linux-only y no cubre diálogos nativos ni Windows/macOS.
+- El E2E de Tauri es Linux-only y no cubre diálogos nativos ni Windows.
 - Chromium de Playwright y `tauri-driver` se instalan fuera del repositorio.
 - El E2E de escritorio no prueba DOCX, búsqueda, cuarentena ni el diálogo
   nativo de creación; esos flujos se cubren en navegador o con pruebas Tauri.
-- El cierre real depende de X11 y `xdotool`; en Wayland puro o en Windows/macOS
-  queda pendiente.
+- El cierre real depende de X11 y `xdotool`; en Wayland puro o en Windows queda pendiente.
 
 ## 4. Pendiente
 
-- E2E de escritorio en Windows (WebView2) y macOS.
+- E2E de escritorio en Windows (WebView2).
 - Un flujo de escritorio que abra un proyecto con el diálogo nativo.
 - Empaquetar y probar la app instalada, no solo el binario de `target/`.

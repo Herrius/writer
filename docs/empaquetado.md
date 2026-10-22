@@ -40,13 +40,14 @@ El gate `empaquetado` no solo ejecuta `pnpm build`: inspecciona los paquetes.
 Por eso Linux usa solo `deb` y `rpm`. Para habilitar AppImage hay que instalar
 `linuxdeploy` y añadir `appimage` a `tauri.linux.conf.json`.
 
-## 4. Windows y macOS
+## 4. Windows y Linux
 
 La configuración principal mantiene `targets: "all"`; Tauri elige los formatos
-de cada plataforma. No se generaron instaladores en este entorno:
+de cada plataforma. El objetivo del producto es Windows y Linux. No se generaron
+instaladores Windows en este entorno:
 
 - Windows: NSIS/MSI requieren Windows y las herramientas de Visual Studio.
-- macOS: DMG/APP requieren macOS y, para distribución, firma y notarización.
+- Linux: `deb`/`rpm` son los formatos generados y verificados actualmente.
 
 ## 5. Limitaciones
 
