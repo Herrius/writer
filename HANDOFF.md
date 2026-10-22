@@ -2,12 +2,13 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** **Fase 2 aprobada y cerrada con observaciones** (Linux
-  x86_64); **Fase 2.1 (creación de proyectos) aprobada por QA, seguridad,
-  release y UX con observaciones**, pendiente la firma del product owner.
+- **Fase actual:** **Fase 2 y Fase 2.1 aprobadas y cerradas con observaciones**
+  (Linux x86_64); **Bloque 2.2 autorizado** (pulido de panel/modal/foco,
+  navegación, feedback, E2E real y docs).
 - **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta cerrar los faltantes de
   producto/publicación.
-- **Siguiente tarea:** aceptación del product owner de la Fase 2.1.
+- **Siguiente tarea:** ejecutar el Bloque 2.2; release público sigue no
+  autorizado.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
