@@ -5,10 +5,11 @@
 - **Fase actual:** **Fase 2, Fase 2.1 y Bloque 2.2 aprobados con
   observaciones** (Linux x86_64); la interfaz de escritura e historial sigue las
   referencias de Dabble y la deuda P3 prioritaria está cerrada.
-- **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta cerrar los faltantes de
-  producto/publicación.
-- **Siguiente tarea:** preparar el bloque de release (no autorizado todavía);
-  cerrar el E2E del diálogo nativo y SEC21-02 antes de publicar.
+- **Plan completo:** **pospuesto de forma permanente hasta nuevo aviso**
+  (2026-10-22). El software queda como MVP local Linux; no se inician fases,
+  gates, releases ni tareas nuevas con el plan anterior.
+- **Siguiente tarea:** ninguna dentro de este plan; esperar un plan nuevo y una
+  autorización expresa.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; HEAD del Bloque
   2.2 congelado en `76b139f` (sin remoto).
 

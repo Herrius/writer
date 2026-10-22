@@ -11,9 +11,10 @@ y la CLI (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el
 con reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
 tramas y comentarios, y se empaqueta en deb/rpm. El **release público no está
 autorizado** todavía: AppImage, firma, updater, Windows/macOS, CI remoto y la
-prueba de la app instalada son condiciones de publicación. Las **Fases 3, 4 y 5
-quedan pospuestas** hasta cerrar los faltantes de producto y publicación que se
-acuerden antes de continuar.
+prueba de la app instalada son condiciones de publicación. **El plan de fases
+queda pospuesto de forma permanente hasta nuevo aviso** (2026-10-22); el
+software se considera un **MVP local Linux** y no se inician nuevas fases ni
+releases con el plan anterior.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -29,9 +30,9 @@ acuerden antes de continuar.
 | 2 | Interfaz Tauri (v0.2) | **Aprobada con observaciones (Linux x86_64). Release público no autorizado** |
 | 2.1 | Creación de proyectos y onboarding | **Aprobada con observaciones (Linux x86_64)** |
 | 2.2 | Interfaz de escritura e historial | **Aprobada con observaciones (Linux x86_64); release público no autorizado** |
-| 3 | IA + MCP (v0.3) | Pospuesta (2026-10-21) |
-| 4 | Licencias + Pro (v0.4) | Pospuesta (2026-10-21) |
-| 5 | Sync (v0.5, opcional) | Pospuesta (2026-10-21) |
+| 3 | IA + MCP (v0.3) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
+| 4 | Licencias + Pro (v0.4) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
+| 5 | Sync (v0.5, opcional) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
