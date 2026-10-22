@@ -35,8 +35,9 @@ Al confirmar:
 1. Valida título, carpeta y nombre en la UI.
 2. Llama a `crear_proyecto` en Tauri.
 3. `Project::init` **vuelve a validar en el backend**: normaliza la ruta,
-   rechaza vacío/`.`/`..`, exige que el padre exista, rechaza destinos enlazados
-   o no vacíos y valida el nombre (incluidos reservados de Windows).
+   rechaza vacío y componentes `.`/`..`, exige que el padre exista, rechaza
+   destinos enlazados o no vacíos y valida el nombre (incluidos reservados de
+   Windows y espacios iniciales).
 4. `Project::init` crea el manifiesto, `.escritor/`, Libro 1 / Capítulo 1 /
    Primera escena.
 4. Si están activas, crea las tres notas iniciales.

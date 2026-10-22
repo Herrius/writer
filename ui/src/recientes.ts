@@ -45,9 +45,12 @@ export function leerRecientes(): Reciente[] {
           item !== null &&
           typeof item.ruta === 'string' &&
           item.ruta.length > 0 &&
+          item.ruta.length <= 4096 &&
           typeof item.titulo === 'string' &&
           item.titulo.length > 0 &&
-          (item.autor === undefined || typeof item.autor === 'string') &&
+          item.titulo.length <= 200 &&
+          (item.autor === undefined ||
+            (typeof item.autor === 'string' && item.autor.length <= 200)) &&
           (item.palabras === undefined ||
             (typeof item.palabras === 'number' &&
               Number.isFinite(item.palabras) &&

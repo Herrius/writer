@@ -1469,12 +1469,21 @@ fn preparar_raiz_inicial(raiz: &Path) -> Result<PathBuf> {
             "la ruta del proyecto no puede estar vacía".into(),
         ));
     }
+    if raiz.components().any(|componente| {
+        matches!(
+            componente,
+            std::path::Component::CurDir | std::path::Component::ParentDir
+        )
+    }) {
+        return Err(Error::Project(format!(
+            "la ruta no puede contener '.' ni '..': {}",
+            raiz.display()
+        )));
+    }
     let absoluta = if raiz.is_absolute() {
         raiz.to_path_buf()
     } else {
-        std::env::current_dir()
-            .map_err(|error| Error::Io(error))?
-            .join(raiz)
+        std::env::current_dir().map_err(Error::Io)?.join(raiz)
     };
     let Some(nombre) = absoluta.file_name() else {
         return Err(Error::Project(format!(
@@ -1494,7 +1503,7 @@ fn preparar_raiz_inicial(raiz: &Path) -> Result<PathBuf> {
         ))
     })?;
     let padre = if padre.as_os_str().is_empty() {
-        std::env::current_dir().map_err(|error| Error::Io(error))?
+        std::env::current_dir().map_err(Error::Io)?
     } else {
         padre.to_path_buf()
     };

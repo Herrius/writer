@@ -280,6 +280,8 @@ fn init_rechaza_rutas_invalidas_y_destinos_no_vacios() {
 
     for ruta in [
         PathBuf::from(""),
+        PathBuf::from("."),
+        PathBuf::from(".."),
         raiz.join("otra").join(".."),
         directorio
             .path()

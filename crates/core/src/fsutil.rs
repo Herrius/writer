@@ -187,6 +187,7 @@ pub fn validar_ruta_relativa(relativa: &str) -> Result<()> {
         if componente.is_empty()
             || componente == "."
             || componente == ".."
+            || componente.starts_with(' ')
             || componente.ends_with('.')
             || componente.ends_with(' ')
             || componente.chars().any(char::is_control)
@@ -195,7 +196,7 @@ pub fn validar_ruta_relativa(relativa: &str) -> Result<()> {
         }
         let mayusculas = componente.to_ascii_uppercase();
         let base = mayusculas.split('.').next().unwrap_or("");
-        let reservado = matches!(base, "CON" | "PRN" | "AUX" | "NUL")
+        let reservado = matches!(base, "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$")
             || (base.len() == 4
                 && (base.starts_with("COM") || base.starts_with("LPT"))
                 && base.as_bytes()[3].is_ascii_digit()
@@ -442,6 +443,8 @@ mod tests {
             "manuscrito/01/../../fuera.md",
             "manuscrito//x.md",
             "manuscrito/CON.md",
+            "manuscrito/CONIN$.md",
+            "manuscrito/ archivo.md",
             "manuscrito/archivo.",
             "manuscrito/archivo ",
             "manuscrito/archivo\u{1}.md",
