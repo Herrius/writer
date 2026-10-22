@@ -111,3 +111,46 @@ pnpm ui:test         60/60
   implementa en F1.3.
 - El resto de controles deshabilitados sigue visible por decisión del product
   owner; no se añaden acciones nuevas.
+
+## F1.2 — Tarjeta de creación y portadas
+
+### Cambios
+
+- `ui/src/Inicio.tsx`: la tarjeta de creación contiene una medida invisible
+  (`crear-medida`) con la misma estructura que una tarjeta de proyecto
+  (portada 2:3 + `.tarjeta-datos`) y un contenido visible superpuesto.
+- `ui/src/styles.css`: la tarjeta usa un borde discontinuo superpuesto
+  (`::after`) que no altera el layout; la medida invisible fija la altura. La
+  vista de lista oculta la medida y conserva el formato compacto.
+- `e2e/fase-1-panel.spec.ts`: pruebas de igualdad de alturas, ratio 2:3,
+  estado vacío, 960/200 % y lista compacta.
+- `docs/inicio-v1.md` §1: contrato de la tarjeta actualizado.
+
+### Medidas después del cambio
+
+| Escenario | Tarjeta crear | Tarjeta proyecto | Portada | Datos | Ratio |
+|---|---:|---:|---:|---:|---:|
+| 1440×900 | 155,27 × 297,11 | 155,27 × 297,11 | 155,27 × 232,89 | 56,19 | 0,6667 |
+| 1440×900, vacío | 155,27 × 297,08 | — | — | 56,19 (medida) | — |
+| 960×640 | 191,75 × 351,81 | 191,75 × 351,81 | 191,75 × 287,63 | 56,19 | 0,6667 |
+| 960×640, 200 % | 237,22 × 481,20 | 237,22 × 481,20 | 237,22 × 355,83 | 109,38 | 0,6667 |
+| 700×800 | 143,31 × 279,16 | 143,31 × 279,16 | 143,31 × 214,97 | 56,19 | 0,6667 |
+| 1440×900, lista | 1011,63 × 64,00 | 1011,63 × 89,59 | 54 × 70 | — | — |
+
+La igualdad es exacta (±0,03 px) en cuadrícula. El estado vacío pasa de 205 px
+a 297,08 px. El ancho de 155,27 px a 1440 se mantiene porque la cuadrícula
+reparte seis columnas; la referencia de 160 px es aproximada.
+
+### Verificación
+
+```text
+pnpm typecheck                         OK
+pnpm ui:test                           60/60
+pnpm exec playwright test e2e/fase-1-panel.spec.ts   4/4
+```
+
+### Límites
+
+- No se fija un ancho rígido de 160 px: se conserva la cuadrícula responsive.
+- La vista de lista mantiene su altura compacta y no usa la medida de
+  cuadrícula.

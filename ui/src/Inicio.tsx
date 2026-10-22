@@ -399,10 +399,20 @@ export function Inicio({
               <>
             <div className={`proyectos ${vista === 'lista' ? 'proyectos-lista' : ''}`}>
               <button className="crear-tarjeta" ref={crearRef} onClick={() => abrirModal()}>
-                <span className="crear-mas" aria-hidden="true">
-                  +
+                <span className="crear-medida" aria-hidden="true">
+                  <span className="crear-medida-portada" />
+                  <span className="tarjeta-datos">
+                    <strong>&nbsp;</strong>
+                    <span>&nbsp;</span>
+                    <small>&nbsp;</small>
+                  </span>
                 </span>
-                <span>Crear nuevo proyecto</span>
+                <span className="crear-contenido">
+                  <span className="crear-mas" aria-hidden="true">
+                    +
+                  </span>
+                  <span>Crear nuevo proyecto</span>
+                </span>
               </button>
               {filtrados.map((reciente) => (
                 <button

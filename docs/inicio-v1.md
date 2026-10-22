@@ -20,6 +20,8 @@
   Plantillas, Papelera, Más opciones y Crear desde plantilla se conservan
   deshabilitados como **excepción aprobada por el product owner** al criterio
   “no hay controles visibles sin acción”.
+- La tarjeta “Crear nuevo proyecto” mide lo mismo que una tarjeta de proyecto
+  completa: portada 2:3 más zona de datos. En estado vacío conserva esa altura.
 - El proyecto se abre al pulsar una tarjeta; los recientes se actualizan al
   abrir o crear. “Abrir proyecto” está siempre visible en la cabecera, además
   del estado vacío.
