@@ -105,3 +105,4 @@ congelación es `fase-2-00-congelado.md`.
 | **Bloque 2.2 — release** | [`fase-2-2-release-2026-10-22.md`](fase-2-2-release-2026-10-22.md) | aprobado con observaciones (local; release público bloqueado) |
 | **Bloque 2.2 — UX** | [`fase-2-2-ux-2026-10-22.md`](fase-2-2-ux-2026-10-22.md) | aprobado con observaciones |
 | **Bloque 2.2 — product owner** | [`fase-2-2-product-owner-2026-10-22.md`](fase-2-2-product-owner-2026-10-22.md) | aprobado con observaciones (Bloque 2.2 cerrado; release público no autorizado) |
+| **Fase 1 — congelación** | [`fase-1-00-congelado.md`](fase-1-00-congelado.md) | — |

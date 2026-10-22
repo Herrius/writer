@@ -233,3 +233,29 @@ pnpm exec playwright test e2e/fase-1-panel.spec.ts   5/5
 
 No hay cambios de código en este tramo: las pruebas y los ajustes se
 incorporaron en F1.2 y F1.3. Se registra la evidencia y se pasa al gate de fase.
+
+## F1.5 — Gates y congelación
+
+### Commit congelado
+
+- Código y tests: `744aaa5`
+- Tag: `fase-1-congelado`
+- Acta: [`../revisiones/fase-1-00-congelado.md`](../revisiones/fase-1-00-congelado.md)
+
+### Gates
+
+```text
+python scripts/ci.py interfaz       OK
+python scripts/ci.py e2e            OK (19/19)
+python scripts/ci.py e2e-tauri      OK
+python scripts/ci.py empaquetado    OK
+python scripts/ci.py producto       OK
+python scripts/ci.py seguridad      OK
+python scripts/ci.py calidad        OK (94/94)
+```
+
+### Decisión
+
+La Fase 1 queda **completada por el builder** y congelada para revisión. No se
+declara aprobada hasta la firma del product owner. El siguiente paso es el
+pipeline QA → seguridad → release → UX → product owner.

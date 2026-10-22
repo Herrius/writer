@@ -2,9 +2,9 @@
 
 - **Fecha:** 2026-10-22
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** **Fase 2, Fase 2.1 y Bloque 2.2 aprobados con
-  observaciones** (Linux x86_64); la interfaz de escritura e historial sigue las
-  referencias de Dabble y la deuda P3 prioritaria está cerrada.
+- **Fase actual:** **Fase 1 del rediseño del panel completada por el builder y
+  congelada para revisión** en `744aaa5` (tag `fase-1-congelado`, Linux x86_64).
+  Las fases 2, 2.1 y el Bloque 2.2 siguen aprobadas con observaciones.
 - **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado
   y validado en Linux x86_64; Windows pendiente de build y pruebas.
 - **Plan general anterior:** **pospuesto de forma permanente hasta nuevo aviso**
@@ -15,14 +15,15 @@
 - **Plan de ejecución:**
   [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md) — features,
   commits, agentes, paralelismo, gates y estimaciones.
-- **Siguiente tarea:** Fase 1 del plan de rediseño (medición y contrato visual),
-  cuando se autorice el arranque.
+- **Siguiente tarea:** pipeline de revisión de Fase 1: QA → seguridad → release
+  → UX/accesibilidad/rendimiento → product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
-  Bloque 2.2 congelado en `76b139f` (sin remoto).
+  Bloque 2.2 congelado en `76b139f`; Fase 1 congelada en `744aaa5` con tag
+  `fase-1-congelado` (sin remoto).
 
 ## 1. Resumen
 
-La Fase 1 está cerrada en local Linux:
+La Fase 1 original (motor + CLI) está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
@@ -273,6 +274,21 @@ pnpm check                        OK
 pnpm --version                    12.14.0
 ```
 
+### Fase 1 del rediseño del panel (2026-10-22)
+
+```text
+python scripts/ci.py interfaz       OK
+python scripts/ci.py e2e            OK (19/19, Chromium)
+python scripts/ci.py e2e-tauri      OK (Linux, WebDriver)
+python scripts/ci.py empaquetado    OK (deb/rpm)
+python scripts/ci.py producto       OK
+python scripts/ci.py seguridad      OK
+python scripts/ci.py calidad        OK (94/94)
+pnpm typecheck                       OK
+pnpm ui:test                        60/60
+pnpm ui:build                       OK
+```
+
 `cargo-deny` del desktop tiene una excepción documentada en `deny.toml`:
 `RUSTSEC-2024-0370` (`proc-macro-error`, unmaintained) llega por gtk-rs/Tauri en
 Linux y no tiene reemplazo compatible con Tauri 2.12. No es una vulnerabilidad
@@ -287,16 +303,20 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 
 ### Siguiente tarea inmediata
 
-1. **Faltantes de producto/publicación de la Fase 2** (fases 3–5 pospuestas):
-   - robustez: SEC-04-B/C, límites de tamaño, TOCTOU, enlaces duros Windows;
-   - publicación: versión, seguridad del commit exacto, checksums/firma,
-     AppImage/updater, Windows y Linux, app instalada, DOCX
-     en Word/LibreOffice y CI remoto;
-   - producto/UX: onboarding, árbol plegable, historial largo, cuarentena
-     plegable, búsqueda truncada, tabs ARIA, toolbar al 200 %, latencia de
-     1.000 marcas, copy.
-2. **Fase 3 (IA/MCP)**: pospuesta. Sus condiciones del product owner siguen
-   vigentes para cuando se retome.
+1. **Pipeline de revisión de Fase 1** sobre `744aaa5`: QA independiente,
+   seguridad, release, UX/accesibilidad/rendimiento y product owner. El acta de
+   congelación está en
+   [`docs/revisiones/fase-1-00-congelado.md`](docs/revisiones/fase-1-00-congelado.md).
+2. **Fase 2 del plan local/offline**: núcleo local prioritario, precedido por la
+   Fase 2.0 de contratos y modularización descrita en
+   [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md).
+3. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
+   original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
+   checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,
+   CI remoto) siguen registrados y no forman parte del alcance de Fase 1.
+4. **Fase 3 (IA/MCP) del plan anterior**: pospuesta. Sus condiciones del
+   product owner siguen vigentes para cuando se retome; no se implementa en la
+   etapa local/offline.
 
 ### Deuda de Fase 2
 
@@ -364,6 +384,15 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
   de decisión de UX/rendimiento).
 - Los fixtures generados incluyen comentarios HTML de relleno; el editor los
   abre en solo lectura. Para probar edición usa la demo o un proyecto real.
+- El panel de Proyectos usa 155,27 px de ancho por tarjeta a 1440; 160 px es la
+  referencia aproximada. La tarjeta de creación iguala la altura de la tarjeta
+  completa y conserva 297 px en estado vacío.
+- La reserva lateral del panel es un bloque vacío sin controles; a 960 sigue la
+  altura del listado y en ≤900 px se oculta al apilarse la barra.
+- El botón «Ayuda» se retiró solo del panel de Proyectos; el botón del editor
+  sigue existiendo. Notificaciones, Filtros, Colección, Plantillas, Papelera,
+  Más opciones y Crear desde plantilla siguen deshabilitados como excepción
+  aprobada por el product owner.
 
 Las garantías completas están en `README.md` y `docs/protocolo-commit.md`.
 
