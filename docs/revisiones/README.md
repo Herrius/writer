@@ -83,6 +83,6 @@ congelación es `fase-2-00-congelado.md`.
 | UX / accesibilidad / rendimiento (r5) | [`fase-2-ux-2026-10-21-r5.md`](fase-2-ux-2026-10-21-r5.md) | aprobado |
 | Congelación r13 (release UX) | [`fase-2-00-congelado-r13.md`](fase-2-00-congelado-r13.md) | — |
 | Release engineer (r2) | [`fase-2-release-2026-10-21-r2.md`](fase-2-release-2026-10-21-r2.md) | aprobado con observaciones |
-| Congelación r14 (product owner) | pendiente | — |
+| Congelación r14 (product owner) | [`fase-2-00-congelado-r14.md`](fase-2-00-congelado-r14.md) | — |
 | Product owner | pendiente | — |
 | Product owner | pendiente | — |
