@@ -1293,3 +1293,17 @@ button.guardar:disabled {
 .banner-info {
   font-size: 0.78rem;
 }
+
+/* A 200 % de zoom la ventana CSS es baja: un banner sticky más alto que el
+   panel taparía el contenido. En ese caso vuelve al flujo normal y deja que el
+   panel haga scroll. */
+@media (max-height: 520px) {
+  .panel > .banner-error {
+    position: static;
+    max-height: none;
+  }
+
+  .editor-toolbar {
+    position: static;
+  }
+}
