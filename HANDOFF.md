@@ -2,9 +2,9 @@
 
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** Fase 2 con QA r3 y seguridad r3 aprobadas con observaciones;
-  pendiente release, UX y aceptación del product owner.
-- **Siguiente tarea:** Release engineer sobre la r6; después UX y product owner.
+- **Fase actual:** Fase 2 con QA, seguridad y release aprobados con
+  observaciones; pendiente UX y aceptación del product owner.
+- **Siguiente tarea:** UX/accesibilidad/rendimiento; después product owner.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
