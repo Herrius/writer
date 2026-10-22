@@ -47,6 +47,10 @@
   accesibilidad y rendimiento.
 - [`iteraciones/14-fase-2.md`](iteraciones/14-fase-2.md) — aceptación y cierre
   de la Fase 2; condiciones de publicación y de Fase 3.
+- [`iteraciones/15-fase-2-1.md`](iteraciones/15-fase-2-1.md) — creación de
+  proyectos desde la GUI y recientes.
+- [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
+  asistente de creación.
 - [`revisiones/README.md`](revisiones/README.md) — pipeline secuencial de
   revisión por roles y registro de la Fase 2. Incluye el informe QA que bloqueó
   la primera congelación y el acta r2 con las correcciones.

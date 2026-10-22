@@ -228,6 +228,30 @@ pub struct EscaneoDto {
 }
 
 #[tauri::command]
+fn crear_proyecto(
+    ruta: String,
+    titulo: String,
+    autor: Option<String>,
+    idioma: Option<String>,
+    notas_iniciales: bool,
+) -> Result<ProyectoDto, ErrorDto> {
+    let proyecto = Project::new(&ruta);
+    proyecto
+        .init(&titulo, autor.as_deref(), idioma.as_deref())
+        .map_err(error)?;
+    if notas_iniciales {
+        for (tipo, etiqueta) in [
+            ("personajes", "Personajes"),
+            ("tramas", "Tramas"),
+            ("lugares", "Lugares"),
+        ] {
+            proyecto.crear_nota(tipo, etiqueta).map_err(error)?;
+        }
+    }
+    abrir_proyecto(ruta)
+}
+
+#[tauri::command]
 fn abrir_proyecto(ruta: String) -> Result<ProyectoDto, ErrorDto> {
     let proyecto = Project::new(&ruta);
     let escaneo = proyecto.verificar().map_err(error)?;
@@ -479,6 +503,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            crear_proyecto,
             abrir_proyecto,
             listar,
             leer,
@@ -521,6 +546,42 @@ mod tests {
         RevisionDetalleDto::export_all(&config).expect("exportar RevisionDetalleDto");
         ReversionDto::export_all(&config).expect("exportar ReversionDto");
         CuarentenaDto::export_all(&config).expect("exportar CuarentenaDto");
+    }
+
+    #[test]
+    fn crear_proyecto_con_notas_iniciales() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let raiz = directorio.path().join("nuevo");
+        let resumen = crear_proyecto(
+            raiz.display().to_string(),
+            "Nueva novela".to_string(),
+            Some("Autora".to_string()),
+            Some("es".to_string()),
+            true,
+        )
+        .expect("crear proyecto");
+        assert_eq!(resumen.titulo, "Nueva novela");
+        assert_eq!(resumen.escenas, 1);
+        assert_eq!(resumen.notas, 3);
+        assert!(resumen.errores.is_empty(), "errores: {:?}", resumen.errores);
+
+        let documentos = listar(raiz.display().to_string(), true).expect("listar");
+        assert_eq!(documentos.len(), 4);
+        assert!(documentos
+            .iter()
+            .any(|documento| documento.tipo == "escena"));
+        assert!(documentos.iter().any(|documento| documento.tipo == "nota"));
+
+        let sin_notas = crear_proyecto(
+            directorio.path().join("minimo").display().to_string(),
+            "Mínimo".to_string(),
+            None,
+            Some("es".to_string()),
+            false,
+        )
+        .expect("crear sin notas");
+        assert_eq!(sin_notas.escenas, 1);
+        assert_eq!(sin_notas.notas, 0);
     }
 
     #[test]

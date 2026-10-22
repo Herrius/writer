@@ -3,11 +3,12 @@
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** **Fase 2 aprobada y cerrada con observaciones** (Linux
-  x86_64); release público no autorizado.
-- **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta decidir y cerrar los
-  faltantes de producto/publicación de la Fase 2.
-- **Siguiente tarea:** revisar el inventario de faltantes y elegir el siguiente
-  bloque de trabajo con el usuario.
+  x86_64); **Fase 2.1 (creación de proyectos) implementada**, pendiente su
+  pipeline de revisión. Release público no autorizado.
+- **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta cerrar los faltantes de
+  producto/publicación.
+- **Siguiente tarea:** probar y revisar la Fase 2.1; después decidir el
+  siguiente bloque de faltantes.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -68,12 +69,12 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 57 pruebas de UI (18 de corpus, 9 de compatibilidad y 30 de autosave, búsqueda,
-  historial, DOCX, cuarentena, marcas, accesibilidad y regresiones);
-- 9 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
+- 58 pruebas de UI (18 de corpus, 9 de compatibilidad y 31 de autosave, búsqueda,
+  historial, DOCX, cuarentena, marcas, accesibilidad, creación y regresiones);
+- 10 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
   Tauri/WebDriver (`Ctrl+S` y cierre de ventana);
 - empaquetado deb/rpm generado y verificado en Linux;
-- 2 pruebas de la cáscara Tauri;
+- 3 pruebas de la cáscara Tauri (comandos, creación con notas y exportación de tipos);
 - gate `python scripts/ci.py interfaz` en verde, además de `e2e` y
   `empaquetado`.
 
@@ -187,6 +188,9 @@ En `apps/desktop/src-tauri/src/lib.rs`:
 
 ### UI
 
+- Crear proyecto desde la GUI: asistente con título, autor, idioma, carpeta
+  padre y nombre de carpeta; estructura inicial y notas opcionales; abrir al
+  crear y lista de recientes en `localStorage`.
 - Abrir proyecto con diálogo nativo (`tauri-plugin-dialog`).
 - `Ctrl+O` / `Cmd+O`, `Ctrl+S` / `Cmd+S`, `Ctrl+F` / `Cmd+F` para buscar.
 - Árbol lateral:
@@ -244,13 +248,13 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 ```text
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
-python scripts/ci.py e2e          OK (9/9, Chromium)
+python scripts/ci.py e2e          OK (10/10, Chromium)
 python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
 cargo test --workspace --all-targets --locked   92/92
-pnpm ui:test                      57/57
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   2/2
+pnpm ui:test                      58/58
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   3/3
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK
 pnpm check                        OK

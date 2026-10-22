@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import {
   abrirProyecto,
   buscar as buscarEnProyecto,
+  crearProyecto as crearProyectoApi,
   cuarentena as pedirCuarentena,
   descartarCuarentena,
   elegirDestinoDocx,
@@ -25,7 +32,10 @@ import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
 import type { TipoError } from './types/TipoError';
 import { EditorMarkdown } from './EditorMarkdown';
+import { Inicio, type DatosNuevoProyecto } from './Inicio';
 import { analizarCompatibilidad } from './markdown/compatibilidad';
+import { contarPalabras, textoSinMarcas } from './palabras';
+import { colorDesdeTitulo, guardarRecientes, leerRecientes, type Reciente } from './recientes';
 
 type Estado = 'inicio' | 'cargando' | 'listo' | 'error';
 type Vista = 'editor' | 'fuente' | 'historial';
@@ -216,6 +226,7 @@ export default function App() {
   const [cuarentena, setCuarentena] = useState<CuarentenaDto[]>([]);
   const [confirmarDescarte, setConfirmarDescarte] = useState<string | null>(null);
   const [descartando, setDescartando] = useState<string | null>(null);
+  const [recientes, setRecientes] = useState<Reciente[]>(() => leerRecientes());
 
   const cargando = useRef(false);
   const navegando = useRef(false);
@@ -362,6 +373,31 @@ export default function App() {
     estadoGuardado === 'error' ||
     estadoGuardado === 'ocupado';
 
+  const recordarProyecto = (
+    resumen: ProyectoDto,
+    palabras = 0,
+    color?: string,
+  ) => {
+    if (resumen.raiz === '(modo demo)') {
+      return;
+    }
+    setRecientes((lista) => {
+      const anterior = lista.find((item) => item.ruta === resumen.raiz);
+      const siguiente = [
+        {
+          ruta: resumen.raiz,
+          titulo: resumen.titulo,
+          autor: resumen.autor ?? anterior?.autor,
+          palabras: palabras || anterior?.palabras || 0,
+          color: color ?? anterior?.color ?? colorDesdeTitulo(resumen.titulo),
+        },
+        ...lista.filter((item) => item.ruta !== resumen.raiz),
+      ].slice(0, 8);
+      guardarRecientes(siguiente);
+      return siguiente;
+    });
+  };
+
   const cargar = async (ruta: string, objetivoPreferido?: string | null) => {
     if (cargando.current) {
       return;
@@ -393,7 +429,12 @@ export default function App() {
       const primero =
         preferido ?? lista.find((documento) => documento.tipo === 'escena') ?? lista[0] ?? null;
       const leido = primero ? await leer(ruta, primero.id) : null;
+      const palabras = lista.reduce(
+        (total, documento) => total + contarPalabras(textoSinMarcas(documento.cuerpo)),
+        0,
+      );
       fijarProyecto(resumen);
+      recordarProyecto(resumen, palabras);
       setDocumentos(lista);
       limpiarPendiente();
       fijarActivo(leido);
@@ -756,6 +797,24 @@ export default function App() {
     }
   };
 
+  const crearProyectoDesdeInicio = async (
+    datos: DatosNuevoProyecto,
+    abrir: boolean,
+  ) => {
+    const resumen = await crearProyectoApi(
+      datos.ruta,
+      datos.titulo,
+      datos.autor,
+      datos.idioma,
+      datos.notasIniciales,
+    );
+    recordarProyecto(resumen, 0, datos.color);
+    if (abrir) {
+      await cargar(resumen.raiz);
+      setMensaje(`Proyecto «${resumen.titulo}» creado y abierto.`);
+    }
+  };
+
   const exportarDocumento = async () => {
     if (exportando || revirtiendoRef.current) {
       return;
@@ -1006,35 +1065,15 @@ export default function App() {
 
   if (estado === 'inicio' || estado === 'error') {
     return (
-      <div className="bienvenida">
-        <div className="bienvenida-tarjeta">
-          <p className="kicker">motor + CLI + interfaz</p>
-          <h1>writer</h1>
-          <p className="entrada">
-            Un proyecto de escritura con los archivos como fuente de verdad. La interfaz abre el
-            proyecto, muestra el árbol y guarda tus cambios en el manuscrito y las notas.
-          </p>
-          <div className="bienvenida-acciones">
-            <button className="primario" onClick={() => void abrir()}>
-              Abrir proyecto
-            </button>
-            {!esTauri && (
-              <button className="secundario" onClick={() => void cargar('(demo)')}>
-                Ver demo
-              </button>
-            )}
-          </div>
-          <p className="atajo">Ctrl+O / Cmd+O para abrir · Ctrl+S / Cmd+S para guardar</p>
-          {!esTauri && (
-            <p className="nota-modo">Estás en el navegador: la demo usa datos de ejemplo.</p>
-          )}
-          {error && (
-            <pre className="banner-error" role="alert">
-              {error}
-            </pre>
-          )}
-        </div>
-      </div>
+      <Inicio
+        recientes={recientes}
+        esTauri={esTauri}
+        errorInicial={error}
+        onAbrir={() => void abrir()}
+        onDemo={() => void cargar('(demo)')}
+        onAbrirReciente={(ruta) => void cargar(ruta)}
+        onCrear={crearProyectoDesdeInicio}
+      />
     );
   }
 

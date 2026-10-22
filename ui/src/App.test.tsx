@@ -4,8 +4,10 @@ import App from './App';
 import {
   abrirProyecto,
   buscar,
+  crearProyecto,
   cuarentena,
   descartarCuarentena,
+  elegirCarpetaCreacion,
   elegirDestinoDocx,
   escribir,
   exportarDocx,
@@ -42,6 +44,8 @@ vi.mock('./api', () => ({
   esTauri: false,
   elegirProyecto: vi.fn(),
   abrirProyecto: vi.fn(),
+  crearProyecto: vi.fn(),
+  elegirCarpetaCreacion: vi.fn(),
   listar: vi.fn(),
   leer: vi.fn(),
   verificar: vi.fn(),
@@ -64,6 +68,8 @@ vi.mock('./api', () => ({
 }));
 
 const abrirMock = vi.mocked(abrirProyecto);
+const crearProyectoMock = vi.mocked(crearProyecto);
+const elegirCarpetaCreacionMock = vi.mocked(elegirCarpetaCreacion);
 const listarMock = vi.mocked(listar);
 const leerMock = vi.mocked(leer);
 const escribirMock = vi.mocked(escribir);
@@ -129,6 +135,8 @@ function detalleDe(revision: number): RevisionDetalleDto {
 
 function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDto = proyecto) {
   abrirMock.mockResolvedValue(resumen);
+  crearProyectoMock.mockResolvedValue(resumen);
+  elegirCarpetaCreacionMock.mockResolvedValue('/tmp');
   listarMock.mockResolvedValue([documentoActivo]);
   leerMock.mockResolvedValue({ ...documentoActivo });
   escribirMock.mockImplementation(async (_ruta, _id, cuerpo) => ({
@@ -195,6 +203,7 @@ function estadoGuardado(): string {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
   vi.clearAllMocks();
   preparar();
 });
@@ -204,6 +213,37 @@ afterEach(() => {
 });
 
 describe('autosave de la interfaz', () => {
+  it('crea un proyecto desde el asistente y lo abre', async () => {
+    crearProyectoMock.mockResolvedValueOnce({
+      ...proyecto,
+      raiz: '/tmp/mi-novela',
+      titulo: 'Mi novela',
+    });
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /Crear nuevo proyecto/ }));
+
+    fireEvent.change(screen.getByLabelText('Título'), {
+      target: { value: 'Mi novela' },
+    });
+    fireEvent.change(screen.getByLabelText('Autor'), {
+      target: { value: 'Autora' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir…' }));
+    await screen.findByDisplayValue('/tmp');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar y abrir' }));
+
+    await waitFor(() =>
+      expect(crearProyectoMock).toHaveBeenCalledWith(
+        '/tmp/mi-novela',
+        'Mi novela',
+        'Autora',
+        'es',
+        true,
+      ),
+    );
+    expect(await screen.findByRole('textbox', { name: 'editor de prueba' })).toBeTruthy();
+  });
+
   it('guarda tras el debounce y actualiza la revisión', async () => {
     const editor = await abrirDemo();
     fireEvent.change(editor, { target: { value: 'Texto cambiado.\n' } });

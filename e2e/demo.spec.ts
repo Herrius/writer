@@ -6,6 +6,27 @@ async function abrirDemo(page: import('@playwright/test').Page) {
   await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
 }
 
+test('abre el asistente de creación y explica el límite de la demo', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Crear nuevo proyecto/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Crear nuevo proyecto' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Guardar y abrir' }).click();
+  await expect(page.getByText('Escribe un título para el libro.')).toBeVisible();
+
+  await page.getByLabel('Título', { exact: true }).fill('Mi novela');
+  page.once('dialog', (dialogo) => {
+    void dialogo.accept('/tmp');
+  });
+  await page.getByRole('button', { name: 'Elegir…' }).click();
+  await expect(page.getByText('Se creará en /tmp/mi-novela')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Guardar y abrir' }).click();
+  await expect(
+    page.getByText(/La creación de proyectos requiere la app de escritorio/),
+  ).toBeVisible();
+});
+
 test('abre la demo, edita y guarda con el autosave', async ({ page }) => {
   await abrirDemo(page);
   const editor = page.locator('.ProseMirror');

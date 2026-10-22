@@ -124,6 +124,40 @@ export async function elegirProyecto(): Promise<string | null> {
   return typeof seleccion === 'string' ? seleccion : null;
 }
 
+export async function elegirCarpetaCreacion(): Promise<string | null> {
+  if (!esTauri) {
+    return window.prompt('Carpeta padre donde crear el proyecto');
+  }
+  const seleccion = await open({
+    directory: true,
+    multiple: false,
+    title: 'Elegir carpeta para el nuevo proyecto',
+  });
+  return typeof seleccion === 'string' ? seleccion : null;
+}
+
+export async function crearProyecto(
+  ruta: string,
+  titulo: string,
+  autor: string | null,
+  idioma: string | null,
+  notasIniciales: boolean,
+): Promise<ProyectoDto> {
+  if (!esTauri) {
+    throw {
+      tipo: 'proyecto',
+      mensaje: 'La creación de proyectos requiere la app de escritorio; en la demo usa Abrir proyecto.',
+    } satisfies ErrorDto;
+  }
+  return invoke<ProyectoDto>('crear_proyecto', {
+    ruta,
+    titulo,
+    autor,
+    idioma,
+    notasIniciales,
+  });
+}
+
 export async function elegirDestinoDocx(titulo: string): Promise<string | null> {
   const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'novela'}.docx`;
   if (!esTauri) {
