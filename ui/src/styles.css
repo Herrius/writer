@@ -1819,8 +1819,7 @@ button.guardar:disabled {
   gap: 1rem;
 }
 
-.tarjeta-bienvenida,
-.tarjeta-meta {
+.tarjeta-bienvenida {
   padding: 0.8rem;
   border: 1px solid #e2ddd4;
   border-radius: 0.55rem;
@@ -1857,76 +1856,6 @@ button.guardar:disabled {
 .estadisticas small {
   color: #756b5f;
   font-size: 0.7rem;
-}
-
-.tarjeta-meta {
-  color: #72685c;
-  font-size: 0.76rem;
-}
-
-.meta-punto {
-  display: block;
-  width: 5px;
-  height: 5px;
-  margin-bottom: 0.5rem;
-  border-radius: 50%;
-  background: #5d84a8;
-}
-
-.tarjeta-meta p {
-  margin: 0 0 0.7rem;
-}
-
-.proyectos-personales h2 {
-  margin: 0 0 0.5rem;
-  color: #5d554b;
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.cuaderno-ideas {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  min-height: 220px;
-  padding: 1rem;
-  border: 1px solid #d8d0c1;
-  border-radius: 0.2rem;
-  background:
-    repeating-linear-gradient(90deg, transparent 0 18px, rgb(90 75 50 / 6%) 18px 19px),
-    linear-gradient(145deg, #ded7c2, #c9c0a5);
-  color: #746951;
-  box-shadow: 0.4rem 0.5rem 1rem rgb(46 36 28 / 18%);
-  cursor: pointer;
-}
-
-.cuaderno-ideas strong {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.2rem;
-  font-weight: 500;
-}
-
-.cuaderno-espiral {
-  position: absolute;
-  top: 0.4rem;
-  bottom: 0.4rem;
-  left: 0.35rem;
-  width: 6px;
-  background: repeating-linear-gradient(
-    to bottom,
-    #8d8574 0 6px,
-    transparent 6px 16px
-  );
-}
-
-.cuaderno-bombillas {
-  font-size: 0.8rem;
-  letter-spacing: 0.5rem;
-  opacity: 0.55;
 }
 
 /* Modal de creación al estilo de las referencias. */

@@ -11,8 +11,15 @@
   `localStorage`) y una tarjeta “Crear nuevo proyecto”.
 - Estado vacío con “No proyectos”, texto de bienvenida y “Abrir proyecto
   existente”.
-- Barra lateral con bienvenida, número de **recientes** (máximo 8), palabras
-  registradas, meta diaria (deshabilitada) y cuaderno “Ideas”.
+- Barra lateral con bienvenida, número de **recientes** (máximo 8) y palabras
+  registradas. El espacio restante queda reservado para contenido futuro.
+- El panel no muestra meta diaria, “Proyectos personales” ni el cuaderno
+  “Ideas”. La meta diaria y el cuaderno de Ideas pueden existir dentro del
+  proyecto.
+- Se retiró el botón “Ayuda” del panel. Notificaciones, Filtros, Colección,
+  Plantillas, Papelera, Más opciones y Crear desde plantilla se conservan
+  deshabilitados como **excepción aprobada por el product owner** al criterio
+  “no hay controles visibles sin acción”.
 - El proyecto se abre al pulsar una tarjeta; los recientes se actualizan al
   abrir o crear. “Abrir proyecto” está siempre visible en la cabecera, además
   del estado vacío.

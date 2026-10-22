@@ -581,3 +581,21 @@ describe('autosave de la interfaz', () => {
     expect(await screen.findByText(/Copia de cuarentena descartada/)).toBeTruthy();
   });
 });
+
+describe('panel de proyectos', () => {
+  it('retira meta diaria, proyectos personales, Ideas y Ayuda', () => {
+    render(<App />);
+
+    expect(screen.queryByText('Proyectos personales')).toBeNull();
+    expect(screen.queryByText('Ideas')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Configurar meta diaria' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ayuda' })).toBeNull();
+
+    expect(screen.getByRole('button', { name: /Crear nuevo proyecto/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Filtros' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Agregar una colección/ })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Plantillas' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Papelera' })).toBeTruthy();
+  });
+});

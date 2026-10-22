@@ -78,3 +78,36 @@ permite.
 Se mantiene la cuadrícula responsive actual y se corrige la alineación con una
 medida estructural compartida entre la tarjeta de creación y la tarjeta de
 proyecto. No se fija un ancho rígido de 160 px que rompa la cuadrícula a 1440.
+
+## F1.1 — Retirada de meta diaria, Proyectos personales, Ideas y Ayuda
+
+### Cambios
+
+- `ui/src/Inicio.tsx`:
+  - se eliminaron la tarjeta de meta diaria y la sección «Proyectos
+    personales» con el cuaderno «Ideas»;
+  - se eliminó el estado `aviso` y su banner, que solo servía al clic de
+    «Ideas»;
+  - se eliminó el botón deshabilitado «Ayuda» de la barra superior;
+  - se conservaron Notificaciones, Filtros, Colección, Plantillas, Papelera,
+    Más opciones y Crear desde plantilla como excepción documentada.
+- `ui/src/styles.css`: se retiraron `.tarjeta-meta`, `.meta-punto`,
+  `.proyectos-personales`, `.cuaderno-ideas`, `.cuaderno-espiral` y
+  `.cuaderno-bombillas`.
+- `ui/src/App.test.tsx`: nueva prueba de regresión que comprueba la ausencia de
+  los cuatro bloques y la permanencia de los controles acordados.
+- `docs/inicio-v1.md` §1: contrato actualizado.
+
+### Verificación
+
+```text
+pnpm typecheck       OK
+pnpm ui:test         60/60
+```
+
+### Límites
+
+- La barra lateral queda con la tarjeta de bienvenida; el espacio reservado se
+  implementa en F1.3.
+- El resto de controles deshabilitados sigue visible por decisión del product
+  owner; no se añaden acciones nuevas.

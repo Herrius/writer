@@ -98,7 +98,6 @@ export function Inicio({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
   const [plegado, setPlegado] = useState(false);
   const fondoRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLFormElement>(null);
@@ -138,7 +137,6 @@ export function Inicio({
     setNombreEditado(false);
     setError(null);
     setExito(null);
-    setAviso(null);
   };
 
   const cerrarModal = () => {
@@ -283,14 +281,6 @@ export function Inicio({
           >
             ◔
           </button>
-          <button
-            className="icono-inicio"
-            aria-label="Ayuda"
-            title="Ayuda disponible próximamente"
-            disabled
-          >
-            ?
-          </button>
           <span className="avatar-inicio" aria-label={`Sesión de ${autorBienvenida}`}>
             {autorBienvenida.charAt(0).toLocaleUpperCase()}
           </span>
@@ -357,15 +347,6 @@ export function Inicio({
           </button>
         </div>
       )}
-      {aviso && (
-        <div className="banner-info inicio-exito" role="status" aria-live="polite">
-          <span>{aviso}</span>
-          <button className="boton-inicio" onClick={() => setAviso(null)}>
-            Cerrar
-          </button>
-        </div>
-      )}
-
       <div className="inicio-cuerpo">
         <main className="inicio-proyectos">
           <section className="mis-proyectos">
@@ -490,32 +471,6 @@ export function Inicio({
                 <small>palabras escritas</small>
               </span>
             </div>
-          </section>
-
-          <section className="tarjeta-meta">
-            <span className="meta-punto" aria-hidden="true" />
-            <p>
-              Estos son tus conteos de palabras de los últimos 30 días. Establece una meta
-              diaria para seguir tu progreso.
-            </p>
-            <button className="boton-inicio" disabled title="Meta diaria próximamente">
-              + Configurar meta diaria
-            </button>
-          </section>
-
-          <section className="proyectos-personales">
-            <h2>Proyectos personales</h2>
-            <button
-              className="cuaderno-ideas"
-              title="Cuaderno de ideas"
-              onClick={() => setAviso('El cuaderno de Ideas llegará en una próxima fase.')}
-            >
-              <span className="cuaderno-espiral" aria-hidden="true" />
-              <strong>Ideas</strong>
-              <span className="cuaderno-bombillas" aria-hidden="true">
-                ◌ ◌ ◌
-              </span>
-            </button>
           </section>
         </aside>
       </div>
