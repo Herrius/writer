@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { elegirCarpetaCreacion, errorDe, listarDirectorios } from './api';
-import type { ListadoDirectoriosDto } from './types/ListadoDirectoriosDto';
+import { elegirCarpetaCreacion, errorDe } from './api';
 import { colorDesdeTitulo, slugProyecto, type Reciente } from './recientes';
 
 export type DatosNuevoProyecto = {
@@ -101,13 +100,6 @@ export function Inicio({
   const [exito, setExito] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [plegado, setPlegado] = useState(false);
-  const [exploradorAbierto, setExploradorAbierto] = useState(false);
-  const [exploradorListado, setExploradorListado] = useState<ListadoDirectoriosDto | null>(null);
-  const [exploradorRuta, setExploradorRuta] = useState('');
-  const [exploradorCargando, setExploradorCargando] = useState(false);
-  const [exploradorError, setExploradorError] = useState<string | null>(null);
-  const exploradorSeq = useRef(0);
-  const elegirCarpetaRef = useRef<HTMLButtonElement>(null);
   const fondoRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLFormElement>(null);
   const focoPrevioRef = useRef<HTMLElement | null>(null);
@@ -147,96 +139,13 @@ export function Inicio({
     setError(null);
     setExito(null);
     setAviso(null);
-    setExploradorAbierto(false);
-    setExploradorListado(null);
-    setExploradorError(null);
   };
 
   const cerrarModal = () => {
     if (!guardando) {
       setModalAbierto(false);
       setError(null);
-      setExploradorAbierto(false);
-      setExploradorListado(null);
-      setExploradorError(null);
       window.requestAnimationFrame(() => focoPrevioRef.current?.focus());
-    }
-  };
-
-  const cargarDirectorio = async (ruta?: string | null) => {
-    const secuencia = exploradorSeq.current + 1;
-    exploradorSeq.current = secuencia;
-    setExploradorCargando(true);
-    setExploradorError(null);
-    try {
-      const listado = await listarDirectorios(ruta);
-      if (exploradorSeq.current !== secuencia) {
-        return;
-      }
-      setExploradorListado(listado);
-      setExploradorRuta(listado.ruta);
-    } catch (fallo) {
-      if (exploradorSeq.current === secuencia) {
-        setExploradorError(errorDe(fallo).mensaje);
-      }
-    } finally {
-      if (exploradorSeq.current === secuencia) {
-        setExploradorCargando(false);
-      }
-    }
-  };
-
-  const abrirExplorador = async () => {
-    if (!esTauri) {
-      try {
-        const carpeta = await elegirCarpetaCreacion();
-        if (carpeta) {
-          setCarpetaPadre(carpeta);
-          setError(null);
-        }
-      } catch (fallo) {
-        setError(errorDe(fallo).mensaje);
-      }
-      return;
-    }
-    setExploradorAbierto(true);
-    setExploradorListado(null);
-    setExploradorRuta(carpetaPadre);
-    setExploradorError(null);
-    void cargarDirectorio(carpetaPadre || null);
-  };
-
-  const cerrarExplorador = () => {
-    if (exploradorCargando) {
-      return;
-    }
-    setExploradorAbierto(false);
-    setExploradorError(null);
-    window.requestAnimationFrame(() => elegirCarpetaRef.current?.focus());
-  };
-
-  const usarCarpetaExplorador = () => {
-    if (!exploradorListado || exploradorCargando) {
-      return;
-    }
-    setCarpetaPadre(exploradorListado.ruta);
-    setError(null);
-    setExploradorAbierto(false);
-    setExploradorError(null);
-    window.requestAnimationFrame(() => elegirCarpetaRef.current?.focus());
-  };
-
-  const usarDialogoSistema = async () => {
-    try {
-      const carpeta = await elegirCarpetaCreacion();
-      if (carpeta) {
-        setCarpetaPadre(carpeta);
-        setError(null);
-        setExploradorAbierto(false);
-        window.requestAnimationFrame(() => elegirCarpetaRef.current?.focus());
-      }
-    } catch (fallo) {
-      setExploradorError(errorDe(fallo).mensaje);
     }
   };
 
@@ -248,32 +157,10 @@ export function Inicio({
     if (fondo) {
       fondo.inert = true;
     }
-    return () => {
-      if (fondo) {
-        fondo.inert = false;
-      }
-    };
-  }, [modalAbierto]);
-
-  useEffect(() => {
-    if (!modalAbierto) {
-      return;
-    }
     const manejarTeclado = (evento: KeyboardEvent) => {
-      if (evento.key === 'Escape') {
-        if (exploradorAbierto) {
-          evento.preventDefault();
-          if (!exploradorCargando) {
-            setExploradorAbierto(false);
-            setExploradorError(null);
-            window.requestAnimationFrame(() => elegirCarpetaRef.current?.focus());
-          }
-          return;
-        }
-        if (!guardando) {
-          evento.preventDefault();
-          cerrarModal();
-        }
+      if (evento.key === 'Escape' && !guardando) {
+        evento.preventDefault();
+        cerrarModal();
         return;
       }
       if (evento.key !== 'Tab' || guardando) {
@@ -306,8 +193,11 @@ export function Inicio({
     document.addEventListener('keydown', manejarTeclado);
     return () => {
       document.removeEventListener('keydown', manejarTeclado);
+      if (fondo) {
+        fondo.inert = false;
+      }
     };
-  }, [modalAbierto, guardando, exploradorAbierto, exploradorCargando]);
+  }, [modalAbierto, guardando]);
 
   const actualizarTitulo = (titulo: string) => {
     setNuevoTitulo(titulo);
@@ -641,102 +531,24 @@ export function Inicio({
             aria-labelledby="crear-proyecto-titulo"
             aria-describedby="crear-proyecto-descripcion"
             noValidate
-            onSubmit={(evento) => {
-              if (exploradorAbierto) {
-                evento.preventDefault();
-                return;
-              }
-              void enviar(evento, true);
-            }}
+            onSubmit={(evento) => void enviar(evento, true)}
           >
             <p id="crear-proyecto-descripcion" className="sr-only">
               Elige el nombre, la carpeta, el título y los datos iniciales del proyecto. Pulsa
               Guardar para dejarlo en recientes o Guardar y abrir para empezar a escribir.
             </p>
             <div className="modal-proyecto-cabecera">
-              <h2 id="crear-proyecto-titulo">
-                {exploradorAbierto ? 'Elegir carpeta' : 'Crear nuevo proyecto'}
-              </h2>
+              <h2 id="crear-proyecto-titulo">Crear nuevo proyecto</h2>
               <button
                 type="button"
                 className="cerrar-modal"
-                aria-label={exploradorAbierto ? 'Volver al formulario' : 'Cerrar'}
-                onClick={exploradorAbierto ? cerrarExplorador : cerrarModal}
-                disabled={guardando || (exploradorAbierto && exploradorCargando)}
+                aria-label="Cerrar"
+                onClick={cerrarModal}
+                disabled={guardando}
               >
                 ×
               </button>
             </div>
-            {exploradorAbierto ? (
-              <div className="modal-proyecto-cuerpo explorador-carpetas">
-                <div className="explorador-cabecera">
-                  <button
-                    type="button"
-                    className="boton-inicio explorador-subir"
-                    aria-label="Subir un nivel"
-                    title="Subir un nivel"
-                    disabled={!exploradorListado?.padre || exploradorCargando}
-                    onClick={() => void cargarDirectorio(exploradorListado?.padre)}
-                  >
-                    ↑
-                  </button>
-                  <input
-                    aria-label="Ruta de la carpeta"
-                    value={exploradorRuta}
-                    onChange={(evento) => setExploradorRuta(evento.target.value)}
-                    onKeyDown={(evento) => {
-                      if (evento.key === 'Enter') {
-                        evento.preventDefault();
-                        void cargarDirectorio(exploradorRuta);
-                      }
-                    }}
-                    placeholder="Escribe una ruta y pulsa Enter"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    className="boton-inicio"
-                    disabled={exploradorCargando}
-                    onClick={() => void cargarDirectorio(exploradorRuta)}
-                  >
-                    Ir
-                  </button>
-                </div>
-                <p className="explorador-ruta" aria-live="polite">
-                  {exploradorListado?.ruta ?? 'Cargando carpeta…'}
-                </p>
-                {exploradorError && (
-                  <pre className="banner-error explorador-error" role="alert">
-                    {exploradorError}
-                  </pre>
-                )}
-                <div className="explorador-lista" aria-busy={exploradorCargando}>
-                  {exploradorCargando && <p className="vacio">Leyendo carpetas…</p>}
-                  {!exploradorCargando &&
-                    exploradorListado &&
-                    exploradorListado.directorios.length === 0 && (
-                      <p className="vacio">No hay subcarpetas. Puedes usar esta carpeta.</p>
-                    )}
-                  {!exploradorCargando &&
-                    exploradorListado?.directorios.map((directorio) => (
-                      <button
-                        key={directorio.ruta}
-                        type="button"
-                        className="explorador-directorio"
-                        onClick={() => void cargarDirectorio(directorio.ruta)}
-                      >
-                        <span aria-hidden="true">▸</span>
-                        <span className="explorador-directorio-nombre">{directorio.nombre}</span>
-                        <span aria-hidden="true">›</span>
-                      </button>
-                    ))}
-                </div>
-                <p className="nota-campo">
-                  Navega con las carpetas o escribe una ruta. El proyecto se creará dentro de la
-                  carpeta que elijas.
-                </p>
-              </div>
-            ) : (
             <div className="modal-proyecto-cuerpo">
               <nav className="modal-pasos" aria-label="Secciones del proyecto">
                 <button
@@ -857,10 +669,18 @@ export function Inicio({
                           placeholder="Elige una carpeta…"
                         />
                         <button
-                          ref={elegirCarpetaRef}
                           type="button"
                           className="boton-inicio"
-                          onClick={() => void abrirExplorador()}
+                          onClick={() => {
+                            elegirCarpetaCreacion()
+                              .then((carpeta) => {
+                                if (carpeta) {
+                                  setCarpetaPadre(carpeta);
+                                  setError(null);
+                                }
+                              })
+                              .catch((fallo: unknown) => setError(errorDe(fallo).mensaje));
+                          }}
                         >
                           Examinar…
                         </button>
@@ -885,49 +705,24 @@ export function Inicio({
                 </div>
               </div>
             </div>
-            )}
-            {!exploradorAbierto && error && (
+            {error && (
               <pre className="banner-error modal-error" role="alert">
                 {error}
               </pre>
             )}
-            {exploradorAbierto ? (
-              <div className="modal-proyecto-pie">
-                <button type="button" className="boton-inicio" onClick={cerrarExplorador}>
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  className="boton-inicio"
-                  onClick={() => void usarDialogoSistema()}
-                  disabled={exploradorCargando}
-                >
-                  Diálogo del sistema…
-                </button>
-                <button
-                  type="button"
-                  className="boton-primario"
-                  onClick={usarCarpetaExplorador}
-                  disabled={!exploradorListado || exploradorCargando}
-                >
-                  Usar esta carpeta
-                </button>
-              </div>
-            ) : (
-              <div className="modal-proyecto-pie">
-                <button
-                  type="button"
-                  className="boton-inicio"
-                  disabled={guardando}
-                  onClick={(evento) => void enviar(evento, false)}
-                >
-                  Guardar
-                </button>
-                <button type="submit" className="boton-primario" disabled={guardando}>
-                  {guardando ? 'Creando…' : 'Guardar y abrir'}
-                </button>
-              </div>
-            )}
+            <div className="modal-proyecto-pie">
+              <button
+                type="button"
+                className="boton-inicio"
+                disabled={guardando}
+                onClick={(evento) => void enviar(evento, false)}
+              >
+                Guardar
+              </button>
+              <button type="submit" className="boton-primario" disabled={guardando}>
+                {guardando ? 'Creando…' : 'Guardar y abrir'}
+              </button>
+            </div>
           </form>
         </div>
       )}

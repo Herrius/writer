@@ -9,7 +9,6 @@ import {
   descartarCuarentena,
   elegirCarpetaCreacion,
   elegirDestinoDocx,
-  listarDirectorios,
   escribir,
   exportarDocx,
   historial,
@@ -47,7 +46,6 @@ vi.mock('./api', () => ({
   abrirProyecto: vi.fn(),
   crearProyecto: vi.fn(),
   elegirCarpetaCreacion: vi.fn(),
-  listarDirectorios: vi.fn(),
   listar: vi.fn(),
   leer: vi.fn(),
   verificar: vi.fn(),
@@ -72,7 +70,6 @@ vi.mock('./api', () => ({
 const abrirMock = vi.mocked(abrirProyecto);
 const crearProyectoMock = vi.mocked(crearProyecto);
 const elegirCarpetaCreacionMock = vi.mocked(elegirCarpetaCreacion);
-const listarDirectoriosMock = vi.mocked(listarDirectorios);
 const listarMock = vi.mocked(listar);
 const leerMock = vi.mocked(leer);
 const escribirMock = vi.mocked(escribir);
@@ -140,7 +137,6 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
   abrirMock.mockResolvedValue(resumen);
   crearProyectoMock.mockResolvedValue(resumen);
   elegirCarpetaCreacionMock.mockResolvedValue('/tmp');
-  listarDirectoriosMock.mockResolvedValue({ ruta: '/tmp', padre: '/', directorios: [] });
   listarMock.mockResolvedValue([documentoActivo]);
   leerMock.mockResolvedValue({ ...documentoActivo });
   escribirMock.mockImplementation(async (_ruta, _id, cuerpo) => ({

@@ -35,17 +35,6 @@ exec "$aplicacion" "\$@"
 EOF
 chmod +x "$arrollador"
 
-arrollador_panel="$temporal/writer-desktop-panel"
-cat >"$arrollador_panel" <<EOF
-#!/bin/bash
-export GDK_BACKEND=x11
-export XDG_SESSION_TYPE=x11
-unset WRITER_E2E_PROJECT
-export HOME="$temporal/home"
-exec "$aplicacion" "\$@"
-EOF
-chmod +x "$arrollador_panel"
-
 limpiar() {
   # El driver y la app comparten grupo de procesos: cerrar el grupo evita
   # ventanas y procesos huérfanos entre repeticiones.
@@ -144,12 +133,3 @@ WRITER_E2E_MODE=guardar node e2e-tauri/tauri.test.mjs
 # sesión de teclado por proceso y así se prueba también el arranque limpio.
 detener_app
 WRITER_E2E_MODE=cerrar node e2e-tauri/tauri.test.mjs
-
-if [[ "${WRITER_E2E_INCLUIR_CREACION:-0}" == "1" ]]; then
-  detener_app
-  mkdir -p "$temporal/home/!destino"
-  WRITER_E2E_MODE=crear \
-    WRITER_E2E_CREATE_DIR="$temporal/home/!destino" \
-    WRITER_DESKTOP_BIN="$arrollador_panel" \
-    node e2e-tauri/tauri.test.mjs
-fi

@@ -6,7 +6,6 @@ import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { ErrorDto } from './types/ErrorDto';
 import type { EscaneoDto } from './types/EscaneoDto';
 import type { GuardadoDto } from './types/GuardadoDto';
-import type { ListadoDirectoriosDto } from './types/ListadoDirectoriosDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { ReversionDto } from './types/ReversionDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
@@ -135,18 +134,6 @@ export async function elegirCarpetaCreacion(): Promise<string | null> {
     title: 'Elegir carpeta para el nuevo proyecto',
   });
   return typeof seleccion === 'string' ? seleccion : null;
-}
-
-export async function listarDirectorios(
-  ruta?: string | null,
-): Promise<ListadoDirectoriosDto> {
-  if (!esTauri) {
-    throw {
-      tipo: 'entrada',
-      mensaje: 'El explorador de carpetas requiere la app de escritorio.',
-    } satisfies ErrorDto;
-  }
-  return invoke<ListadoDirectoriosDto>('listar_directorios', { ruta: ruta ?? null });
 }
 
 export async function crearProyecto(

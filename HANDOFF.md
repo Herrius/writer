@@ -1,19 +1,14 @@
 # HANDOFF — estado para retomar
 
 - **Fecha:** 2026-10-22
-- **Iteración 17:** explorador de carpetas in-app implementado; Rust 94/94,
-  Tauri 4/4, UI 60/60, E2E de navegador 12/12 y E2E de escritorio 2/2. El
-  escenario opcional de creación queda fuera del gate por la inestabilidad de
-  WebKitWebDriver. `tokio` 1.54.1 corrige `RUSTSEC-2026-0384`.
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** **Fase 2, Fase 2.1 y Bloque 2.2 aprobados con
   observaciones** (Linux x86_64); la interfaz de escritura e historial sigue las
   referencias de Dabble y la deuda P3 prioritaria está cerrada.
 - **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta cerrar los faltantes de
   producto/publicación.
-- **Siguiente tarea:** preparar el bloque de release (no autorizado todavía),
-  cerrar el E2E del diálogo nativo y SEC21-02 antes de publicar; el escenario
-  opcional de creación puede estabilizarse cuando WebKitWebDriver lo permita.
+- **Siguiente tarea:** preparar el bloque de release (no autorizado todavía);
+  cerrar el E2E del diálogo nativo y SEC21-02 antes de publicar.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; HEAD del Bloque
   2.2 congelado en `76b139f` (sin remoto).
 
@@ -75,15 +70,12 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 60 pruebas de UI (18 de corpus, 9 de compatibilidad y 33 de autosave, búsqueda,
+- 59 pruebas de UI (18 de corpus, 9 de compatibilidad y 32 de autosave, búsqueda,
   historial, DOCX, cuarentena, marcas, accesibilidad, creación y regresiones);
 - 12 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
-  Tauri/WebDriver (`Ctrl+S` y cierre de ventana). El escenario opcional de
-  creación desde el explorador está definido, pero no forma parte del gate por
-  la inestabilidad de WebKitWebDriver.
+  Tauri/WebDriver (`Ctrl+S` y cierre de ventana);
 - empaquetado deb/rpm generado y verificado en Linux;
-- 4 pruebas de la cáscara Tauri (comandos, creación con notas, explorador de
-  carpetas y exportación de tipos);
+- 3 pruebas de la cáscara Tauri (comandos, creación con notas y exportación de tipos);
 - gate `python scripts/ci.py interfaz` en verde, además de `e2e` y
   `empaquetado`.
 
@@ -265,8 +257,8 @@ python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
 cargo test --workspace --all-targets --locked   94/94
-pnpm ui:test                      60/60
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   4/4
+pnpm ui:test                      59/59
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   3/3
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK
 pnpm check                        OK

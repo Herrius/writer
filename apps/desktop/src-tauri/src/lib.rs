@@ -227,116 +227,6 @@ pub struct EscaneoDto {
     pub avisos: Vec<String>,
 }
 
-/// Subcarpeta mostrada por el explorador de carpetas.
-#[derive(Clone, Debug, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub struct DirectorioDto {
-    /// Nombre visible de la carpeta.
-    pub nombre: String,
-    /// Ruta absoluta navegable.
-    pub ruta: String,
-}
-
-/// Resultado de listar una carpeta para elegir el destino del proyecto.
-#[derive(Clone, Debug, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub struct ListadoDirectoriosDto {
-    /// Carpeta actual, ya canónica.
-    pub ruta: String,
-    /// Carpeta padre, si el usuario puede subir.
-    pub padre: Option<String>,
-    /// Subcarpetas ordenadas alfabéticamente.
-    pub directorios: Vec<DirectorioDto>,
-}
-
-/// Lista las subcarpetas de una ruta para el explorador del asistente.
-#[tauri::command]
-fn listar_directorios(ruta: Option<String>) -> Result<ListadoDirectoriosDto, ErrorDto> {
-    let solicitada = ruta
-        .as_deref()
-        .map(str::trim)
-        .filter(|valor| !valor.is_empty())
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(directorio_inicial);
-    let real = std::fs::canonicalize(&solicitada).map_err(|fallo| ErrorDto {
-        tipo: TipoError::Io,
-        mensaje: format!(
-            "no se pudo abrir la carpeta {}: {fallo}",
-            solicitada.display()
-        ),
-    })?;
-    let metadatos = std::fs::metadata(&real).map_err(|fallo| ErrorDto {
-        tipo: TipoError::Io,
-        mensaje: format!("no se pudo leer la carpeta {}: {fallo}", real.display()),
-    })?;
-    if !metadatos.is_dir() {
-        return Err(ErrorDto {
-            tipo: TipoError::Entrada,
-            mensaje: format!("la ruta no es una carpeta: {}", real.display()),
-        });
-    }
-
-    let mut directorios = Vec::new();
-    let entradas = std::fs::read_dir(&real).map_err(|fallo| ErrorDto {
-        tipo: TipoError::Io,
-        mensaje: format!("no se pudo listar la carpeta {}: {fallo}", real.display()),
-    })?;
-    for entrada in entradas {
-        let Ok(entrada) = entrada else {
-            continue;
-        };
-        let Ok(nombre) = entrada.file_name().into_string() else {
-            continue;
-        };
-        if nombre.is_empty() {
-            continue;
-        }
-        let ruta_hija = entrada.path();
-        let es_directorio = match entrada.file_type() {
-            Ok(tipo) if tipo.is_dir() => true,
-            Ok(tipo) if tipo.is_symlink() => std::fs::metadata(&ruta_hija)
-                .map(|meta| meta.is_dir())
-                .unwrap_or(false),
-            _ => false,
-        };
-        if !es_directorio {
-            continue;
-        }
-        directorios.push(DirectorioDto {
-            nombre,
-            ruta: ruta_hija.display().to_string(),
-        });
-        if directorios.len() >= 5_000 {
-            break;
-        }
-    }
-    directorios.sort_by_key(|directorio| directorio.nombre.to_lowercase());
-    let padre = real
-        .parent()
-        .filter(|padre| *padre != real.as_path())
-        .map(|padre| padre.display().to_string());
-
-    Ok(ListadoDirectoriosDto {
-        ruta: real.display().to_string(),
-        padre,
-        directorios,
-    })
-}
-
-fn directorio_inicial() -> std::path::PathBuf {
-    for variable in ["HOME", "USERPROFILE"] {
-        if let Some(ruta) = std::env::var_os(variable) {
-            let ruta = std::path::PathBuf::from(ruta);
-            if ruta.is_dir() {
-                return ruta;
-            }
-        }
-    }
-    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
-}
-
 #[tauri::command]
 fn crear_proyecto(
     ruta: String,
@@ -631,7 +521,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            listar_directorios,
             crear_proyecto,
             abrir_proyecto,
             listar,
@@ -667,8 +556,6 @@ mod tests {
         ProyectoDto::export_all(&config).expect("exportar ProyectoDto");
         DocumentoDto::export_all(&config).expect("exportar DocumentoDto");
         EscaneoDto::export_all(&config).expect("exportar EscaneoDto");
-        DirectorioDto::export_all(&config).expect("exportar DirectorioDto");
-        ListadoDirectoriosDto::export_all(&config).expect("exportar ListadoDirectoriosDto");
         ErrorDto::export_all(&config).expect("exportar ErrorDto");
         GuardadoDto::export_all(&config).expect("exportar GuardadoDto");
         BusquedaDto::export_all(&config).expect("exportar BusquedaDto");
@@ -724,39 +611,6 @@ mod tests {
         )
         .is_err());
         assert!(!invalido.exists(), "la creación fallida no deja carpeta");
-    }
-
-    #[test]
-    fn listar_directorios_navega_y_rechaza_archivos() {
-        let directorio = tempfile::tempdir().expect("temporal");
-        let raiz = std::fs::canonicalize(directorio.path()).expect("canonicalizar");
-        std::fs::create_dir(raiz.join("zeta")).expect("zeta");
-        std::fs::create_dir(raiz.join("alfa")).expect("alfa");
-        std::fs::write(raiz.join("archivo.txt"), b"no es carpeta").expect("archivo");
-
-        let listado = listar_directorios(Some(raiz.display().to_string())).expect("listar");
-        assert_eq!(listado.ruta, raiz.display().to_string());
-        let nombres: Vec<&str> = listado
-            .directorios
-            .iter()
-            .map(|item| item.nombre.as_str())
-            .collect();
-        assert_eq!(nombres, vec!["alfa", "zeta"]);
-
-        let subcarpeta = listado
-            .directorios
-            .iter()
-            .find(|item| item.nombre == "alfa")
-            .expect("alfa");
-        let dentro = listar_directorios(Some(subcarpeta.ruta.clone())).expect("entrar");
-        assert_eq!(
-            dentro.padre.as_deref(),
-            Some(raiz.to_str().expect("ruta utf-8"))
-        );
-
-        let error = listar_directorios(Some(raiz.join("archivo.txt").display().to_string()))
-            .expect_err("un archivo no es carpeta");
-        assert_eq!(error.tipo, TipoError::Entrada);
     }
 
     #[test]
