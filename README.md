@@ -11,8 +11,9 @@ y la CLI (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el
 con reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
 tramas y comentarios, y se empaqueta en deb/rpm. El **release público no está
 autorizado** todavía: AppImage, firma, updater, Windows/macOS, CI remoto y la
-prueba de la app instalada son condiciones de publicación. La Fase 3 (IA/MCP)
-está autorizada a comenzar con las condiciones del product owner.
+prueba de la app instalada son condiciones de publicación. Las **Fases 3, 4 y 5
+quedan pospuestas** hasta cerrar los faltantes de producto y publicación que se
+acuerden antes de continuar.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -26,8 +27,9 @@ está autorizada a comenzar con las condiciones del product owner.
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
 | 2 | Interfaz Tauri (v0.2) | **Aprobada con observaciones (Linux x86_64). Release público no autorizado** |
-| 3 | IA + MCP (v0.3) | Pendiente |
-| 4 | Licencias + Pro (v0.4) | Pendiente |
+| 3 | IA + MCP (v0.3) | Pospuesta (2026-10-21) |
+| 4 | Licencias + Pro (v0.4) | Pospuesta (2026-10-21) |
+| 5 | Sync (v0.5, opcional) | Pospuesta (2026-10-21) |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,

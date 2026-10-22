@@ -4,8 +4,10 @@
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** **Fase 2 aprobada y cerrada con observaciones** (Linux
   x86_64); release público no autorizado.
-- **Siguiente tarea:** iniciar la Fase 3 (IA/MCP) con las condiciones del
-  product owner; antes, cerrar SEC-04-B/C y los límites de lectura.
+- **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta decidir y cerrar los
+  faltantes de producto/publicación de la Fase 2.
+- **Siguiente tarea:** revisar el inventario de faltantes y elegir el siguiente
+  bloque de trabajo con el usuario.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -269,15 +271,16 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 
 ### Siguiente tarea inmediata
 
-1. **Fase 3 (IA/MCP)** con las condiciones del product owner:
-   - cerrar SEC-04-B/C (FIFO en blobs/journal) y centralizar lecturas con
-     límites de tamaño antes de MCP sobre proyectos no confiables;
-   - AI safety/privacy (BYOK, prompts, claves, inyección, costes, permisos MCP);
-   - políticas `auto`/`proponer`/`bloquear` en motor y servidor MCP;
-   - gate de Fase 3 (criterios 7, 8, 9, 12, 13) y pipeline completo.
-2. **Publicación**: identidad de versión, seguridad del commit exacto,
-   checksums/firma, AppImage/updater, Windows/macOS o soporte solo Linux, app
-   instalada, DOCX en Word/LibreOffice y CI remoto.
+1. **Faltantes de producto/publicación de la Fase 2** (fases 3–5 pospuestas):
+   - robustez: SEC-04-B/C, límites de tamaño, TOCTOU, enlaces duros Windows;
+   - publicación: versión, seguridad del commit exacto, checksums/firma,
+     AppImage/updater, Windows/macOS o soporte solo Linux, app instalada, DOCX
+     en Word/LibreOffice y CI remoto;
+   - producto/UX: onboarding, árbol plegable, historial largo, cuarentena
+     plegable, búsqueda truncada, tabs ARIA, toolbar al 200 %, latencia de
+     1.000 marcas, copy.
+2. **Fase 3 (IA/MCP)**: pospuesta. Sus condiciones del product owner siguen
+   vigentes para cuando se retome.
 
 ### Deuda de Fase 2
 

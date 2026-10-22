@@ -47,4 +47,6 @@ writer-0.2.0-1.x86_64.rpm  5.171.439 B  15a907b7…5a29f9
 ## 5. Estado
 
 **Fase 2 cerrada.** El release público queda pendiente de las condiciones
-anteriores; la Fase 3 puede comenzar sin reabrir el alcance de la interfaz.
+anteriores. **Las Fases 3, 4 y 5 se posponen** (2026-10-21): antes de
+retomarlas se revisará y decidirá el inventario de faltantes de producto y
+publicación de la Fase 2.
