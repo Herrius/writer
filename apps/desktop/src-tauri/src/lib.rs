@@ -236,19 +236,37 @@ fn crear_proyecto(
     notas_iniciales: bool,
 ) -> Result<ProyectoDto, ErrorDto> {
     let proyecto = Project::new(&ruta);
-    proyecto
-        .init(&titulo, autor.as_deref(), idioma.as_deref())
-        .map_err(error)?;
-    if notas_iniciales {
-        for (tipo, etiqueta) in [
-            ("personajes", "Personajes"),
-            ("tramas", "Tramas"),
-            ("lugares", "Lugares"),
-        ] {
-            proyecto.crear_nota(tipo, etiqueta).map_err(error)?;
+    let existia = std::path::Path::new(&ruta).exists();
+    let era_vacia = existia
+        && std::fs::read_dir(&ruta)
+            .map(|mut entradas| entradas.next().is_none())
+            .unwrap_or(false);
+    let resultado = (|| -> Result<ProyectoDto, ErrorDto> {
+        proyecto
+            .init(&titulo, autor.as_deref(), idioma.as_deref())
+            .map_err(error)?;
+        if notas_iniciales {
+            for (tipo, etiqueta) in [
+                ("personajes", "Personajes"),
+                ("tramas", "Tramas"),
+                ("lugares", "Lugares"),
+            ] {
+                proyecto.crear_nota(tipo, etiqueta).map_err(error)?;
+            }
+        }
+        abrir_proyecto(ruta.clone())
+    })();
+    if resultado.is_err() && (!existia || era_vacia) {
+        if let Ok(raiz) = std::fs::canonicalize(&ruta) {
+            if raiz.join("proyecto.yml").is_file() {
+                let _ = std::fs::remove_dir_all(&raiz);
+                if era_vacia {
+                    let _ = std::fs::create_dir(&raiz);
+                }
+            }
         }
     }
-    abrir_proyecto(ruta)
+    resultado
 }
 
 #[tauri::command]
@@ -582,6 +600,17 @@ mod tests {
         .expect("crear sin notas");
         assert_eq!(sin_notas.escenas, 1);
         assert_eq!(sin_notas.notas, 0);
+
+        let invalido = directorio.path().join("invalido");
+        assert!(crear_proyecto(
+            invalido.display().to_string(),
+            "   ".to_string(),
+            None,
+            Some("es".to_string()),
+            true,
+        )
+        .is_err());
+        assert!(!invalido.exists(), "la creación fallida no deja carpeta");
     }
 
     #[test]

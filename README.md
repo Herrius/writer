@@ -27,7 +27,8 @@ acuerden antes de continuar.
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
 | 2 | Interfaz Tauri (v0.2) | **Aprobada con observaciones (Linux x86_64). Release público no autorizado** |
-| 2.1 | Creación de proyectos y onboarding | **Aprobada con observaciones (Linux x86_64); Bloque 2.2 autorizado** |
+| 2.1 | Creación de proyectos y onboarding | **Aprobada con observaciones (Linux x86_64)** |
+| 2.2 | Interfaz de escritura e historial | **Implementada; pendiente pipeline** |
 | 3 | IA + MCP (v0.3) | Pospuesta (2026-10-21) |
 | 4 | Licencias + Pro (v0.4) | Pospuesta (2026-10-21) |
 | 5 | Sync (v0.5, opcional) | Pospuesta (2026-10-21) |
@@ -35,10 +36,10 @@ acuerden antes de continuar.
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
 exportación Markdown e inyección de fallos. El conjunto Rust acumula 94 pruebas
-(34 unitarias, 35 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
-cáscara Tauri y 58 pruebas de UI (corpus Markdown, compatibilidad, autosave,
+(34 unitarias, 35 de integración y 25 de CLI). La Fase 2 añade 3 pruebas de la
+cáscara Tauri y 59 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas, accesibilidad, creación y
-regresiones). Además, 10 flujos E2E de navegador con Playwright y 2 escenarios E2E de
+regresiones). Además, 12 flujos E2E de navegador con Playwright y 2 escenarios E2E de
 escritorio con Tauri/WebDriver (`Ctrl+S` y cierre de ventana).
 
 ## Requisitos

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { elegirCarpetaCreacion, errorDe } from './api';
 import { colorDesdeTitulo, slugProyecto, type Reciente } from './recientes';
 
@@ -36,6 +36,21 @@ const COLORES = [
   '#6f6fa8',
   '#6b6f76',
 ];
+
+const NOMBRES_COLOR: Record<string, string> = {
+  '#4d6b8a': 'Azul profundo',
+  '#5a8fa3': 'Azul petróleo',
+  '#4f9b8a': 'Verde azulado',
+  '#7ba05b': 'Verde oliva',
+  '#c2a24a': 'Mostaza',
+  '#d18b47': 'Naranja',
+  '#c97a63': 'Terracota',
+  '#b65f62': 'Rojo ladrillo',
+  '#8f5d7a': 'Ciruela',
+  '#9b6aa8': 'Malva',
+  '#6f6fa8': 'Índigo',
+  '#6b6f76': 'Grafito',
+};
 
 function Portada({
   color,
@@ -82,6 +97,13 @@ export function Inicio({
   const [nombreEditado, setNombreEditado] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exito, setExito] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [plegado, setPlegado] = useState(false);
+  const fondoRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLFormElement>(null);
+  const focoPrevioRef = useRef<HTMLElement | null>(null);
+  const crearRef = useRef<HTMLButtonElement>(null);
 
   const filtrados = useMemo(() => {
     const termino = consulta.trim().toLocaleLowerCase();
@@ -103,6 +125,8 @@ export function Inicio({
     recientes.find((reciente) => reciente.autor?.trim())?.autor?.trim() || 'escritor';
 
   const abrirModal = (tituloInicial = '') => {
+    focoPrevioRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : crearRef.current;
     setModalAbierto(true);
     setNuevoNombre(tituloInicial ? slugProyecto(tituloInicial) : '');
     setNuevoTitulo(tituloInicial);
@@ -113,14 +137,67 @@ export function Inicio({
     setNotasIniciales(true);
     setNombreEditado(false);
     setError(null);
+    setExito(null);
+    setAviso(null);
   };
 
   const cerrarModal = () => {
     if (!guardando) {
       setModalAbierto(false);
       setError(null);
+      window.requestAnimationFrame(() => focoPrevioRef.current?.focus());
     }
   };
+
+  useEffect(() => {
+    if (!modalAbierto) {
+      return;
+    }
+    const fondo = fondoRef.current;
+    if (fondo) {
+      fondo.inert = true;
+    }
+    const manejarTeclado = (evento: KeyboardEvent) => {
+      if (evento.key === 'Escape' && !guardando) {
+        evento.preventDefault();
+        cerrarModal();
+        return;
+      }
+      if (evento.key !== 'Tab' || guardando) {
+        return;
+      }
+      const enfocables = modalRef.current
+        ? Array.from(
+            modalRef.current.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+            ),
+          ).filter((elemento) => elemento.offsetParent !== null)
+        : [];
+      if (enfocables.length === 0) {
+        return;
+      }
+      const primero = enfocables[0];
+      const ultimo = enfocables[enfocables.length - 1];
+      const activo = document.activeElement;
+      if (!modalRef.current?.contains(activo)) {
+        evento.preventDefault();
+        primero.focus();
+      } else if (evento.shiftKey && activo === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && activo === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    };
+    document.addEventListener('keydown', manejarTeclado);
+    return () => {
+      document.removeEventListener('keydown', manejarTeclado);
+      if (fondo) {
+        fondo.inert = false;
+      }
+    };
+  }, [modalAbierto, guardando]);
 
   const actualizarTitulo = (titulo: string) => {
     setNuevoTitulo(titulo);
@@ -167,6 +244,14 @@ export function Inicio({
         abrir,
       );
       setModalAbierto(false);
+      setError(null);
+      setConsulta('');
+      setExito(
+        abrir
+          ? null
+          : `Proyecto «${titulo}» creado y guardado en recientes. Ya aparece al inicio de Mis Proyectos.`,
+      );
+      window.requestAnimationFrame(() => focoPrevioRef.current?.focus());
     } catch (fallo) {
       setError(errorDe(fallo).mensaje);
     } finally {
@@ -176,6 +261,7 @@ export function Inicio({
 
   return (
     <div className="inicio">
+      <div className="inicio-fondo" ref={fondoRef}>
       <header className="inicio-topbar">
         <div className="inicio-marca">
           <span className="inicio-logo" aria-hidden="true">
@@ -189,10 +275,20 @@ export function Inicio({
               Ver demo
             </button>
           )}
-          <button className="icono-inicio" aria-label="Notificaciones" title="Notificaciones">
+          <button
+            className="icono-inicio"
+            aria-label="Notificaciones"
+            title="Notificaciones disponibles próximamente"
+            disabled
+          >
             ◔
           </button>
-          <button className="icono-inicio" aria-label="Ayuda" title="Ayuda">
+          <button
+            className="icono-inicio"
+            aria-label="Ayuda"
+            title="Ayuda disponible próximamente"
+            disabled
+          >
             ?
           </button>
           <span className="avatar-inicio" aria-label={`Sesión de ${autorBienvenida}`}>
@@ -213,6 +309,9 @@ export function Inicio({
               aria-label="Buscar proyectos"
             />
           </label>
+          <button className="boton-inicio" onClick={onAbrir}>
+            Abrir proyecto
+          </button>
           <button className="boton-inicio" disabled title="Filtros disponibles próximamente">
             Filtros
           </button>
@@ -250,19 +349,46 @@ export function Inicio({
           {errorInicial}
         </pre>
       )}
+      {exito && (
+        <div className="banner-info inicio-exito" role="status" aria-live="polite">
+          <span>{exito}</span>
+          <button className="boton-inicio" onClick={() => setExito(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+      {aviso && (
+        <div className="banner-info inicio-exito" role="status" aria-live="polite">
+          <span>{aviso}</span>
+          <button className="boton-inicio" onClick={() => setAviso(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
 
       <div className="inicio-cuerpo">
         <main className="inicio-proyectos">
           <section className="mis-proyectos">
             <header className="mis-proyectos-cabecera">
-              <button className="plegar-proyectos" aria-label="Mis proyectos">
-                <span aria-hidden="true">⌄</span> <strong>Mis Proyectos</strong>
+              <button
+                className="plegar-proyectos"
+                aria-label="Mis proyectos"
+                aria-expanded={!plegado}
+                onClick={() => setPlegado((valor) => !valor)}
+              >
+                <span className={plegado ? 'chevron-plegado' : ''} aria-hidden="true">
+                  ⌄
+                </span>{' '}
+                <strong>Mis Proyectos</strong>
               </button>
               <div className="mis-proyectos-acciones">
-                <span>{filtrados.length} proyectos</span>
+                <span>
+                  {filtrados.length} proyecto{filtrados.length === 1 ? '' : 's'}
+                </span>
                 <button
                   className={vista === 'lista' ? 'vista-activa' : ''}
                   aria-label="Vista de lista"
+                  aria-pressed={vista === 'lista'}
                   title="Vista de lista"
                   onClick={() => setVista('lista')}
                 >
@@ -271,19 +397,27 @@ export function Inicio({
                 <button
                   className={vista === 'cuadricula' ? 'vista-activa' : ''}
                   aria-label="Vista de cuadrícula"
+                  aria-pressed={vista === 'cuadricula'}
                   title="Vista de cuadrícula"
                   onClick={() => setVista('cuadricula')}
                 >
                   ▦
                 </button>
-                <button className="icono-inicio" aria-label="Más opciones" title="Más opciones">
+                <button
+                  className="icono-inicio"
+                  aria-label="Más opciones"
+                  title="Más opciones disponibles próximamente"
+                  disabled
+                >
                   …
                 </button>
               </div>
             </header>
 
+            {!plegado && (
+              <>
             <div className={`proyectos ${vista === 'lista' ? 'proyectos-lista' : ''}`}>
-              <button className="crear-tarjeta" onClick={() => abrirModal()}>
+              <button className="crear-tarjeta" ref={crearRef} onClick={() => abrirModal()}>
                 <span className="crear-mas" aria-hidden="true">
                   +
                 </span>
@@ -304,7 +438,10 @@ export function Inicio({
                   <span className="tarjeta-datos">
                     <strong>{reciente.titulo}</strong>
                     <span>{reciente.autor || 'Sin autor'}</span>
-                    <small>{reciente.palabras ?? 0} palabras</small>
+                    <small>
+                      {(reciente.palabras ?? 0).toLocaleString('es')}{' '}
+                      {(reciente.palabras ?? 0) === 1 ? 'palabra' : 'palabras'}
+                    </small>
                   </span>
                 </button>
               ))}
@@ -332,6 +469,8 @@ export function Inicio({
             >
               ◫ Crear desde plantilla
             </button>
+              </>
+            )}
           </section>
         </main>
 
@@ -342,9 +481,9 @@ export function Inicio({
               {autorBienvenida.charAt(0).toLocaleUpperCase()}
             </span>
             <div className="estadisticas">
-              <span>
+              <span title="Últimos 8 proyectos abiertos">
                 <strong>{recientes.length}</strong>
-                <small>proyectos</small>
+                <small>recientes</small>
               </span>
               <span>
                 <strong>{totalPalabras.toLocaleString('es')}</strong>
@@ -366,7 +505,11 @@ export function Inicio({
 
           <section className="proyectos-personales">
             <h2>Proyectos personales</h2>
-            <button className="cuaderno-ideas" onClick={() => abrirModal('Ideas')}>
+            <button
+              className="cuaderno-ideas"
+              title="Cuaderno de ideas"
+              onClick={() => setAviso('El cuaderno de Ideas llegará en una próxima fase.')}
+            >
               <span className="cuaderno-espiral" aria-hidden="true" />
               <strong>Ideas</strong>
               <span className="cuaderno-bombillas" aria-hidden="true">
@@ -376,23 +519,25 @@ export function Inicio({
           </section>
         </aside>
       </div>
+      </div>
 
       {modalAbierto && (
         <div className="modal-fondo">
           <form
+            ref={modalRef}
             className="modal-proyecto"
             role="dialog"
             aria-modal="true"
             aria-labelledby="crear-proyecto-titulo"
+            aria-describedby="crear-proyecto-descripcion"
+            noValidate
             onSubmit={(evento) => void enviar(evento, true)}
-            onKeyDown={(evento) => {
-              if (evento.key === 'Escape' && !guardando) {
-                evento.stopPropagation();
-                cerrarModal();
-              }
-            }}
           >
-            <header className="modal-proyecto-cabecera">
+            <p id="crear-proyecto-descripcion" className="sr-only">
+              Elige el nombre, la carpeta, el título y los datos iniciales del proyecto. Pulsa
+              Guardar para dejarlo en recientes o Guardar y abrir para empezar a escribir.
+            </p>
+            <div className="modal-proyecto-cabecera">
               <h2 id="crear-proyecto-titulo">Crear nuevo proyecto</h2>
               <button
                 type="button"
@@ -403,7 +548,7 @@ export function Inicio({
               >
                 ×
               </button>
-            </header>
+            </div>
             <div className="modal-proyecto-cuerpo">
               <nav className="modal-pasos" aria-label="Secciones del proyecto">
                 <button
@@ -422,12 +567,15 @@ export function Inicio({
                 </button>
               </nav>
               <div className="modal-formulario">
-                <label className="campo-ancho">
+                <label className="campo-ancho" htmlFor="campo-nombre-proyecto">
                   Nombre del proyecto
                   <span className="nota-campo">Nombre de la carpeta del proyecto</span>
                   <input
                     id="campo-nombre-proyecto"
+                    aria-label="Nombre del proyecto"
                     autoFocus
+                    required
+                    autoComplete="off"
                     value={nuevoNombre}
                     onChange={(evento) => {
                       setNuevoNombre(evento.target.value);
@@ -449,9 +597,30 @@ export function Inicio({
                             type="button"
                             className={`tono ${tono === color ? 'activo' : ''}`}
                             style={{ background: tono }}
-                            aria-label={`Color ${tono}`}
+                            aria-label={NOMBRES_COLOR[tono] ?? 'Color de portada'}
                             aria-pressed={tono === color}
+                            tabIndex={tono === color ? 0 : -1}
                             onClick={() => setColor(tono)}
+                            onKeyDown={(evento) => {
+                              if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(evento.key)) {
+                                return;
+                              }
+                              evento.preventDefault();
+                              const actual = COLORES.indexOf(tono);
+                              const siguiente =
+                                evento.key === 'Home'
+                                  ? 0
+                                  : evento.key === 'End'
+                                    ? COLORES.length - 1
+                                    : evento.key === 'ArrowRight'
+                                      ? (actual + 1) % COLORES.length
+                                      : (actual - 1 + COLORES.length) % COLORES.length;
+                              setColor(COLORES[siguiente]);
+                              const botones = evento.currentTarget.parentElement?.querySelectorAll<
+                                HTMLButtonElement
+                              >('button.tono');
+                              botones?.[siguiente]?.focus();
+                            }}
                           />
                         ))}
                       </div>
@@ -463,6 +632,9 @@ export function Inicio({
                       Título
                       <input
                         id="campo-titulo-libro"
+                        aria-label="Título"
+                        required
+                        autoComplete="off"
                         value={nuevoTitulo}
                         onChange={(evento) => actualizarTitulo(evento.target.value)}
                         placeholder="Libro sin título"
@@ -486,10 +658,16 @@ export function Inicio({
                         <option value="en">English</option>
                       </select>
                     </label>
-                    <label>
-                      Carpeta padre
+                    <div className="campo-carpeta">
+                      <label htmlFor="campo-carpeta-padre">Carpeta padre</label>
                       <span className="modal-ruta">
-                        <input readOnly value={carpetaPadre} placeholder="Elige una carpeta…" />
+                        <input
+                          id="campo-carpeta-padre"
+                          readOnly
+                          aria-required="true"
+                          value={carpetaPadre}
+                          placeholder="Elige una carpeta…"
+                        />
                         <button
                           type="button"
                           className="boton-inicio"
@@ -507,7 +685,7 @@ export function Inicio({
                           Elegir…
                         </button>
                       </span>
-                    </label>
+                    </div>
                     <p className="nota-campo">
                       {carpetaPadre
                         ? `Se creará en ${carpetaPadre.replace(/[\\/]+$/, '')}/${
@@ -532,7 +710,7 @@ export function Inicio({
                 {error}
               </pre>
             )}
-            <footer className="modal-proyecto-pie">
+            <div className="modal-proyecto-pie">
               <button
                 type="button"
                 className="boton-inicio"
@@ -544,7 +722,7 @@ export function Inicio({
               <button type="submit" className="boton-primario" disabled={guardando}>
                 {guardando ? 'Creando…' : 'Guardar y abrir'}
               </button>
-            </footer>
+            </div>
           </form>
         </div>
       )}

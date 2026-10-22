@@ -3,12 +3,12 @@
 - **Fecha:** 2026-10-21
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** **Fase 2 y Fase 2.1 aprobadas y cerradas con observaciones**
-  (Linux x86_64); **Bloque 2.2 autorizado** (pulido de panel/modal/foco,
-  navegación, feedback, E2E real y docs).
+  (Linux x86_64); **Bloque 2.2 implementado** (interfaz de escritura e historial
+  adaptadas de Dabble), pendiente su pipeline.
 - **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta cerrar los faltantes de
   producto/publicación.
-- **Siguiente tarea:** ejecutar el Bloque 2.2; release público sigue no
-  autorizado.
+- **Siguiente tarea:** congelar y revisar el Bloque 2.2; release público sigue
+  no autorizado.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
 
 ## 1. Resumen
@@ -69,9 +69,9 @@ Estado actual de la UI:
 - conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
 - documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
   lectura para no perder contenido;
-- 58 pruebas de UI (18 de corpus, 9 de compatibilidad y 31 de autosave, búsqueda,
+- 59 pruebas de UI (18 de corpus, 9 de compatibilidad y 32 de autosave, búsqueda,
   historial, DOCX, cuarentena, marcas, accesibilidad, creación y regresiones);
-- 10 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
+- 12 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
   Tauri/WebDriver (`Ctrl+S` y cierre de ventana);
 - empaquetado deb/rpm generado y verificado en Linux;
 - 3 pruebas de la cáscara Tauri (comandos, creación con notas y exportación de tipos);
@@ -191,6 +191,9 @@ En `apps/desktop/src-tauri/src/lib.rs`:
 - Crear proyecto desde la GUI: asistente con título, autor, idioma, carpeta
   padre y nombre de carpeta; estructura inicial y notas opcionales; abrir al
   crear y lista de recientes en `localStorage`.
+- Interfaz de escritura adaptada de Dabble: cabecera de proyecto, árbol por
+  manuscritos/tramas/personajes/cuaderno, página blanca con toolbar, panel
+  Metas/Notas e historial con línea de tiempo inferior.
 - Abrir proyecto con diálogo nativo (`tauri-plugin-dialog`).
 - `Ctrl+O` / `Cmd+O`, `Ctrl+S` / `Cmd+S`, `Ctrl+F` / `Cmd+F` para buscar.
 - Árbol lateral:
@@ -248,12 +251,12 @@ Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
 ```text
 python scripts/ci.py calidad      OK
 python scripts/ci.py interfaz     OK
-python scripts/ci.py e2e          OK (10/10, Chromium)
+python scripts/ci.py e2e          OK (12/12, Chromium)
 python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
 cargo test --workspace --all-targets --locked   94/94
-pnpm ui:test                      58/58
+pnpm ui:test                      59/59
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   3/3
 cargo-deny (núcleo)               OK
 cargo-deny (desktop)              OK

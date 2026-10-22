@@ -307,6 +307,17 @@ fn init_rechaza_rutas_invalidas_y_destinos_no_vacios() {
         std::fs::read(no_vacio.join("dato.txt")).expect("dato intacto"),
         b"no tocar"
     );
+
+    let anidado = raiz.join("manuscrito").join("hijo");
+    let error = Project::new(&anidado)
+        .init("Anidado", None, None)
+        .expect_err("proyecto dentro de otro");
+    assert!(error.to_string().contains("dentro de otro proyecto"));
+    assert!(!anidado.exists());
+
+    let invalido = directorio.path().join("titulo-invalido");
+    assert!(Project::new(&invalido).init("   ", None, None).is_err());
+    assert!(!invalido.exists(), "no debe quedar una carpeta vacía");
 }
 
 #[cfg(unix)]

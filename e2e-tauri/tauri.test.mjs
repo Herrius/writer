@@ -43,7 +43,7 @@ async function esperarProyecto(navegador) {
   await editor.waitForDisplayed({ timeout: 20_000 });
   await navegador.waitUntil(
     async () => {
-      const titulo = await navegador.$('h2');
+      const titulo = await navegador.$('h1');
       return (await titulo.getText()).includes('Primera escena');
     },
     {
@@ -173,7 +173,7 @@ try {
 
     await navegador.waitUntil(
       async () =>
-        (await navegador.$('.tabs .estado-guardado').getText())
+        (await navegador.$('.dabble-top-acciones .estado-guardado').getText())
           .toLowerCase()
           .includes('guardado'),
       {
@@ -183,7 +183,7 @@ try {
       },
     );
 
-    const titulo = await navegador.$('h2');
+    const titulo = await navegador.$('h1');
     if (!(await titulo.getText()).includes('Primera escena')) {
       throw new Error('no se abrió la escena esperada');
     }

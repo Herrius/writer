@@ -27,6 +27,52 @@ test('abre el asistente de creación y explica el límite de la demo', async ({ 
   ).toBeVisible();
 });
 
+test('vuelve al panel de Proyectos desde el editor', async ({ page }) => {
+  await abrirDemo(page);
+  await page.getByRole('button', { name: 'Volver a Proyectos' }).click();
+  await expect(page.getByRole('heading', { name: 'Proyectos', level: 1 })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Crear nuevo proyecto/ })).toBeVisible();
+});
+
+test('la vista de lista es compacta y el modal cabe a 960 y 200 %', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 640 });
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'writer.recientes.v1',
+      JSON.stringify([
+        {
+          ruta: '/tmp/novela-e2e',
+          titulo: 'Novela E2E',
+          autor: 'Autora',
+          palabras: 12345,
+          color: '#4d6b8a',
+        },
+      ]),
+    );
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Vista de lista' }).click();
+  const tarjeta = await page.locator('.tarjeta-proyecto').first().boundingBox();
+  expect(tarjeta?.height ?? 999).toBeLessThan(120);
+  await page.getByRole('button', { name: /Crear nuevo proyecto/ }).click();
+  await expect(page.getByRole('button', { name: 'Guardar y abrir' })).toBeInViewport();
+
+  for (let i = 0; i < 30; i += 1) {
+    await page.keyboard.press('Tab');
+  }
+  expect(
+    await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]'))),
+  ).toBe(true);
+
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '32px';
+  });
+  await expect(page.getByRole('button', { name: 'Guardar y abrir' })).toBeInViewport();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page.getByRole('button', { name: /Crear nuevo proyecto/ })).toBeFocused();
+});
+
 test('abre la demo, edita y guarda con el autosave', async ({ page }) => {
   await abrirDemo(page);
   const editor = page.locator('.ProseMirror');
@@ -41,9 +87,9 @@ test('abre la demo, edita y guarda con el autosave', async ({ page }) => {
 
   // Cambiar de documento y volver: el texto debe venir de la persistencia,
   // no solo del estado visual del editor.
-  await page.locator('.documento').filter({ hasText: 'La llave' }).click();
+  await page.locator('.dabble-doc').filter({ hasText: 'La llave' }).click();
   await expect(page.getByRole('heading', { name: 'La llave' })).toBeVisible();
-  await page.locator('.documento').filter({ hasText: 'El umbral' }).click();
+  await page.locator('.dabble-doc').filter({ hasText: 'El umbral' }).click();
   await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
   await expect(page.locator('.ProseMirror')).toHaveText('Texto E2E de prueba.');
 });
@@ -67,17 +113,16 @@ test('aplica formato y muestra el recuento de palabras', async ({ page }) => {
   await page.getByRole('button', { name: 'Negrita' }).click();
   await expect(page.getByRole('button', { name: 'Negrita' })).toHaveClass(/activo/);
   await expect(page.locator('.editor-contador')).toHaveText(/\d+ palabras/);
-  await page.getByRole('button', { name: 'Markdown' }).click();
+  await page.getByRole('button', { name: 'Ver Markdown' }).click();
   await expect(page.locator('pre.fuente')).toContainText('**');
 });
 
 test('muestra el historial y el detalle de una revisión', async ({ page }) => {
   await abrirDemo(page);
   await page.getByRole('button', { name: 'Historial' }).click();
-  await expect(page.getByText('Revisiones del proyecto')).toBeVisible();
-  await page.getByRole('button', { name: /r2/ }).click();
-  await expect(page.getByText('Revisión 2')).toBeVisible();
-  await page.locator('.detalle-archivos summary').first().click();
+  await expect(page.getByText('Historial de versiones')).toBeVisible();
+  await page.getByRole('button', { name: /Revisión 2/ }).click();
+  await expect(page.getByRole('heading', { name: 'Revisión 2' })).toBeVisible();
   await expect(page.getByText(/La casa olía/)).toBeVisible();
 });
 
@@ -89,17 +134,17 @@ test('aplica y sustituye marcas sin anidarlas', async ({ page }) => {
   await page.getByRole('combobox', { name: 'Aplicar personaje' }).selectOption({
     label: 'Marta',
   });
-  await page.getByRole('button', { name: 'Markdown' }).click();
+  await page.getByRole('button', { name: 'Ver Markdown' }).click();
   await expect(page.locator('pre.fuente')).toContainText('[[personaje:');
 
-  await page.getByRole('button', { name: 'Editor' }).click();
+  await page.getByRole('button', { name: /Editor:/ }).click();
   const editor2 = page.locator('.ProseMirror');
   await editor2.click();
   await page.keyboard.press('Control+A');
   await page.getByRole('combobox', { name: 'Aplicar trama' }).selectOption({
     label: 'El mapa incompleto',
   });
-  await page.getByRole('button', { name: 'Markdown' }).click();
+  await page.getByRole('button', { name: 'Ver Markdown' }).click();
   const fuente = page.locator('pre.fuente');
   await expect(fuente).toContainText('[[trama:');
   await expect(fuente).not.toContainText('[[personaje:');
@@ -108,6 +153,7 @@ test('aplica y sustituye marcas sin anidarlas', async ({ page }) => {
 test('muestra y descarta una copia de cuarentena', async ({ page }) => {
   await abrirDemo(page);
   await expect(page.getByText('Cuarentena (1)')).toBeVisible();
+  await page.getByText('Cuarentena (1)').click();
   await page.getByRole('button', { name: 'Descartar' }).click();
   await page.getByRole('button', { name: 'Confirmar descarte' }).click();
   await expect(page.getByText(/Copia de cuarentena descartada/)).toBeVisible();
@@ -123,15 +169,15 @@ test('permite saltar al contenido y navegar el árbol con flechas', async ({ pag
   await page.keyboard.press('Enter');
   await expect(page.locator('#panel-principal')).toBeFocused();
 
-  const activo = page.locator('.documento.activo');
+  const activo = page.locator('.dabble-doc.activo');
   await expect(activo).toHaveAttribute('tabindex', '0');
-  await expect(page.locator('.documento:not(.activo)').first()).toHaveAttribute(
+  await expect(page.locator('.dabble-doc:not(.activo)').first()).toHaveAttribute(
     'tabindex',
     '-1',
   );
   await activo.focus();
   await page.keyboard.press('ArrowDown');
-  await expect(page.locator('.documento').nth(1)).toBeFocused();
+  await expect(page.locator('.dabble-doc').nth(1)).toBeFocused();
 });
 
 test('muestra un anillo de foco en el editor', async ({ page }) => {

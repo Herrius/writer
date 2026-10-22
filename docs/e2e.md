@@ -8,7 +8,7 @@
 ## 1. E2E de navegador (Playwright)
 
 Playwright arranca Vite en `http://127.0.0.1:1420` y prueba la UI en **modo
-demo** (sin Tauri). Cubre 10 flujos:
+demo** (sin Tauri). Cubre 12 flujos:
 
 1. abrir el asistente de creación, validar el título y explicar el límite de la
    demo;
@@ -23,7 +23,10 @@ demo** (sin Tauri). Cubre 10 flujos:
 8. enlace «Saltar al contenido» y navegación del árbol con flechas y
    `tabindex` itinerante;
 9. anillo de foco visible en el editor;
-10. exportación DOCX con diálogo simulado.
+10. exportación DOCX con diálogo simulado;
+11. vuelta al panel de Proyectos desde el editor;
+12. vista de lista compacta, modal a 960×640 y 200 % con trampa de foco,
+    cierre con Escape y retorno del foco.
 
 ```bash
 pnpm e2e:install   # Chromium de Playwright (una vez)
@@ -63,8 +66,8 @@ no autoabre proyectos ni conserva el hook activo.
 - El E2E de navegador usa la demo en memoria; recargar reinicia el estado.
 - El E2E de Tauri es Linux-only y no cubre diálogos nativos ni Windows/macOS.
 - Chromium de Playwright y `tauri-driver` se instalan fuera del repositorio.
-- El E2E de escritorio no prueba DOCX, búsqueda ni cuarentena; esos flujos se
-  cubren en navegador.
+- El E2E de escritorio no prueba DOCX, búsqueda, cuarentena ni el diálogo
+  nativo de creación; esos flujos se cubren en navegador o con pruebas Tauri.
 - El cierre real depende de X11 y `xdotool`; en Wayland puro o en Windows/macOS
   queda pendiente.
 

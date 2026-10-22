@@ -85,5 +85,12 @@ export function slugProyecto(titulo: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return base || 'proyecto';
+  if (base) {
+    return base;
+  }
+  let suma = 0;
+  for (const caracter of titulo) {
+    suma = (suma * 31 + caracter.codePointAt(0)!) >>> 0;
+  }
+  return `proyecto-${suma.toString(36)}`;
 }

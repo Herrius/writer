@@ -2170,3 +2170,934 @@ button.guardar:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Interfaz de escritura e historial (referencias Dabble, adaptadas). */
+.dabble-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #e9e8e4;
+  color: #332f2a;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.dabble-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 48px;
+  flex: 0 0 auto;
+  padding: 0 0.7rem;
+  border-bottom: 1px solid #ddd9d1;
+  background: #fbfaf8;
+}
+
+.dabble-home,
+.icono-dabble {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 0.3rem;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: #5c554c;
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.dabble-home:hover,
+.icono-dabble:hover,
+.icono-dabble.activo {
+  border-color: #d8d1c6;
+  background: #fff;
+}
+
+.dabble-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0.2rem;
+  min-width: 0;
+  margin-left: 0.35rem;
+  overflow: hidden;
+}
+
+.dabble-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 280px;
+  padding: 0.2rem 0.8rem;
+  overflow: hidden;
+  border: 0;
+  border-left: 1px solid #e6e1d9;
+  background: transparent;
+  color: #665e54;
+  font: inherit;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dabble-tab strong {
+  overflow: hidden;
+  color: #2f2a24;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.dabble-tab.activo {
+  color: #2f2a24;
+  box-shadow: inset 0 -2px 0 #b33f3f;
+}
+
+.dabble-tab-icono {
+  color: #7f766b;
+}
+
+.dabble-top-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.dabble-compartir,
+.dabble-boton,
+.dabble-boton-primario {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #d6cfc4;
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #4d463e;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.dabble-compartir {
+  border-color: transparent;
+  background: transparent;
+  color: #4d463e;
+}
+
+.dabble-boton-primario {
+  border-color: #3f5f7a;
+  background: #3f5f7a;
+  color: #fff;
+}
+
+.dabble-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #56717e, #2f424c);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.dabble-workspace {
+  display: grid;
+  grid-template-columns: 262px minmax(0, 1fr) 250px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.dabble-sidebar {
+  min-width: 0;
+  overflow: auto;
+  border-right: 1px solid #ddd9d1;
+  background: #fbfaf8;
+}
+
+.dabble-filtro {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.7rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #cfc9c0;
+  border-radius: 0.3rem;
+  background: #fff;
+  color: #756c61;
+  font-size: 0.76rem;
+}
+
+.dabble-filtro input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #332f2a;
+  font: inherit;
+}
+
+.dabble-mas {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #d6cfc4;
+  border-radius: 50%;
+  background: #fff;
+  color: #756c61;
+  cursor: not-allowed;
+}
+
+.dabble-arbol {
+  padding: 0 0.45rem 1rem;
+}
+
+.dabble-seccion {
+  margin: 0.9rem 0.3rem 0.35rem;
+  color: #6e655b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.dabble-libro {
+  margin-bottom: 0.35rem;
+}
+
+.dabble-libro-titulo {
+  padding: 0.25rem 0.5rem;
+  color: #3e3831;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.dabble-capitulo {
+  margin-left: 0.4rem;
+}
+
+.dabble-capitulo-titulo {
+  padding: 0.25rem 0.6rem 0.1rem 1.2rem;
+  color: #60584e;
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.dabble-doc {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.3rem 0.55rem 0.3rem 1.7rem;
+  border: 0;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: #5b544a;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dabble-doc:hover {
+  background: #f0ede7;
+}
+
+.dabble-doc.activo {
+  background: #3f6190;
+  color: #fff;
+}
+
+.dabble-doc-icono {
+  width: 14px;
+  color: currentColor;
+  opacity: 0.75;
+}
+
+.dabble-doc-titulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dabble-vacio {
+  margin: 0.2rem 0.6rem 0.5rem;
+  color: #8a8074;
+  font-size: 0.74rem;
+  font-style: italic;
+}
+
+.dabble-utilidad {
+  display: block;
+  width: 100%;
+  padding: 0.28rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: #80766a;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: not-allowed;
+}
+
+.dabble-config {
+  display: block;
+  width: calc(100% - 1rem);
+  margin: 1.4rem 0.5rem 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-top: 1px solid #e5e0d8;
+  background: transparent;
+  color: #756c61;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: not-allowed;
+}
+
+.dabble-centro {
+  min-width: 0;
+  overflow: auto;
+  padding: 1.1rem 1.4rem 2rem;
+  background: #e9e8e4;
+}
+
+.dabble-documento {
+  width: min(100%, 860px);
+  min-height: calc(100vh - 140px);
+  margin: 0 auto;
+  padding: 2.6rem 3.2rem 1.2rem;
+  background: #fff;
+  box-shadow: 0 0.4rem 1.4rem rgb(50 43 35 / 12%);
+}
+
+.dabble-doc-cabecera {
+  text-align: center;
+}
+
+.dabble-doc-tipo {
+  color: #8a8074;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.dabble-titulo {
+  margin: 1.4rem 0 0.4rem;
+  color: #2e2a25;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 500;
+}
+
+.dabble-doc-meta {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  color: #8a8074;
+  font-size: 0.72rem;
+}
+
+.dabble-hoja {
+  margin-top: 1.4rem;
+}
+
+.dabble-hoja .editor-content {
+  margin: 0;
+}
+
+.dabble-hoja .editor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 -1rem 1.2rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #e5e0d8;
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 94%);
+}
+
+.dabble-hoja .editor-prose {
+  min-height: 50vh;
+  outline: none;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.12rem;
+  line-height: 1.85;
+  color: #332f2a;
+}
+
+.dabble-hoja .editor-prose:focus-visible {
+  outline: 2px solid #9b4a2f;
+  outline-offset: 4px;
+}
+
+.dabble-doc-pie {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid #eee9e2;
+  color: #8a8074;
+  font-size: 0.72rem;
+}
+
+.dabble-derecha {
+  min-width: 0;
+  overflow: auto;
+  border-left: 1px solid #ddd9d1;
+  background: #fbfaf8;
+}
+
+.dabble-derecha-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid #ddd9d1;
+}
+
+.dabble-derecha-tabs button {
+  padding: 0.8rem 0.5rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #5c554c;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dabble-derecha-tabs button.activo {
+  border-bottom-color: #3f6190;
+  background: #fff;
+}
+
+.dabble-metas,
+.dabble-notas-panel {
+  padding: 1rem;
+}
+
+.dabble-grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.3rem;
+  height: 90px;
+  margin-bottom: 0.8rem;
+  padding: 0.5rem;
+  border-radius: 0.3rem;
+  background: #f4f2ed;
+}
+
+.dabble-grafico span {
+  flex: 1;
+  border-radius: 0.15rem 0.15rem 0 0;
+  background: #9fb5c8;
+}
+
+.dabble-grafico span:nth-child(1) { height: 22%; }
+.dabble-grafico span:nth-child(2) { height: 30%; }
+.dabble-grafico span:nth-child(3) { height: 27%; }
+.dabble-grafico span:nth-child(4) { height: 45%; }
+.dabble-grafico span:nth-child(5) { height: 40%; }
+.dabble-grafico span:nth-child(6) { height: 62%; }
+.dabble-grafico span:nth-child(7) { height: 58%; }
+.dabble-grafico span:nth-child(8) { height: 78%; }
+
+.dabble-metas h3 {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.dabble-metas p {
+  color: #756c61;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.dabble-metas .dabble-boton {
+  display: block;
+  margin: 0.8rem auto 0;
+}
+
+.dabble-timer {
+  margin: 1rem;
+  padding: 0.8rem;
+  border: 1px solid #ddd9d1;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.dabble-timer-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.8rem;
+}
+
+.dabble-play {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: #3f6190;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.dabble-timer-opciones {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.6rem;
+}
+
+.dabble-timer-opciones button {
+  flex: 1;
+  padding: 0.2rem 0;
+  border: 1px solid #ddd9d1;
+  border-radius: 0.2rem;
+  background: #fff;
+  color: #756c61;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.dabble-timer-opciones button.activo {
+  border-color: #9fb5c8;
+  background: #eaf0f6;
+}
+
+.dabble-notas-panel h3 {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.dabble-notas-panel h3 + dl {
+  margin-bottom: 1rem;
+}
+
+.dabble-notas-panel dl {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  font-size: 0.74rem;
+}
+
+.dabble-notas-panel dt {
+  color: #8a8074;
+}
+
+.dabble-notas-panel dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dabble-historial {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 120px);
+}
+
+.dabble-historial-cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.dabble-historial-cabecera h1 {
+  margin: 0.1rem 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+.dabble-historial-pagina {
+  flex: 1;
+  min-height: 320px;
+  padding: 1.4rem;
+  background: #fff;
+  box-shadow: 0 0.4rem 1.4rem rgb(50 43 35 / 10%);
+}
+
+.dabble-version-cabecera {
+  margin-bottom: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid #eee9e2;
+}
+
+.dabble-version-cabecera h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.dabble-version-cabecera p {
+  margin: 0.2rem 0 0;
+  color: #8a8074;
+  font-size: 0.74rem;
+}
+
+.dabble-timeline {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding: 0.7rem;
+  border: 1px solid #ded9d1;
+  border-radius: 0.4rem;
+  background: #fbfaf8;
+}
+
+.dabble-timeline-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 220px;
+  flex: 1;
+  color: #4d6b8a;
+}
+
+.dabble-timeline-control input {
+  flex: 1;
+  accent-color: #3f6190;
+}
+
+.dabble-ir-cambio {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #756c61;
+  font-size: 0.74rem;
+}
+
+.dabble-derecha-historial {
+  padding-bottom: 1rem;
+}
+
+.dabble-derecha-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.8rem 0.8rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.dabble-derecha-cabecera strong {
+  font-weight: 600;
+}
+
+.dabble-actualizar {
+  display: block;
+  margin: 0.2rem 0.8rem 0.6rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #ddd9d1;
+  border-radius: 0.3rem;
+  background: #fff;
+  color: #5c554c;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.dabble-versiones {
+  margin: 0;
+  padding: 0 0.5rem;
+  list-style: none;
+}
+
+.dabble-version {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.4rem;
+  border: 0;
+  border-bottom: 1px solid #eee9e2;
+  background: transparent;
+  color: #4d463e;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dabble-version.activa {
+  background: #eaf0f6;
+}
+
+.dabble-version.actual strong {
+  color: #2f2a24;
+}
+
+.dabble-version-punto {
+  margin-top: 0.15rem;
+  color: #8a8074;
+  font-size: 0.85rem;
+}
+
+.dabble-version.actual .dabble-version-punto {
+  color: #3f6190;
+}
+
+.dabble-version span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.dabble-version strong {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.dabble-version small {
+  overflow: hidden;
+  color: #8a8074;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dabble-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 26px;
+  flex: 0 0 auto;
+  padding: 0 0.8rem;
+  border-top: 1px solid #ddd9d1;
+  background: #fbfaf8;
+  color: #7c7267;
+  font-size: 0.7rem;
+}
+
+.dabble-statusbar .crece {
+  flex: 1;
+}
+
+@media (max-width: 1100px) {
+  .dabble-workspace {
+    grid-template-columns: 230px minmax(0, 1fr) 210px;
+  }
+
+  .dabble-documento {
+    padding: 2rem 1.8rem 1rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .dabble-workspace {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .dabble-derecha {
+    display: none;
+  }
+}
+
+details.cuarentena > summary.cuarentena-cabecera {
+  cursor: pointer;
+  list-style: none;
+}
+
+details.cuarentena > summary.cuarentena-cabecera::-webkit-details-marker {
+  display: none;
+}
+
+details.cuarentena > summary.cuarentena-cabecera::before {
+  content: "▸ ";
+  color: #8a8074;
+}
+
+details.cuarentena[open] > summary.cuarentena-cabecera::before {
+  content: "▾ ";
+}
+
+.dabble-historial {
+  height: calc(100vh - 145px);
+  min-height: 0;
+}
+
+.dabble-historial-pagina {
+  min-height: 0;
+  overflow: auto;
+}
+
+.dabble-timeline {
+  flex: 0 0 auto;
+}
+
+.dabble-timeline {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  box-shadow: 0 -0.3rem 0.8rem rgb(50 43 35 / 8%);
+}
+
+/* Bloque 2.2: lista real, modal contenido y foco. */
+.inicio-exito {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: 0 1.5rem 0.6rem;
+}
+
+.inicio-exito .boton-inicio {
+  flex: 0 0 auto;
+}
+
+.icono-inicio:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.chevron-plegado {
+  display: inline-block;
+  transform: rotate(-90deg);
+}
+
+.proyectos-lista {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.proyectos-lista .crear-tarjeta {
+  min-height: 64px;
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 0.8rem 1rem;
+}
+
+.proyectos-lista .tarjeta-proyecto {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 76px;
+  padding: 0.55rem;
+  border: 1px solid #e4ddd3;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.proyectos-lista .tarjeta-proyecto:hover {
+  border-color: #b9ab99;
+  background: #fdfbf7;
+}
+
+.proyectos-lista .portada {
+  width: 54px;
+  min-width: 54px;
+  height: 70px;
+  aspect-ratio: auto;
+  padding: 0.35rem;
+  border-radius: 0.2rem;
+}
+
+.proyectos-lista .portada strong,
+.proyectos-lista .portada span:not(.portada-linea) {
+  display: none;
+}
+
+.proyectos-lista .tarjeta-datos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.15rem 1rem;
+  flex: 1;
+  align-items: baseline;
+}
+
+.proyectos-lista .tarjeta-datos strong {
+  grid-column: 1;
+  font-size: 0.9rem;
+}
+
+.proyectos-lista .tarjeta-datos span {
+  grid-column: 1;
+  color: #786e62;
+  font-size: 0.76rem;
+}
+
+.proyectos-lista .tarjeta-datos small {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: #8a8074;
+  font-size: 0.74rem;
+}
+
+.modal-proyecto {
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  overflow: hidden;
+}
+
+.modal-proyecto-cuerpo {
+  min-height: 0;
+  overflow: auto;
+  flex: 1 1 auto;
+}
+
+.modal-proyecto-pie {
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+.modal-error {
+  flex: 0 0 auto;
+}
+
+.campo-carpeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.nota-campo {
+  color: #6f655a;
+}
+
+@media (max-height: 720px) {
+  .modal-proyecto-cuerpo {
+    min-height: 0;
+  }
+
+  .modal-columnas {
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 0.8rem;
+  }
+
+  .modal-formulario {
+    padding: 0.8rem 1rem;
+  }
+
+  .modal-portada .portada {
+    max-height: 180px;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

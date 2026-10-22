@@ -244,6 +244,38 @@ describe('autosave de la interfaz', () => {
     expect(await screen.findByRole('textbox', { name: 'editor de prueba' })).toBeTruthy();
   });
 
+  it('confirma Guardar, limpia el filtro y muestra el proyecto nuevo', async () => {
+    crearProyectoMock.mockResolvedValueOnce({
+      ...proyecto,
+      raiz: '/tmp/novela-guardada',
+      titulo: 'Novela guardada',
+    });
+    render(<App />);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Buscar proyectos' }), {
+      target: { value: 'zzz' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Crear nuevo proyecto/ }));
+    fireEvent.change(screen.getByLabelText('Título'), {
+      target: { value: 'Novela guardada' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir…' }));
+    await screen.findByDisplayValue('/tmp');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await screen.findByText(/Proyecto «Novela guardada» creado y guardado en recientes/);
+    expect(
+      (screen.getByRole('textbox', { name: 'Buscar proyectos' }) as HTMLInputElement).value,
+    ).toBe('');
+    expect(screen.getAllByText('Novela guardada').length).toBeGreaterThan(0);
+    expect(crearProyectoMock).toHaveBeenCalledWith(
+      '/tmp/novela-guardada',
+      'Novela guardada',
+      null,
+      'es',
+      true,
+    );
+  });
+
   it('guarda tras el debounce y actualiza la revisión', async () => {
     const editor = await abrirDemo();
     fireEvent.change(editor, { target: { value: 'Texto cambiado.\n' } });
@@ -351,10 +383,10 @@ describe('autosave de la interfaz', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ver demo' }));
 
     expect(
-      await screen.findByRole('heading', { name: 'Libro 1 / Capítulo 1' }),
+      await screen.findByText('Libro 1'),
     ).toBeTruthy();
     expect(
-      screen.getByRole('heading', { name: 'Libro 2 / Capítulo 1' }),
+      screen.getByText('Libro 2'),
     ).toBeTruthy();
   });
 
@@ -376,14 +408,14 @@ describe('autosave de la interfaz', () => {
     await abrirDemo();
     fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
 
-    await screen.findByText('Revisiones del proyecto');
-    await screen.findByText('r2');
-    fireEvent.click(screen.getByRole('button', { name: /r2/ }));
+    await screen.findByText('Historial de versiones');
+    await screen.findByRole('button', { name: /Revisión 2/ });
+    fireEvent.click(screen.getByRole('button', { name: /Revisión 2/ }));
 
-    await screen.findByText('Revisión 2');
+    await screen.findByRole('heading', { name: 'Revisión 2' });
     await screen.findByText(/Texto de la revisión 2/);
-    fireEvent.click(screen.getByRole('button', { name: 'Revertir esta revisión' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reversión' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Recuperar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar recuperación' }));
 
     await waitFor(() => expect(revertirMock).toHaveBeenCalledWith('/tmp/novela', 2));
     await screen.findByText(/Demo: reversión simulada de la revisión 2/);
@@ -394,7 +426,7 @@ describe('autosave de la interfaz', () => {
     fireEvent.change(editor, { target: { value: 'Borrador uno.\n' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Editor' }));
+    fireEvent.click(screen.getByRole('button', { name: /Editor:/ }));
 
     const remontado = await screen.findByRole('textbox', { name: 'editor de prueba' });
     expect((remontado as HTMLTextAreaElement).value).toBe('Borrador uno.\n');
@@ -416,15 +448,15 @@ describe('autosave de la interfaz', () => {
     revertirMock.mockReturnValueOnce(pendiente.promesa);
     await abrirDemo();
     fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
-    await screen.findByText('r2');
-    fireEvent.click(screen.getByRole('button', { name: /r2/ }));
-    await screen.findByText('Revisión 2');
-    fireEvent.click(screen.getByRole('button', { name: 'Revertir esta revisión' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reversión' }));
+    await screen.findByRole('button', { name: /Revisión 2/ });
+    fireEvent.click(screen.getByRole('button', { name: /Revisión 2/ }));
+    await screen.findByRole('heading', { name: 'Revisión 2' });
+    fireEvent.click(screen.getByRole('button', { name: 'Recuperar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar recuperación' }));
     await waitFor(() => expect(revertirMock).toHaveBeenCalledTimes(1));
     expect(screen.getByText(/Revirtiendo la revisión/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Editor' }));
+    fireEvent.click(screen.getByRole('button', { name: /Editor:/ }));
     const editor = screen.getByRole('textbox', {
       name: 'editor de prueba',
     }) as HTMLTextAreaElement;
@@ -446,22 +478,22 @@ describe('autosave de la interfaz', () => {
     );
     await abrirDemo();
     fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
-    await screen.findByText('r2');
+    await screen.findByRole('button', { name: /Revisión 2/ });
 
-    fireEvent.click(screen.getByRole('button', { name: /r1/ }));
-    fireEvent.click(screen.getByRole('button', { name: /r2/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Versión actual/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Revisión 2/ }));
     await act(async () => {
       respuesta2.resolver(detalleDe(2));
     });
-    await screen.findByText('Revisión 2');
-    fireEvent.click(screen.getByRole('button', { name: 'Revertir esta revisión' }));
+    await screen.findByRole('heading', { name: 'Revisión 2' });
+    fireEvent.click(screen.getByRole('button', { name: 'Recuperar' }));
 
     await act(async () => {
       respuesta1.resolver(detalleDe(1));
     });
-    expect(screen.getByText('Revisión 2')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Revisión 2' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reversión' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar recuperación' }));
     await waitFor(() => expect(revertirMock).toHaveBeenCalledWith('/tmp/novela', 2));
   });
 
@@ -475,7 +507,7 @@ describe('autosave de la interfaz', () => {
     const botonHistorial = screen.getByRole('button', { name: 'Historial' });
     expect(botonHistorial.hasAttribute('disabled')).toBe(false);
     fireEvent.click(botonHistorial);
-    await screen.findByText('Revisiones del proyecto');
+    await screen.findByText('Historial de versiones');
   });
 
   it('repite la búsqueda cuando cambia la revisión', async () => {

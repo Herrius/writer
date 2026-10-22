@@ -206,6 +206,7 @@ export default function App() {
 
   const [consulta, setConsulta] = useState('');
   const [focoArbol, setFocoArbol] = useState<string | null>(null);
+  const [panelDerecho, setPanelDerecho] = useState<'metas' | 'notas'>('metas');
   const [resultados, setResultados] = useState<BusquedaDto[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
@@ -316,15 +317,27 @@ export default function App() {
       ),
     [escenas],
   );
-  const gruposNotas = useMemo(
-    () =>
-      agrupar(
-        notas,
-        (documento) => documento.clase ?? 'notas',
-        (documento) => etiquetaCarpeta(documento.clase ?? 'notas'),
-      ),
-    [notas],
-  );
+  const libros = useMemo(() => {
+    const porLibro = new Map<
+      string,
+      { etiqueta: string; capitulos: Array<{ clave: string; etiqueta: string; documentos: DocumentoDto[] }> }
+    >();
+    for (const grupo of gruposEscenas) {
+      const [claveLibro, claveCapitulo] = grupo.clave.split('/');
+      const [etiquetaLibro, etiquetaCapitulo] = grupo.etiqueta.split(' / ');
+      const libro = porLibro.get(claveLibro) ?? {
+        etiqueta: etiquetaLibro ?? claveLibro,
+        capitulos: [],
+      };
+      libro.capitulos.push({
+        clave: grupo.clave,
+        etiqueta: etiquetaCapitulo ?? claveCapitulo,
+        documentos: grupo.documentos,
+      });
+      porLibro.set(claveLibro, libro);
+    }
+    return Array.from(porLibro.values());
+  }, [gruposEscenas]);
   const personajes = useMemo(
     () =>
       notas
@@ -368,11 +381,6 @@ export default function App() {
         ? 'solo-lectura'
         : estadoGuardado;
 
-  const puedeGuardar =
-    estadoGuardado === 'pendiente' ||
-    estadoGuardado === 'error' ||
-    estadoGuardado === 'ocupado';
-
   const recordarProyecto = (
     resumen: ProyectoDto,
     palabras = 0,
@@ -388,7 +396,7 @@ export default function App() {
           ruta: resumen.raiz,
           titulo: resumen.titulo,
           autor: resumen.autor ?? anterior?.autor,
-          palabras: palabras || anterior?.palabras || 0,
+          palabras: palabras ?? anterior?.palabras ?? 0,
           color: color ?? anterior?.color ?? colorDesdeTitulo(resumen.titulo),
         },
         ...lista.filter((item) => item.ruta !== resumen.raiz),
@@ -671,6 +679,13 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (vista !== 'historial' || !proyecto || revisionSeleccionada !== null) {
+      return;
+    }
+    void verRevision(proyecto.revision);
+  }, [vista, proyecto?.revision, revisionSeleccionada]);
+
   const revertirARevision = async () => {
     const detalle = detalleRevision;
     const proyectoActual = proyectoRef.current;
@@ -808,11 +823,34 @@ export default function App() {
       datos.idioma,
       datos.notasIniciales,
     );
+    setError(null);
     recordarProyecto(resumen, 0, datos.color);
     if (abrir) {
       await cargar(resumen.raiz);
       setMensaje(`Proyecto «${resumen.titulo}» creado y abierto.`);
     }
+  };
+
+  const volverAlInicio = async () => {
+    if (revirtiendoRef.current) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se vuelve al panel: hay cambios sin guardar.');
+      return;
+    }
+    limpiarPendiente();
+    fijarProyecto(null);
+    setDocumentos([]);
+    fijarActivo(null);
+    setEstado('inicio');
+    setVista('editor');
+    setConsulta('');
+    setResultados([]);
+    setRevisiones([]);
+    setDetalleRevision(null);
+    setMensaje(null);
   };
 
   const exportarDocumento = async () => {
@@ -1061,7 +1099,26 @@ export default function App() {
     activo && pendienteRef.current?.id === activo.id
       ? pendienteRef.current.cuerpo
       : (activo?.cuerpo ?? '');
+  const palabrasDocumento = contarPalabras(textoSinMarcas(cuerpoVisible));
   const modoBusqueda = consulta.trim().length >= 2;
+
+  const botonDocumento = (documento: DocumentoDto, icono: string) => (
+    <button
+      key={documento.id}
+      id={`doc-${documento.id}`}
+      className={`dabble-doc ${activo?.id === documento.id ? 'activo' : ''}`}
+      tabIndex={idArbolTabbable === documento.id ? 0 : -1}
+      aria-current={activo?.id === documento.id ? 'page' : undefined}
+      onFocus={() => setFocoArbol(documento.id)}
+      onKeyDown={(evento) => manejarTeclaArbol(evento, documento)}
+      onClick={() => void seleccionar(documento)}
+    >
+      <span className="dabble-doc-icono" aria-hidden="true">
+        {icono}
+      </span>
+      <span className="dabble-doc-titulo">{documento.titulo}</span>
+    </button>
+  );
 
   if (estado === 'inicio' || estado === 'error') {
     return (
@@ -1090,21 +1147,61 @@ export default function App() {
   }
 
   return (
-    <div className="aplicacion">
+    <div className="dabble-app">
       <a className="saltar-contenido" href="#panel-principal">
         Saltar al contenido
       </a>
-      <header className="topbar">
-        <div className="marca">
-          writer <span>v0.2</span>
+      <header className="dabble-topbar">
+        <button
+          className="dabble-home"
+          aria-label="Volver a Proyectos"
+          title="Volver a Proyectos"
+          onClick={() => void volverAlInicio()}
+        >
+          ⌂
+        </button>
+        <div className="dabble-tabs">
+          <button
+            className={`dabble-tab ${vista === 'editor' ? 'activo' : ''}`}
+            onClick={() => setVista('editor')}
+          >
+            <span className="dabble-tab-icono" aria-hidden="true">▤</span>
+            <strong>{proyecto?.titulo ?? 'Proyecto'}</strong>
+          </button>
+          <button
+            className="dabble-tab"
+            onClick={() => {
+              const nota = notas.find((documento) =>
+                ['lugares', 'cronologia', 'objetos'].includes(documento.clase ?? ''),
+              );
+              if (nota) {
+                void seleccionar(nota);
+              } else {
+                setPanelDerecho('notas');
+              }
+            }}
+          >
+            <span className="dabble-tab-icono" aria-hidden="true">◈</span>
+            Construcción del mundo
+          </button>
+          <button
+            className={`dabble-tab ${vista !== 'editor' ? 'activo' : ''}`}
+            aria-label={`Editor: ${activo?.titulo ?? 'sin documento'}`}
+            onClick={() => setVista('editor')}
+            disabled={!activo}
+          >
+            {activo?.titulo ?? 'Sin documento'}
+          </button>
         </div>
-        <div className="proyecto-cabecera">
-          <strong>{proyecto?.titulo ?? 'Proyecto'}</strong>
-          <span>{proyecto?.raiz}</span>
-        </div>
-        <div className="topbar-acciones">
-          <span className={`modo ${esTauri ? 'modo-tauri' : 'modo-demo'}`}>
-            {esTauri ? 'Tauri' : 'Demo'}
+        <div className="dabble-top-acciones">
+          <span
+            className={`estado-guardado estado-${estadoVisible}`}
+            role="status"
+            aria-live="polite"
+            aria-label="Estado de guardado"
+            title={errorGuardado ?? undefined}
+          >
+            {etiquetaGuardado(estadoVisible)}
           </span>
           <label className="notas-exportar">
             <input
@@ -1116,23 +1213,49 @@ export default function App() {
             notas
           </label>
           <button
-            className="secundario"
+            className="dabble-compartir"
+            aria-label="Exportar DOCX"
             onClick={() => void exportarDocumento()}
             disabled={exportando || revirtiendo}
           >
-            {exportando ? 'Exportando…' : 'Exportar DOCX'}
+            {exportando ? 'Exportando…' : 'Compartir'}
           </button>
-          <button className="secundario" onClick={() => void abrir()}>
-            Abrir otro
+          <button
+            className={`icono-dabble ${vista === 'fuente' ? 'activo' : ''}`}
+            aria-label="Ver Markdown"
+            title="Ver Markdown"
+            onClick={() => setVista(vista === 'fuente' ? 'editor' : 'fuente')}
+            disabled={!activo}
+          >
+            Aa
           </button>
+          <button
+            className={`icono-dabble ${vista === 'historial' ? 'activo' : ''}`}
+            aria-label="Historial"
+            title="Historial de versiones"
+            onClick={() => {
+              setRevisionSeleccionada(null);
+              setDetalleRevision(null);
+              setVista('historial');
+            }}
+          >
+            ◷
+          </button>
+          <button className="icono-dabble" aria-label="Ayuda" title="Ayuda">
+            ?
+          </button>
+          <span className="dabble-avatar" aria-label={`Sesión de ${proyecto?.autor || 'escritor'}`}>
+            {(proyecto?.autor || 'E').charAt(0).toLocaleUpperCase()}
+          </span>
         </div>
       </header>
 
       {estado === 'cargando' && <div className="cargando">Abriendo proyecto…</div>}
 
-      <div className="workspace">
-        <aside className="sidebar">
-          <div className="buscador">
+      <div className="dabble-workspace">
+        <aside className="dabble-sidebar">
+          <div className="dabble-filtro">
+            <span aria-hidden="true">▽</span>
             <input
               ref={buscadorRef}
               type="text"
@@ -1149,18 +1272,12 @@ export default function App() {
                   void abrirResultado(resultados[0]);
                 }
               }}
-              placeholder="Buscar en el proyecto…"
+              placeholder="Filtrar archivos del proyecto"
               aria-label="Buscar en el proyecto"
             />
-            {consulta !== '' && (
-              <button
-                className="limpiar-busqueda"
-                onClick={() => setConsulta('')}
-                aria-label="Limpiar búsqueda"
-              >
-                ×
-              </button>
-            )}
+            <button className="dabble-mas" aria-label="Crear archivo" title="Crear archivo próximamente" disabled>
+              +
+            </button>
           </div>
 
           {modoBusqueda ? (
@@ -1196,66 +1313,57 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <>
-              <div className="sidebar-titulo">
-                <span>Manuscrito</span>
-                <span className="contador">{escenas.length}</span>
-              </div>
-              {gruposEscenas.length === 0 && <p className="vacio">Sin escenas.</p>}
-              {gruposEscenas.map(({ clave, etiqueta, documentos: lista }) => (
-                <section className="grupo" key={clave}>
-                  <h3>{etiqueta}</h3>
-                  {lista.map((documento) => (
-                    <button
-                      key={documento.id}
-                      id={`doc-${documento.id}`}
-                      className={`documento ${activo?.id === documento.id ? 'activo' : ''}`}
-                      tabIndex={idArbolTabbable === documento.id ? 0 : -1}
-                      aria-current={activo?.id === documento.id ? 'page' : undefined}
-                      onFocus={() => setFocoArbol(documento.id)}
-                      onKeyDown={(evento) => manejarTeclaArbol(evento, documento)}
-                      onClick={() => void seleccionar(documento)}
-                    >
-                      <span className="documento-titulo">{documento.titulo}</span>
-                      <span className="documento-meta">
-                        {documento.orden !== null ? `orden ${documento.orden}` : 'sin orden'} ·{' '}
-                        {documento.estado ?? 'borrador'}
-                      </span>
-                    </button>
+            <div className="dabble-arbol">
+              <h3 className="dabble-seccion">Manuscritos</h3>
+              {libros.length === 0 && <p className="dabble-vacio">Sin escenas.</p>}
+              {libros.map((libro) => (
+                <div className="dabble-libro" key={libro.etiqueta}>
+                  <div className="dabble-libro-titulo">{libro.etiqueta}</div>
+                  {libro.capitulos.map((capitulo) => (
+                    <div className="dabble-capitulo" key={capitulo.clave}>
+                      <div className="dabble-capitulo-titulo">{capitulo.etiqueta}</div>
+                      {capitulo.documentos.map((documento) => botonDocumento(documento, '▤'))}
+                    </div>
                   ))}
-                </section>
+                </div>
               ))}
 
-              <div className="sidebar-titulo sidebar-notas">
-                <span>Notas</span>
-                <span className="contador">{notas.length}</span>
-              </div>
-              {gruposNotas.length === 0 && <p className="vacio">Sin notas.</p>}
-              {gruposNotas.map(({ clave, etiqueta, documentos: lista }) => (
-                <section className="grupo" key={clave}>
-                  <h3>{etiqueta}</h3>
-                  {lista.map((documento) => (
-                    <button
-                      key={documento.id}
-                      id={`doc-${documento.id}`}
-                      className={`documento ${activo?.id === documento.id ? 'activo' : ''}`}
-                      tabIndex={idArbolTabbable === documento.id ? 0 : -1}
-                      aria-current={activo?.id === documento.id ? 'page' : undefined}
-                      onFocus={() => setFocoArbol(documento.id)}
-                      onKeyDown={(evento) => manejarTeclaArbol(evento, documento)}
-                      onClick={() => void seleccionar(documento)}
-                    >
-                      <span className="documento-titulo">{documento.titulo}</span>
-                      <span className="documento-meta">{documento.clase}</span>
-                    </button>
-                  ))}
-                </section>
-              ))}
-            </>
+              <h3 className="dabble-seccion">Tramas</h3>
+              {notas.filter((documento) => documento.clase === 'tramas').length === 0 && (
+                <p className="dabble-vacio">Sin tramas.</p>
+              )}
+              {notas
+                .filter((documento) => documento.clase === 'tramas')
+                .map((documento) => botonDocumento(documento, '◈'))}
+
+              <h3 className="dabble-seccion">Personajes</h3>
+              {notas.filter((documento) => documento.clase === 'personajes').length === 0 && (
+                <p className="dabble-vacio">Sin personajes.</p>
+              )}
+              {notas
+                .filter((documento) => documento.clase === 'personajes')
+                .map((documento) => botonDocumento(documento, '♙'))}
+
+              <h3 className="dabble-seccion">Cuaderno</h3>
+              {notas.filter(
+                (documento) => !['tramas', 'personajes'].includes(documento.clase ?? ''),
+              ).length === 0 && <p className="dabble-vacio">Sin notas de cuaderno.</p>}
+              {notas
+                .filter((documento) => !['tramas', 'personajes'].includes(documento.clase ?? ''))
+                .map((documento) => botonDocumento(documento, '▢'))}
+
+              <h3 className="dabble-seccion">Utilidades</h3>
+              <button className="dabble-utilidad" disabled>▢ Plantillas</button>
+              <button className="dabble-utilidad" disabled>⌂ Archivo</button>
+              <button className="dabble-utilidad" disabled>♲ Papelera</button>
+              <button className="dabble-config" disabled title="Configuración del proyecto próximamente">
+                ⚙ Configuración del proyecto
+              </button>
+            </div>
           )}
         </aside>
 
-        <main className="panel" id="panel-principal" tabIndex={-1} ref={panelRef}>
+        <main className="dabble-centro" id="panel-principal" tabIndex={-1} ref={panelRef}>
           {error && (
             <pre className="banner-error" role="alert">
               {error}
@@ -1275,12 +1383,7 @@ export default function App() {
             </div>
           )}
           {errorGuardado && (
-            <div
-              className="banner-error"
-              ref={bannerErrorRef}
-              role="alert"
-              tabIndex={-1}
-            >
+            <div className="banner-error" ref={bannerErrorRef} role="alert" tabIndex={-1}>
               <strong>No se pudo guardar.</strong>
               <pre>{errorGuardado}</pre>
               <div className="banner-acciones">
@@ -1316,10 +1419,7 @@ export default function App() {
                   </li>
                 ))}
               </ul>
-              <p>
-                Se abrió en solo lectura para no perder contenido. Edítalo desde la CLI o
-                conviértelo a las construcciones soportadas.
-              </p>
+              <p>Se abrió en solo lectura para no perder contenido.</p>
             </div>
           )}
           {proyecto && proyecto.errores.length > 0 && (
@@ -1344,18 +1444,15 @@ export default function App() {
               </ul>
             </details>
           )}
-
           {cuarentena.length > 0 && (
-            <section className="cuarentena">
-              <div className="cuarentena-cabecera">
+            <details className="cuarentena">
+              <summary className="cuarentena-cabecera">
                 <div>
                   <p className="kicker">copia de diagnóstico</p>
                   <h3>Cuarentena ({cuarentena.length})</h3>
                 </div>
-                <p>
-                  Los originales no se tocan. Descartar elimina solo la copia.
-                </p>
-              </div>
+                <p>Los originales no se tocan. Descartar elimina solo la copia.</p>
+              </summary>
               <ul>
                 {cuarentena.map((item) => (
                   <li key={item.archivo}>
@@ -1387,227 +1484,280 @@ export default function App() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </details>
           )}
 
-          {proyecto ? (
-            <article className="documento-panel">
-              {activo ? (
-                <header className="documento-cabecera">
-                  <div>
-                    <p className="kicker">{activo.tipo === 'escena' ? 'escena' : 'nota'}</p>
-                    <h2>{activo.titulo}</h2>
-                  </div>
-                  <div className="chips">
-                    <span>{etiquetaTipo(activo)}</span>
-                    {activo.orden !== null && <span>orden {activo.orden}</span>}
-                    <span className="chip-id">{activo.id}</span>
-                  </div>
-                </header>
-              ) : (
-                <header className="documento-cabecera">
-                  <div>
-                    <p className="kicker">proyecto</p>
-                    <h2>{proyecto.titulo}</h2>
-                  </div>
-                  <div className="chips">
-                    <span>{proyecto.escenas} escenas</span>
-                    <span>{proyecto.notas} notas</span>
-                  </div>
-                </header>
-              )}
-              <div className="tabs" role="tablist">
+          {vista === 'historial' ? (
+            <section className="dabble-historial">
+              <header className="dabble-historial-cabecera">
+                <div>
+                  <p className="kicker">máquina del tiempo</p>
+                  <h1>{activo?.titulo ?? proyecto?.titulo ?? 'Proyecto'}</h1>
+                </div>
                 <button
-                  className={vista === 'editor' ? 'tab activo' : 'tab'}
-                  onClick={() => setVista('editor')}
-                  disabled={!activo}
+                  className="dabble-boton"
+                  onClick={() => {
+                    setVista('editor');
+                    setConfirmarReversion(null);
+                  }}
                 >
-                  Editor
+                  Salir de la máquina del tiempo
                 </button>
+              </header>
+              <div className="dabble-historial-pagina">
+                {cargandoDetalle && <p className="vacio">Cargando revisión…</p>}
+                {errorDetalle && (
+                  <pre className="banner-error" role="alert">
+                    {errorDetalle}
+                  </pre>
+                )}
+                {detalleRevision ? (
+                  <>
+                    <div className="dabble-version-cabecera">
+                      <h2>Revisión {detalleRevision.revision}</h2>
+                      <p>
+                        {formatearFecha(detalleRevision.ts)} · {detalleRevision.autor} ·{' '}
+                        {detalleRevision.scope}
+                      </p>
+                    </div>
+                    {detalleRevision.contenidos.map((contenido, indice) => (
+                      <details
+                        key={contenido.ruta}
+                        open={indice === 0 || detalleRevision.contenidos.length === 1}
+                      >
+                        <summary>{contenido.ruta}</summary>
+                        {contenido.contenido !== null ? (
+                          <pre className="fuente">{contenido.contenido}</pre>
+                        ) : (
+                          <p className="vacio">(archivo eliminado)</p>
+                        )}
+                      </details>
+                    ))}
+                  </>
+                ) : (
+                  !cargandoDetalle &&
+                  !errorDetalle && (
+                    <p className="vacio">
+                      Selecciona una versión en el panel derecho para ver su contenido.
+                    </p>
+                  )
+                )}
+              </div>
+              <div className="dabble-timeline">
                 <button
-                  className={vista === 'fuente' ? 'tab activo' : 'tab'}
-                  onClick={() => setVista('fuente')}
-                  disabled={!activo}
+                  className="dabble-boton"
+                  onClick={() => {
+                    setVista('editor');
+                    setConfirmarReversion(null);
+                  }}
                 >
-                  Markdown
+                  Salir de la máquina del tiempo
                 </button>
+                <div className="dabble-timeline-control">
+                  <span aria-hidden="true">◀</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={Math.max(1, proyecto?.revision ?? 1)}
+                    value={revisionSeleccionada ?? proyecto?.revision ?? 1}
+                    onChange={(evento) => void verRevision(Number(evento.target.value))}
+                    aria-label="Línea de tiempo de revisiones"
+                  />
+                  <span aria-hidden="true">▶</span>
+                </div>
                 <button
-                  className={vista === 'historial' ? 'tab activo' : 'tab'}
-                  onClick={() => setVista('historial')}
+                  className="dabble-boton-primario"
+                  onClick={() => void revertirARevision()}
+                  disabled={!detalleRevision || revirtiendo}
                 >
-                  Historial
+                  {revirtiendo
+                    ? 'Recuperando…'
+                    : confirmarReversion !== null
+                      ? 'Confirmar recuperación'
+                      : 'Recuperar'}
                 </button>
-                <span
-                  className={`estado-guardado estado-${estadoVisible}`}
-                  role="status"
-                  aria-live="polite"
-                  aria-label="Estado de guardado"
-                  title={errorGuardado ?? undefined}
-                >
+                {confirmarReversion !== null && (
+                  <button
+                    className="dabble-boton"
+                    onClick={() => setConfirmarReversion(null)}
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <label className="dabble-ir-cambio">
+                  <input type="checkbox" disabled /> Ir al cambio
+                </label>
+              </div>
+            </section>
+          ) : activo ? (
+            <article className="dabble-documento">
+              <header className="dabble-doc-cabecera">
+                <span className="dabble-doc-tipo">
+                  {activo.tipo === 'escena' ? 'escena' : activo.clase ?? 'nota'}
+                </span>
+                <h1 className="dabble-titulo">{activo.titulo}</h1>
+                <div className="dabble-doc-meta">
+                  <span>{etiquetaTipo(activo)}</span>
+                  <span>{palabrasDocumento} palabras</span>
+                  <span>{estadoVisible}</span>
+                </div>
+              </header>
+              <div className="dabble-hoja">
+                {vista === 'editor' ? (
+                  <EditorMarkdown
+                    key={`${activo.id}:${revisionEditor}`}
+                    markdown={cuerpoVisible}
+                    editable={puedeEditar}
+                    personajes={personajes}
+                    tramas={tramas}
+                    onCambio={alCambiar}
+                  />
+                ) : (
+                  <pre className="fuente">{cuerpoVisible || '(cuerpo vacío)'}</pre>
+                )}
+              </div>
+              <footer className="dabble-doc-pie">
+                <span>{palabrasDocumento} Palabra{palabrasDocumento === 1 ? '' : 's'}</span>
+                <span>0 Hoy día</span>
+                <span className={`estado-guardado estado-${estadoVisible}`}>
                   {etiquetaGuardado(estadoVisible)}
                 </span>
-                <button
-                  className="secundario pequeno guardar"
-                  onClick={() => void guardarAhora()}
-                  disabled={!puedeGuardar || !activo}
-                >
-                  Guardar
-                </button>
-              </div>
-              {vista === 'historial' ? (
-                <section className="historial">
-                  <div className="historial-cabecera">
-                    <div>
-                      <p className="kicker">línea de tiempo</p>
-                      <h3>Revisiones del proyecto</h3>
-                    </div>
-                    <button
-                      className="secundario pequeno"
-                      onClick={() => {
-                        setConfirmarReversion(null);
-                        setHistorialVersion((valor) => valor + 1);
-                      }}
-                    >
-                      Actualizar
-                    </button>
-                  </div>
-                  {cargandoHistorial && <p className="vacio">Cargando historial…</p>}
-                  {errorHistorial && (
-                    <pre className="banner-error" role="alert">
-                      {errorHistorial}
-                    </pre>
-                  )}
-                  {!cargandoHistorial && !errorHistorial && revisiones.length === 0 && (
-                    <p className="vacio">Sin revisiones.</p>
-                  )}
-                  <div className="historial-cuerpo">
-                    <ol className="revisiones">
-                      {revisiones.map((revision) => (
-                        <li key={revision.revision}>
-                          <button
-                            className={`revision ${
-                              revisionSeleccionada === revision.revision ? 'activa' : ''
-                            } ${revision.revision === proyecto?.revision ? 'actual' : ''}`}
-                            onClick={() => void verRevision(revision.revision)}
-                            disabled={revirtiendo}
-                          >
-                            <span className="revision-numero">
-                              r{revision.revision}
-                              {revision.revision === proyecto?.revision && <em>actual</em>}
-                            </span>
-                            <span className="revision-meta">
-                              {formatearFecha(revision.ts)} · {revision.autor} · {revision.scope}
-                            </span>
-                            <span className="revision-rutas">
-                              {revision.efectos} archivo(s): {revision.rutas.join(', ')}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ol>
-                    <div className="detalle-revision">
-                      {cargandoDetalle && <p className="vacio">Cargando revisión…</p>}
-                      {errorDetalle && (
-                        <pre className="banner-error" role="alert">
-                          {errorDetalle}
-                        </pre>
-                      )}
-                      {detalleRevision ? (
-                        <>
-                          <header className="detalle-cabecera">
-                            <h4>Revisión {detalleRevision.revision}</h4>
-                            <p>
-                              {formatearFecha(detalleRevision.ts)} · {detalleRevision.autor} ·{' '}
-                              {detalleRevision.scope}
-                            </p>
-                          </header>
-                          <div className="detalle-acciones">
-                            <button
-                              className={`peligro ${confirmarReversion !== null ? 'confirmado' : ''}`}
-                              onClick={() => void revertirARevision()}
-                              disabled={revirtiendo}
-                            >
-                              {revirtiendo
-                                ? 'Revirtiendo…'
-                                : confirmarReversion !== null
-                                  ? 'Confirmar reversión'
-                                  : 'Revertir esta revisión'}
-                            </button>
-                            {confirmarReversion !== null && (
-                              <button
-                                className="secundario pequeno"
-                                onClick={() => setConfirmarReversion(null)}
-                              >
-                                Cancelar
-                              </button>
-                            )}
-                            {detalleRevision.revision === proyecto?.revision && (
-                              <span className="nota-modo">Es la revisión actual.</span>
-                            )}
-                            {confirmarReversion !== null && (
-                              <span className="nota-modo">
-                                Deshace los cambios de esta revisión y crea una revisión nueva.
-                              </span>
-                            )}
-                          </div>
-                          <div className="detalle-archivos">
-                            {detalleRevision.contenidos.map((contenido) => (
-                              <details
-                                key={contenido.ruta}
-                                open={detalleRevision.contenidos.length === 1}
-                              >
-                                <summary>{contenido.ruta}</summary>
-                                {contenido.contenido !== null ? (
-                                  <pre className="fuente">{contenido.contenido}</pre>
-                                ) : (
-                                  <p className="vacio">(archivo eliminado)</p>
-                                )}
-                              </details>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        !cargandoDetalle &&
-                        !errorDetalle && (
-                          <p className="vacio">
-                            Selecciona una revisión para ver los archivos que cambió.
-                          </p>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </section>
-              ) : vista === 'editor' && activo ? (
-                <EditorMarkdown
-                  key={`${activo.id}:${revisionEditor}`}
-                  markdown={cuerpoVisible}
-                  editable={puedeEditar}
-                  personajes={personajes}
-                  tramas={tramas}
-                  onCambio={alCambiar}
-                />
-              ) : vista === 'fuente' && activo ? (
-                <pre className="fuente">{cuerpoVisible || '(cuerpo vacío)'}</pre>
-              ) : (
-                <div className="vacio-panel">
-                  <p>El proyecto no tiene documentos válidos.</p>
-                  <p>
-                    Abre <b>Historial</b> para revertir la revisión que los eliminó, o usa la CLI.
-                  </p>
-                </div>
-              )}
+              </footer>
             </article>
           ) : (
-            <p className="vacio-panel">Selecciona una escena o nota del árbol.</p>
+            <div className="vacio-panel">
+              <p>El proyecto no tiene documentos válidos.</p>
+              <p>Abre Historial para revertir la revisión que los eliminó, o usa la CLI.</p>
+            </div>
           )}
         </main>
+
+        {vista === 'historial' ? (
+          <aside className="dabble-derecha dabble-derecha-historial">
+            <header className="dabble-derecha-cabecera">
+              <strong>Historial de versiones</strong>
+              <button
+                className="icono-dabble"
+                aria-label="Cerrar historial"
+                onClick={() => {
+                  setVista('editor');
+                  setConfirmarReversion(null);
+                }}
+              >
+                ×
+              </button>
+            </header>
+            <button
+              className="dabble-actualizar"
+              onClick={() => {
+                setConfirmarReversion(null);
+                setHistorialVersion((valor) => valor + 1);
+              }}
+            >
+              Actualizar
+            </button>
+            {cargandoHistorial && <p className="vacio">Cargando historial…</p>}
+            {errorHistorial && (
+              <pre className="banner-error" role="alert">
+                {errorHistorial}
+              </pre>
+            )}
+            <ul className="dabble-versiones">
+              {revisiones.map((revision) => (
+                <li key={revision.revision}>
+                  <button
+                    className={`dabble-version ${
+                      revisionSeleccionada === revision.revision ? 'activa' : ''
+                    } ${revision.revision === proyecto?.revision ? 'actual' : ''}`}
+                    onClick={() => void verRevision(revision.revision)}
+                    disabled={revirtiendo}
+                  >
+                    <span className="dabble-version-punto" aria-hidden="true">◉</span>
+                    <span>
+                      <strong>
+                        {revision.revision === proyecto?.revision
+                          ? 'Versión actual'
+                          : `Revisión ${revision.revision}`}
+                      </strong>
+                      <small>{formatearFecha(revision.ts)}</small>
+                      <small>{revision.efectos} archivo(s) · {revision.scope}</small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        ) : (
+          <aside className="dabble-derecha">
+            <div className="dabble-derecha-tabs" role="tablist" aria-label="Panel lateral">
+              <button
+                role="tab"
+                aria-selected={panelDerecho === 'metas'}
+                className={panelDerecho === 'metas' ? 'activo' : ''}
+                onClick={() => setPanelDerecho('metas')}
+              >
+                Metas
+              </button>
+              <button
+                role="tab"
+                aria-selected={panelDerecho === 'notas'}
+                className={panelDerecho === 'notas' ? 'activo' : ''}
+                onClick={() => setPanelDerecho('notas')}
+              >
+                Notas
+              </button>
+            </div>
+            {panelDerecho === 'metas' ? (
+              <>
+                <section className="dabble-metas">
+                  <div className="dabble-grafico" aria-hidden="true">
+                    <span /><span /><span /><span /><span /><span /><span /><span />
+                  </div>
+                  <h3>Establece tus metas de escritura</h3>
+                  <p>Sigue tu progreso con hábitos diarios, metas de libro o desafíos a plazo.</p>
+                  <button className="dabble-boton" disabled>+ Agregar una meta</button>
+                </section>
+                <section className="dabble-timer">
+                  <div className="dabble-timer-cabecera">
+                    <strong>5:00</strong>
+                    <button className="dabble-play" disabled aria-label="Iniciar temporizador">▶</button>
+                  </div>
+                  <div className="dabble-timer-opciones">
+                    {[5, 10, 15, 25, 30].map((minutos) => (
+                      <button key={minutos} className={minutos === 5 ? 'activo' : ''} disabled>
+                        {minutos}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </>
+            ) : (
+              <section className="dabble-notas-panel">
+                <h3>Documento</h3>
+                <dl>
+                  <dt>Tipo</dt><dd>{activo ? etiquetaTipo(activo) : '—'}</dd>
+                  <dt>Título</dt><dd>{activo?.titulo ?? '—'}</dd>
+                  <dt>Ruta</dt><dd>{activo?.ruta ?? '—'}</dd>
+                  <dt>ID</dt><dd>{activo?.id ?? '—'}</dd>
+                  <dt>Palabras</dt><dd>{palabrasDocumento}</dd>
+                </dl>
+                <h3>Proyecto</h3>
+                <dl>
+                  <dt>Revisión</dt><dd>{proyecto?.revision ?? 0}</dd>
+                  <dt>Escenas</dt><dd>{proyecto?.escenas ?? 0}</dd>
+                  <dt>Notas</dt><dd>{proyecto?.notas ?? 0}</dd>
+                  <dt>Ruta</dt><dd>{proyecto?.raiz ?? '—'}</dd>
+                </dl>
+              </section>
+            )}
+          </aside>
+        )}
       </div>
 
-      <footer className="statusbar">
+      <footer className="dabble-statusbar">
         <span>revisión {proyecto?.revision ?? 0}</span>
-        <span>
-          {proyecto?.escenas ?? 0} escenas · {proyecto?.notas ?? 0} notas
-        </span>
+        <span>{proyecto?.escenas ?? 0} escenas · {proyecto?.notas ?? 0} notas</span>
+        <span>{palabrasDocumento} palabras · 0 hoy</span>
         <span className={proyecto && proyecto.errores.length > 0 ? 'estado-error' : 'estado-ok'}>
           {proyecto && proyecto.errores.length > 0
             ? `${proyecto.errores.length} error(es)`
@@ -1616,9 +1766,7 @@ export default function App() {
         {proyecto && proyecto.avisos.length > 0 && (
           <span className="estado-aviso">{proyecto.avisos.length} aviso(s)</span>
         )}
-        <span className={`estado-guardado estado-${estadoVisible}`}>
-          {etiquetaGuardado(estadoVisible)}
-        </span>
+        <span className={`estado-guardado estado-${estadoVisible}`}>{etiquetaGuardado(estadoVisible)}</span>
         <span className="crece" />
         <span>{esTauri ? 'escritorio' : 'demo en navegador'}</span>
       </footer>

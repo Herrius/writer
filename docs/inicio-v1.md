@@ -1,7 +1,7 @@
 # Inicio y creación de proyectos — v1 (Fase 2.1)
 
 - **Fecha:** 2026-10-21
-- **Estado:** implementado; pendiente pipeline de revisión.
+- **Estado:** implementado y revisado en el Bloque 2.2; pendiente pipeline de cierre.
 
 ## 1. Panel de Proyectos
 
@@ -11,10 +11,11 @@
   `localStorage`) y una tarjeta “Crear nuevo proyecto”.
 - Estado vacío con “No proyectos”, texto de bienvenida y “Abrir proyecto
   existente”.
-- Barra lateral con bienvenida, número de proyectos, palabras registradas, meta
-  diaria (deshabilitada) y cuaderno “Ideas”.
+- Barra lateral con bienvenida, número de **recientes** (máximo 8), palabras
+  registradas, meta diaria (deshabilitada) y cuaderno “Ideas”.
 - El proyecto se abre al pulsar una tarjeta; los recientes se actualizan al
-  abrir o crear.
+  abrir o crear. “Abrir proyecto” está siempre visible en la cabecera, además
+  del estado vacío.
 
 ## 2. Asistente de creación
 
@@ -39,10 +40,12 @@ Al confirmar:
    destinos enlazados o no vacíos y valida el nombre (incluidos reservados de
    Windows y espacios iniciales).
 4. `Project::init` crea el manifiesto, `.escritor/`, Libro 1 / Capítulo 1 /
-   Primera escena.
-4. Si están activas, crea las tres notas iniciales.
-5. “Guardar” deja el proyecto en recientes; “Guardar y abrir” lo abre.
-6. Cualquier error del motor se muestra en el modal sin cerrar el formulario.
+   Primera escena; valida antes de crear y limpia lo creado si falla.
+5. Si están activas, crea las tres notas iniciales; si falla, el comando limpia
+   el proyecto parcial.
+6. “Guardar” deja el proyecto en recientes, limpia el filtro y muestra una
+   confirmación; “Guardar y abrir” lo abre y muestra el mensaje.
+7. Cualquier error del motor se muestra en el modal sin cerrar el formulario.
 
 ## 3. Límites conocidos
 
