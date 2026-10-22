@@ -34,8 +34,8 @@ acuerden antes de continuar.
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 92 pruebas
-(34 unitarias, 33 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
+exportación Markdown e inyección de fallos. El conjunto Rust acumula 94 pruebas
+(34 unitarias, 35 de integración y 25 de CLI). La Fase 2 añade 2 pruebas de la
 cáscara Tauri y 58 pruebas de UI (corpus Markdown, compatibilidad, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas, accesibilidad, creación y
 regresiones). Además, 10 flujos E2E de navegador con Playwright y 2 escenarios E2E de

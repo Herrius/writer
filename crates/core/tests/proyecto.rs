@@ -270,6 +270,61 @@ fn indice_busca_y_se_reconstruye() {
     assert_eq!(resultado.blobs_eliminados, 0);
 }
 
+#[test]
+fn init_rechaza_rutas_invalidas_y_destinos_no_vacios() {
+    let directorio = temporal();
+    let raiz = directorio.path().join("novela");
+    Project::new(&raiz)
+        .init("Novela", None, None)
+        .expect("init");
+
+    for ruta in [
+        PathBuf::from(""),
+        raiz.join("otra").join(".."),
+        directorio
+            .path()
+            .join("no-existe")
+            .join("..")
+            .join("novela"),
+        raiz.clone(),
+    ] {
+        assert!(
+            Project::new(&ruta).init("Otra", None, None).is_err(),
+            "debió rechazar {ruta:?}"
+        );
+    }
+    assert!(std::fs::read_to_string(raiz.join("proyecto.yml"))
+        .expect("manifiesto intacto")
+        .contains("Novela"));
+
+    let no_vacio = directorio.path().join("no-vacio");
+    std::fs::create_dir(&no_vacio).expect("no-vacio");
+    std::fs::write(no_vacio.join("dato.txt"), b"no tocar").expect("dato");
+    assert!(Project::new(&no_vacio).init("Otra", None, None).is_err());
+    assert_eq!(
+        std::fs::read(no_vacio.join("dato.txt")).expect("dato intacto"),
+        b"no tocar"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn init_rechaza_un_destino_enlazado() {
+    use std::os::unix::fs::symlink;
+
+    let directorio = temporal();
+    let fuera = directorio.path().join("fuera");
+    std::fs::create_dir(&fuera).expect("fuera");
+    let enlace = directorio.path().join("novela");
+    symlink(&fuera, &enlace).expect("enlace");
+
+    let error = Project::new(&enlace)
+        .init("Novela", None, None)
+        .expect_err("destino enlazado");
+    assert!(error.to_string().contains("enlace"));
+    assert!(std::fs::read_dir(&fuera).expect("fuera").next().is_none());
+}
+
 #[cfg(unix)]
 #[test]
 fn recuperacion_no_escribe_fuera_del_proyecto_por_un_enlace() {

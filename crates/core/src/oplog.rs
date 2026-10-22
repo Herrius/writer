@@ -167,7 +167,24 @@ impl Log {
     /// Crea un log vacío.
     pub fn crear_vacio(ruta: &Path) -> Result<Self> {
         if let Some(padre) = ruta.parent() {
-            std::fs::create_dir_all(padre).map_err(|error| Error::Io(error).with_path(padre))?;
+            fsutil::directorio_real(padre)?;
+        }
+        match std::fs::symlink_metadata(ruta) {
+            Ok(metadatos) if metadatos.file_type().is_symlink() => {
+                return Err(Error::Integrity(format!(
+                    "se rechaza un log enlazado: {}",
+                    ruta.display()
+                )));
+            }
+            Ok(metadatos) if !metadatos.is_file() => {
+                return Err(Error::Integrity(format!(
+                    "el log no es un archivo regular: {}",
+                    ruta.display()
+                )));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(Error::Io(error).with_path(ruta)),
         }
         fsutil::escribir_atomico(ruta, b"")?;
         Ok(Self {

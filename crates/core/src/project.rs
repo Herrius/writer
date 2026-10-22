@@ -182,38 +182,32 @@ impl Project {
     }
 
     /// Crea un proyecto nuevo en un directorio vacío o inexistente.
+    ///
+    /// La ruta se normaliza y se valida en el backend, no en la interfaz: se
+    /// rechazan rutas vacías, `.`/`..`, enlaces en el destino y nombres no
+    /// válidos. El proyecto se crea bajo el padre canónico.
     pub fn init(&self, titulo: &str, autor: Option<&str>, idioma: Option<&str>) -> Result<()> {
-        if self.raiz.exists() {
-            let mut entradas = std::fs::read_dir(&self.raiz)
-                .map_err(|error| Error::Io(error).with_path(&self.raiz))?;
-            if entradas.next().is_some() {
-                return Err(Error::Project(format!(
-                    "el directorio no está vacío: {}",
-                    self.raiz.display()
-                )));
-            }
-        } else {
-            std::fs::create_dir_all(&self.raiz)
-                .map_err(|error| Error::Io(error).with_path(&self.raiz))?;
-        }
-        let proyecto = Proyecto::nuevo(titulo, autor, idioma)?;
-        fsutil::escribir_atomico(&self.raiz.join("proyecto.yml"), &proyecto.a_bytes())?;
+        let raiz = preparar_raiz_inicial(&self.raiz)?;
+        let proyecto = Project::new(&raiz);
+        let manifiesto = Proyecto::nuevo(titulo, autor, idioma)?;
+        fsutil::escribir_atomico(&raiz.join("proyecto.yml"), &manifiesto.a_bytes())?;
         for directorio in [
             "manuscrito",
             "notas",
             ".escritor/objetos",
             ".escritor/cuarentena",
         ] {
-            let ruta = self.raiz.join(directorio);
+            let ruta = raiz.join(directorio);
             std::fs::create_dir_all(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
         }
-        Log::crear_vacio(&self.ruta_log())?;
+        fsutil::validar_escritor(&raiz)?;
+        Log::crear_vacio(&proyecto.ruta_log())?;
 
-        let mut sesion = self.escritura()?;
+        let mut sesion = proyecto.escritura()?;
         let mut escena = Escena::nueva("Primera escena", 10)?;
         escena.cuerpo = String::new();
         let ruta = "manuscrito/01-libro/01-capitulo/001-primera-escena.md".to_string();
-        self.commit_efectos(
+        proyecto.commit_efectos(
             &mut sesion,
             vec![Cambio::nuevo(ruta, escena.a_bytes())],
             "humano",
@@ -1466,6 +1460,90 @@ fn resolver_destino(ruta: &Path) -> Result<PathBuf> {
             Err(error) => return Err(Error::Io(error).with_path(&actual)),
         }
     }
+}
+
+/// Normaliza y valida la raíz de un proyecto que se va a crear.
+fn preparar_raiz_inicial(raiz: &Path) -> Result<PathBuf> {
+    if raiz.as_os_str().is_empty() {
+        return Err(Error::Project(
+            "la ruta del proyecto no puede estar vacía".into(),
+        ));
+    }
+    let absoluta = if raiz.is_absolute() {
+        raiz.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|error| Error::Io(error))?
+            .join(raiz)
+    };
+    let Some(nombre) = absoluta.file_name() else {
+        return Err(Error::Project(format!(
+            "la ruta no nombra una carpeta de proyecto: {}",
+            raiz.display()
+        )));
+    };
+    let nombre = nombre.to_str().ok_or_else(|| {
+        Error::Project(format!("nombre de proyecto no válido: {}", raiz.display()))
+    })?;
+    fsutil::validar_ruta_relativa(nombre)
+        .map_err(|_| Error::Project(format!("nombre de proyecto no válido: {nombre}")))?;
+    let padre = absoluta.parent().ok_or_else(|| {
+        Error::Project(format!(
+            "la ruta no tiene carpeta padre: {}",
+            raiz.display()
+        ))
+    })?;
+    let padre = if padre.as_os_str().is_empty() {
+        std::env::current_dir().map_err(|error| Error::Io(error))?
+    } else {
+        padre.to_path_buf()
+    };
+    if !padre.is_dir() {
+        return Err(Error::Project(format!(
+            "la carpeta padre no existe o no es un directorio: {}",
+            padre.display()
+        )));
+    }
+    let padre_real =
+        std::fs::canonicalize(&padre).map_err(|error| Error::Io(error).with_path(&padre))?;
+    let destino = padre_real.join(nombre);
+    match std::fs::symlink_metadata(&destino) {
+        Ok(metadatos) => {
+            if metadatos.file_type().is_symlink() {
+                return Err(Error::Project(format!(
+                    "el destino del proyecto no puede ser un enlace: {}",
+                    destino.display()
+                )));
+            }
+            if !metadatos.is_dir() {
+                return Err(Error::Project(format!(
+                    "el destino del proyecto no es un directorio: {}",
+                    destino.display()
+                )));
+            }
+            let mut entradas = std::fs::read_dir(&destino)
+                .map_err(|error| Error::Io(error).with_path(&destino))?;
+            if entradas.next().is_some() {
+                return Err(Error::Project(format!(
+                    "el directorio no está vacío: {}",
+                    destino.display()
+                )));
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            std::fs::create_dir(&destino).map_err(|error| Error::Io(error).with_path(&destino))?;
+        }
+        Err(error) => return Err(Error::Io(error).with_path(&destino)),
+    }
+    let real =
+        std::fs::canonicalize(&destino).map_err(|error| Error::Io(error).with_path(&destino))?;
+    if real.parent() != Some(padre_real.as_path()) {
+        return Err(Error::Project(format!(
+            "la ruta del proyecto escapó de su carpeta padre: {}",
+            real.display()
+        )));
+    }
+    Ok(real)
 }
 
 fn parece_corrupto(error: &Error) -> bool {

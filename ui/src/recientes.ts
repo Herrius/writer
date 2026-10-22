@@ -37,13 +37,31 @@ export function leerRecientes(): Reciente[] {
     if (!Array.isArray(datos)) {
       return [];
     }
-    return datos.filter(
-      (item): item is Reciente =>
-        typeof item === 'object' &&
-        item !== null &&
-        typeof item.ruta === 'string' &&
-        typeof item.titulo === 'string',
-    );
+    const vistos = new Set<string>();
+    return datos
+      .filter(
+        (item): item is Reciente =>
+          typeof item === 'object' &&
+          item !== null &&
+          typeof item.ruta === 'string' &&
+          item.ruta.length > 0 &&
+          typeof item.titulo === 'string' &&
+          item.titulo.length > 0 &&
+          (item.autor === undefined || typeof item.autor === 'string') &&
+          (item.palabras === undefined ||
+            (typeof item.palabras === 'number' &&
+              Number.isFinite(item.palabras) &&
+              item.palabras >= 0)) &&
+          (item.color === undefined || /^#[0-9a-f]{6}$/i.test(item.color)),
+      )
+      .filter((item) => {
+        if (vistos.has(item.ruta)) {
+          return false;
+        }
+        vistos.add(item.ruta);
+        return true;
+      })
+      .slice(0, 8);
   } catch {
     return [];
   }

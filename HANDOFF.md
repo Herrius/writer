@@ -17,7 +17,7 @@ La Fase 1 está cerrada en local Linux:
 
 - motor + CLI completos;
 - escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 92 pruebas de núcleo en verde (34 unitarias + 33 de integración + 25 de CLI);
+- 94 pruebas de núcleo en verde (34 unitarias + 35 de integración + 25 de CLI);
 - MSRV del núcleo verificada con Rust 1.89.0;
 - `cargo-deny` en verde para el núcleo.
 
@@ -252,7 +252,7 @@ python scripts/ci.py e2e          OK (10/10, Chromium)
 python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
 python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
 python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   92/92
+cargo test --workspace --all-targets --locked   94/94
 pnpm ui:test                      58/58
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   3/3
 cargo-deny (núcleo)               OK
