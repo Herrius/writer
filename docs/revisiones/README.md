@@ -81,6 +81,6 @@ congelación es `fase-2-00-congelado.md`.
 | UX / accesibilidad / rendimiento (r4) | [`fase-2-ux-2026-10-21-r4.md`](fase-2-ux-2026-10-21-r4.md) | bloqueado por UX-28 |
 | Congelación r12 (UX) | [`fase-2-00-congelado-r12.md`](fase-2-00-congelado-r12.md) | — |
 | UX / accesibilidad / rendimiento (r5) | [`fase-2-ux-2026-10-21-r5.md`](fase-2-ux-2026-10-21-r5.md) | aprobado |
-| Congelación r13 (release UX) | pendiente | — |
+| Congelación r13 (release UX) | [`fase-2-00-congelado-r13.md`](fase-2-00-congelado-r13.md) | — |
 | Release engineer (r2) | pendiente | — |
 | Product owner | pendiente | — |
