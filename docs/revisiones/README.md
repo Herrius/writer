@@ -97,5 +97,5 @@ congelación es `fase-2-00-congelado.md`.
 | **Fase 2.1 — release** | [`fase-2-1-release-2026-10-21.md`](fase-2-1-release-2026-10-21.md) | aprobado con observaciones |
 | **Fase 2.1 — congelación UX** | [`fase-2-1-30-congelado-ux.md`](fase-2-1-30-congelado-ux.md) | — |
 | **Fase 2.1 — UX** | [`fase-2-1-ux-2026-10-21.md`](fase-2-1-ux-2026-10-21.md) | aprobado con observaciones |
-| **Fase 2.1 — product owner** | pendiente | — |
+| **Fase 2.1 — congelación product owner** | [`fase-2-1-40-congelado-product-owner.md`](fase-2-1-40-congelado-product-owner.md) | — |
 | **Fase 2.1 — product owner** | pendiente | — |
