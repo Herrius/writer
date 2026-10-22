@@ -53,6 +53,8 @@
   proyectos desde la GUI y recientes.
 - [`iteraciones/16-bloque-2-2.md`](iteraciones/16-bloque-2-2.md) — interfaz de
   escritura e historial adaptada de las referencias de Dabble.
+- [`iteraciones/17-fase-1-rediseno-panel.md`](iteraciones/17-fase-1-rediseno-panel.md)
+  — Fase 1: contrato visual, retirada de bloques y ajuste del panel de Proyectos.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura
