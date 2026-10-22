@@ -72,5 +72,7 @@ congelación es `fase-2-00-congelado.md`.
 | Congelación r7 (release) | [`fase-2-00-congelado-r7.md`](fase-2-00-congelado-r7.md) | — |
 | Release engineer | [`fase-2-release-2026-10-21.md`](fase-2-release-2026-10-21.md) | aprobado con observaciones |
 | Congelación r8 (UX) | [`fase-2-00-congelado-r8.md`](fase-2-00-congelado-r8.md) | — |
-| UX / accesibilidad / rendimiento | pendiente | — |
+| UX / accesibilidad / rendimiento (r1) | [`fase-2-ux-2026-10-21.md`](fase-2-ux-2026-10-21.md) | bloqueado |
+| Congelación r9 (UX) | [`fase-2-00-congelado-r9.md`](fase-2-00-congelado-r9.md) | — |
+| UX / accesibilidad / rendimiento (r2) | pendiente | — |
 | Product owner | pendiente | — |
