@@ -2,6 +2,8 @@
 
 - [`../HANDOFF.md`](../HANDOFF.md) — estado actual y cómo retomar tras mover la
   carpeta.
+- [`plan-ejecucion-local-v1.md`](plan-ejecucion-local-v1.md) — modelo de
+  ejecución por features, agentes, paralelismo, gates y estimaciones.
 - [`esquema-v1.md`](esquema-v1.md) — contrato del proyecto en disco (escenas, notas,
   `proyecto.yml`, log de operaciones, blobs, índice, cuarentena).
 - [`protocolo-commit.md`](protocolo-commit.md) — orden de la transacción, CAS,

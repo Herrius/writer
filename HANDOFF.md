@@ -12,6 +12,9 @@
 - **Plan activo:** `Plan - Rediseño del panel de Proyectos.md` (interfaz y
   alcance **local/offline**; Windows y Linux). El backlog online queda en el plan
   anterior, pospuesto permanentemente.
+- **Plan de ejecución:**
+  [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md) — features,
+  commits, agentes, paralelismo, gates y estimaciones.
 - **Siguiente tarea:** Fase 1 del plan de rediseño (medición y contrato visual),
   cuando se autorice el arranque.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
