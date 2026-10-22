@@ -18,7 +18,7 @@ test('abre el asistente de creación y explica el límite de la demo', async ({ 
   page.once('dialog', (dialogo) => {
     void dialogo.accept('/tmp');
   });
-  await page.getByRole('button', { name: 'Elegir…' }).click();
+  await page.getByRole('button', { name: 'Examinar…' }).click();
   await expect(page.getByText('Se creará en /tmp/mi-novela')).toBeVisible();
 
   await page.getByRole('button', { name: 'Guardar y abrir' }).click();

@@ -27,14 +27,15 @@ Campos:
 | Título | Sí | `proyecto.yml` → `titulo` |
 | Autor | No | `proyecto.yml` → `autor` |
 | Idioma | No | `proyecto.yml` → `idioma` (`es`/`en`) |
-| Carpeta padre | Sí | diálogo nativo de directorio |
+| Carpeta padre | Sí | explorador de carpetas de la app o diálogo nativo |
 | Notas iniciales | No | crea notas de personajes, tramas y lugares |
 | Color de portada | No | preferencia visual guardada en recientes, no en el manifiesto |
 
 Al confirmar:
 
 1. Valida título, carpeta y nombre en la UI.
-2. Llama a `crear_proyecto` en Tauri.
+2. Abre el explorador de carpetas o el diálogo del sistema y llama a `crear_proyecto` en Tauri.
+   El explorador usa `listar_directorios` para navegar, subir de nivel o escribir una ruta; “Usar esta carpeta” fija el destino.
 3. `Project::init` **vuelve a validar en el backend**: normaliza la ruta,
    rechaza vacío y componentes `.`/`..`, exige que el padre exista, rechaza
    destinos enlazados o no vacíos y valida el nombre (incluidos reservados de

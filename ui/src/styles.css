@@ -3143,3 +3143,103 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   flex-wrap: wrap;
   padding: 0.2rem 0.7rem;
 }
+
+/* Explorador de carpetas del asistente de creación. */
+.modal-proyecto-cuerpo.explorador-carpetas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1rem 1.2rem;
+  overflow: hidden;
+}
+
+.explorador-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.explorador-cabecera input {
+  min-width: 0;
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d8d0c4;
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #2f2a24;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.explorador-subir {
+  flex: 0 0 auto;
+  min-width: 2.2rem;
+}
+
+.explorador-ruta {
+  margin: 0;
+  overflow: hidden;
+  color: #6f655a;
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorador-error {
+  margin: 0;
+}
+
+.explorador-lista {
+  min-height: 220px;
+  max-height: min(42vh, 340px);
+  overflow: auto;
+  border: 1px solid #e0d9cf;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.explorador-directorio {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid #f0ebe4;
+  background: transparent;
+  color: #3f3831;
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.explorador-directorio:hover,
+.explorador-directorio:focus-visible {
+  background: #eef3f8;
+}
+
+.explorador-directorio span:first-child {
+  color: #8b7d6d;
+}
+
+.explorador-directorio span:last-child {
+  margin-left: auto;
+  color: #9a8d7e;
+}
+
+.explorador-directorio-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-proyecto-pie {
+  flex-wrap: wrap;
+}
+
+@media (max-height: 620px) {
+  .explorador-lista {
+    min-height: 120px;
+  }
+}

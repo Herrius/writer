@@ -7,8 +7,9 @@ const proyecto = process.env.WRITER_E2E_PROJECT;
 const aplicacion = process.env.WRITER_DESKTOP_BIN;
 const puerto = Number(process.env.WRITER_E2E_PORT ?? 4444);
 const modo = process.env.WRITER_E2E_MODE ?? 'guardar';
+const crearDir = process.env.WRITER_E2E_CREATE_DIR;
 
-if (!proyecto || !aplicacion) {
+if (!aplicacion || (modo !== 'crear' && !proyecto)) {
   throw new Error('faltan WRITER_E2E_PROJECT o WRITER_DESKTOP_BIN');
 }
 
@@ -53,6 +54,20 @@ async function esperarProyecto(navegador) {
     },
   );
   return editor;
+}
+
+async function esperarPanel(navegador) {
+  await navegador.waitUntil(
+    async () => {
+      const titulo = await navegador.$('h1');
+      return (await titulo.getText()).trim() === 'Proyectos';
+    },
+    {
+      timeout: 20_000,
+      interval: 100,
+      timeoutMsg: 'la app no abrió el panel de Proyectos',
+    },
+  );
 }
 
 async function escribirEnEditor(navegador, contenido) {
@@ -160,6 +175,51 @@ async function esperarTextoEnArchivo(esperado, intentos = 40) {
 const navegador = await abrirSesion();
 let fallo = null;
 try {
+  if (modo === 'crear') {
+    if (!crearDir) {
+      throw new Error('falta WRITER_E2E_CREATE_DIR para el escenario de creación');
+    }
+    await esperarPanel(navegador);
+    await (await navegador.$('.crear-tarjeta')).click();
+    const dialogo = await navegador.$('[role="dialog"]');
+    await dialogo.waitForDisplayed({ timeout: 5000 });
+
+    const titulo = await navegador.$('input[aria-label="Título"]');
+    await titulo.click();
+    await navegador.keys(['Control', 'a']);
+    await navegador.keys('Proyecto GUI');
+    await (await navegador.$('.modal-ruta button')).click();
+
+    const ruta = await navegador.$('.explorador-cabecera input');
+    await ruta.waitForDisplayed({ timeout: 10_000 });
+    await ruta.click();
+    await navegador.keys(['Control', 'a']);
+    await navegador.keys(crearDir);
+    await navegador.keys(['Enter']);
+    await navegador.waitUntil(
+      async () => (await (await navegador.$('.explorador-ruta')).getText()) === crearDir,
+      {
+        timeout: 10_000,
+        interval: 100,
+        timeoutMsg: 'el explorador no navegó a la carpeta temporal',
+      },
+    );
+    await navegador.saveScreenshot('/tmp/opencode/iteracion-17-explorador.png').catch(() => {});
+    await (await navegador.$('.modal-proyecto-pie .boton-primario')).click();
+    const guardarAbrir = await navegador.$('button=Guardar y abrir');
+    await guardarAbrir.waitForDisplayed({ timeout: 5000 });
+    await guardarAbrir.click();
+
+    await esperarProyecto(navegador);
+    const raiz = path.join(crearDir, 'proyecto-gui');
+    if (!existsSync(path.join(raiz, 'proyecto.yml'))) {
+      throw new Error(`la GUI no creó el proyecto esperado en ${raiz}`);
+    }
+    if (!existsSync(path.join(raiz, 'manuscrito', '01-libro', '01-capitulo', archivoEscena))) {
+      throw new Error('la GUI no creó la estructura inicial del proyecto');
+    }
+    console.log('E2E Tauri: crea un proyecto desde el explorador de carpetas');
+  } else {
   await esperarProyecto(navegador);
 
   if (modo === 'guardar') {
@@ -208,6 +268,7 @@ try {
     );
   } else {
     throw new Error(`modo de E2E desconocido: ${modo}`);
+  }
   }
 } catch (error) {
   fallo = error;

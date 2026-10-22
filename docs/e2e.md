@@ -45,13 +45,21 @@ python scripts/ci.py e2e
    estado y el título;
 5. en una segunda ejecución limpia, escribe `PENDIENTE VENTANA.` y cierra la
    ventana con `Alt+F4` (X11), comprobando que el handler de Tauri guarda antes
-   de destruirla y que la ventana y el proceso desaparecen.
+   de destruirla y que la ventana y el proceso desaparecen;
+6. en una tercera ejecución sin proyecto precargado, crea un proyecto desde el
+   panel, navega con el explorador de carpetas hasta una carpeta temporal,
+   elige “Usar esta carpeta” y comprueba `proyecto.yml`, la estructura inicial y
+   la apertura de la primera escena.
 
 ```bash
 cargo install tauri-driver --version 2.0.6 --locked
 pnpm e2e:tauri
 python scripts/ci.py e2e-tauri
 ```
+
+El tercer escenario de creación desde el explorador está definido, pero en la
+última ejecución `e2e-tauri` perdió la sesión WebDriver al iniciar el segundo
+escenario; debe repetirse antes de considerarlo verde.
 
 Requisitos: Linux, `WebKitWebDriver`, `tauri-driver`, X11
 (`GDK_BACKEND=x11`), `xdotool` y las dependencias de Tauri ya necesarias para
@@ -67,12 +75,14 @@ no autoabre proyectos ni conserva el hook activo.
 - El E2E de Tauri es Linux-only y no cubre diálogos nativos ni Windows/macOS.
 - Chromium de Playwright y `tauri-driver` se instalan fuera del repositorio.
 - El E2E de escritorio no prueba DOCX, búsqueda, cuarentena ni el diálogo
-  nativo de creación; esos flujos se cubren en navegador o con pruebas Tauri.
+  nativo de creación; la creación se cubre con el explorador in-app del tercer
+  escenario, el modal de navegador y las pruebas Tauri.
 - El cierre real depende de X11 y `xdotool`; en Wayland puro o en Windows/macOS
   queda pendiente.
 
 ## 4. Pendiente
 
 - E2E de escritorio en Windows (WebView2) y macOS.
-- Un flujo de escritorio que abra un proyecto con el diálogo nativo.
+- Un flujo de escritorio que use el diálogo nativo de carpeta como alternativa
+  al explorador in-app.
 - Empaquetar y probar la app instalada, no solo el binario de `target/`.

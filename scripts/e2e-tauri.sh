@@ -97,3 +97,11 @@ WRITER_E2E_MODE=guardar node e2e-tauri/tauri.test.mjs
 pkill -f "$aplicacion" 2>/dev/null || true
 sleep 1
 WRITER_E2E_MODE=cerrar node e2e-tauri/tauri.test.mjs
+
+pkill -f "$aplicacion" 2>/dev/null || true
+sleep 1
+mkdir -p "$temporal/crear"
+env -u WRITER_E2E_PROJECT \
+  WRITER_E2E_MODE=crear \
+  WRITER_E2E_CREATE_DIR="$temporal/crear" \
+  node e2e-tauri/tauri.test.mjs
