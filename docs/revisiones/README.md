@@ -88,7 +88,9 @@ congelación es `fase-2-00-congelado.md`.
 | **Fase 2.1 — congelación** | [`fase-2-1-00-congelado.md`](fase-2-1-00-congelado.md) | — |
 | **Fase 2.1 — QA** | [`fase-2-1-qa-2026-10-21.md`](fase-2-1-qa-2026-10-21.md) | aprobado con observaciones |
 | **Fase 2.1 — congelación seguridad** | [`fase-2-1-10-congelado-seguridad.md`](fase-2-1-10-congelado-seguridad.md) | — |
-| **Fase 2.1 — seguridad** | pendiente | — |
+| **Fase 2.1 — seguridad (r1)** | [`fase-2-1-seguridad-2026-10-21.md`](fase-2-1-seguridad-2026-10-21.md) | bloqueado |
+| **Fase 2.1 — congelación seguridad r2** | [`fase-2-1-11-congelado-seguridad-r2.md`](fase-2-1-11-congelado-seguridad-r2.md) | — |
+| **Fase 2.1 — seguridad (r2)** | pendiente | — |
 | **Fase 2.1 — release** | pendiente | — |
 | **Fase 2.1 — UX** | pendiente | — |
 | **Fase 2.1 — product owner** | pendiente | — |
