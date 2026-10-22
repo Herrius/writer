@@ -1,15 +1,16 @@
 # HANDOFF — estado para retomar
 
-- **Fecha:** 2026-10-21
+- **Fecha:** 2026-10-22
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** **Fase 2 y Fase 2.1 aprobadas y cerradas con observaciones**
-  (Linux x86_64); **Bloque 2.2 implementado** (interfaz de escritura e historial
-  adaptadas de Dabble), pendiente su pipeline.
+- **Fase actual:** **Fase 2, Fase 2.1 y Bloque 2.2 aprobados con
+  observaciones** (Linux x86_64); la interfaz de escritura e historial sigue las
+  referencias de Dabble y la deuda P3 prioritaria está cerrada.
 - **Fases 3, 4 y 5:** **pospuestas** (2026-10-21) hasta cerrar los faltantes de
   producto/publicación.
-- **Siguiente tarea:** congelar y revisar el Bloque 2.2; release público sigue
-  no autorizado.
-- **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6` (sin remoto).
+- **Siguiente tarea:** preparar el bloque de release (no autorizado todavía);
+  cerrar el E2E del diálogo nativo y SEC21-02 antes de publicar.
+- **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; HEAD del Bloque
+  2.2 congelado en `76b139f` (sin remoto).
 
 ## 1. Resumen
 

@@ -1,7 +1,7 @@
 # Inicio y creación de proyectos — v1 (Fase 2.1)
 
 - **Fecha:** 2026-10-21
-- **Estado:** implementado y revisado en el Bloque 2.2; pendiente pipeline de cierre.
+- **Estado:** implementado y aprobado con observaciones en el Bloque 2.2.
 
 ## 1. Panel de Proyectos
 

@@ -1,7 +1,7 @@
 # Interfaz de escritorio — v1 (Bloque 2.2)
 
 - **Fecha:** 2026-10-21
-- **Estado:** implementada; pendiente pipeline.
+- **Estado:** implementada y aprobada con observaciones en el Bloque 2.2.
 - **Referencias:** `referencias-interfaz/dabble-editor-2026-10-20.png` y
   `referencias-interfaz/dabble-historial-versiones-2026-10-20.png`, adaptadas a
   writer sin copiar marca ni datos.

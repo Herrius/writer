@@ -3,7 +3,7 @@
 - **Fecha:** 2026-10-21
 - **Alcance:** sustituir la interfaz antigua de escritura por una adaptación de
   las referencias de Dabble (editor e historial).
-- **Estado:** implementado; pipeline de revisión en curso.
+- **Estado:** aprobado con observaciones (Linux x86_64); release público no autorizado.
 
 ## 1. Interfaz
 

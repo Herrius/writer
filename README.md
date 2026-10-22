@@ -28,7 +28,7 @@ acuerden antes de continuar.
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
 | 2 | Interfaz Tauri (v0.2) | **Aprobada con observaciones (Linux x86_64). Release público no autorizado** |
 | 2.1 | Creación de proyectos y onboarding | **Aprobada con observaciones (Linux x86_64)** |
-| 2.2 | Interfaz de escritura e historial | **Implementada; pendiente pipeline** |
+| 2.2 | Interfaz de escritura e historial | **Aprobada con observaciones (Linux x86_64); release público no autorizado** |
 | 3 | IA + MCP (v0.3) | Pospuesta (2026-10-21) |
 | 4 | Licencias + Pro (v0.4) | Pospuesta (2026-10-21) |
 | 5 | Sync (v0.5, opcional) | Pospuesta (2026-10-21) |
