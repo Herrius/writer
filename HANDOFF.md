@@ -10,7 +10,8 @@
 - **Plan general anterior:** **pospuesto de forma permanente hasta nuevo aviso**
   (2026-10-22). No se inician fases, gates ni releases con él.
 - **Plan activo:** `Plan - Rediseño del panel de Proyectos.md` (interfaz y
-  alcance funcional local/online; Windows y Linux).
+  alcance **local/offline**; Windows y Linux). El backlog online queda en el plan
+  anterior, pospuesto permanentemente.
 - **Siguiente tarea:** Fase 1 del plan de rediseño (medición y contrato visual),
   cuando se autorice el arranque.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
