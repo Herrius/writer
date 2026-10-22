@@ -95,6 +95,34 @@ test('la barra lateral ocupa la altura del panel y reserva espacio vacío', asyn
   await expect(page.locator('.inicio-sidebar-reserva')).toBeHidden();
 });
 
+test('no hay overflow horizontal en 1440, 960 y 700', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await abrirPanel(page);
+
+  for (const [width, height] of [
+    [1440, 900],
+    [960, 640],
+    [700, 800],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(50);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBe(true);
+  }
+});
+
+test('la tarjeta de creación se abre con teclado y devuelve el foco', async ({ page }) => {
+  await abrirPanel(page);
+  const crear = page.getByRole('button', { name: /Crear nuevo proyecto/ });
+  await crear.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Crear nuevo proyecto' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(crear).toBeFocused();
+});
+
 test('la lista conserva la tarjeta de creación compacta', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await abrirPanel(page);

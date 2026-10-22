@@ -192,3 +192,44 @@ pnpm exec playwright test e2e/fase-1-panel.spec.ts   5/5
 
 - La reserva no contiene controles ni texto; no simula una función.
 - En la vista apilada se oculta para no dejar un bloque vacío artificial.
+
+## F1.4 — QA visual y responsive
+
+### Matriz ejecutada
+
+| Escenario | Resultado |
+|---|---|
+| 1440×900, 8 proyectos | Cuadrícula de 6 columnas, tarjeta crear = tarjeta proyecto, sin overflow |
+| 1440×900, vacío | Tarjeta crear 155,27 × 297,08; panel y sidebar a la misma altura |
+| 1440×900, lista | Crear 64 px, proyecto 89,59 px; sin overflow |
+| 960×640 | 3 columnas, crear = proyecto, sidebar 250 px, sin overflow |
+| 960×640, raíz 32 px (200 %) | 2 columnas, crear = proyecto, sin overflow horizontal |
+| 700×800 | 4 columnas, crear = proyecto, sidebar apilada, reserva oculta |
+| Teclado | La tarjeta crear abre el diálogo con Enter y recupera el foco al cerrar |
+
+### Evidencia
+
+- Capturas finales: `/tmp/fase-1/final/1440.png`, `1440-vacio.png`,
+  `1440-lista.png`, `960.png`, `960-200.png`, `700.png`.
+- No se versionan binarios; las capturas se regeneran con el script temporal de
+  medición y Playwright.
+- `pnpm e2e`: 19/19 (12 flujos existentes + 7 del panel).
+- `pnpm exec playwright test e2e/fase-1-panel.spec.ts`: 7/7.
+
+### Hallazgos
+
+- **P1/P2:** ninguno.
+- **P3:** a 960 la reserva de la barra lateral es alta porque acompaña la
+  altura del listado. Es el comportamiento pedido (columna a toda altura); se
+  revisará cuando haya contenido futuro.
+- **P4:** el ancho de tarjeta a 1440 es 155,27 px, no 160 px exactos. Se acepta
+  como referencia aproximada porque la cuadrícula responsive reparte seis
+  columnas; forzar 160 px reduciría la cuadrícula a cinco columnas y agrandaría
+  las portadas.
+- **P4:** en 200 % la cabecera ocupa dos filas y la barra lateral sigue visible;
+  no hay overflow horizontal ni controles cortados.
+
+### Cierre de F1.4
+
+No hay cambios de código en este tramo: las pruebas y los ajustes se
+incorporaron en F1.2 y F1.3. Se registra la evidencia y se pasa al gate de fase.
