@@ -71,6 +71,11 @@ describe('marcas propias', () => {
     expect(serializar(markdown)).toBe(markdown.trimEnd());
   });
 
+  it('conserva @menciones de notas', () => {
+    const markdown = `Ver [[nota:${ID}|la ficha de Marta]].\n`;
+    expect(serializar(markdown)).toBe(markdown.trimEnd());
+  });
+
   it('conserva como literal un comentario con delimitador de cierre en el atributo', () => {
     const markdown = '[[comentario:Nota ]] privada|Marta]]';
     const editor = new Editor({

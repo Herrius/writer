@@ -9,16 +9,23 @@ import {
   abrirProyecto,
   actualizarEscena,
   actualizarNota,
+  actualizarPersonaje,
   agregarMensajeComentario,
   agregarSesion,
   buscar as buscarEnProyecto,
   cambiarArchivo as cambiarArchivoApi,
+  crearBackup as crearBackupApi,
   crearComentario,
+  crearDesdePlantilla as crearDesdePlantillaApi,
+  crearEscena as crearEscenaApi,
+  crearNota as crearNotaApi,
   crearProyecto as crearProyectoApi,
   crearSticky,
   cuarentena as pedirCuarentena,
   descartarCuarentena,
   duplicar as duplicarDocumento,
+  elegirArchivoImportacion,
+  elegirDestinoBackup,
   elegirDestinoDocx,
   elegirProyecto,
   errorDe,
@@ -26,9 +33,13 @@ import {
   escribir,
   exportarDocx,
   guardarMetas,
+  guardarPlotGrid,
   historial as pedirHistorial,
+  importarDocx,
+  importarMarkdown,
   leer,
   leerMetas,
+  leerPlotGrid,
   leerSesiones,
   listar,
   listarComentarios,
@@ -45,6 +56,7 @@ import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { MetasDto } from './types/MetasDto';
 import type { PausaDto } from './types/PausaDto';
+import type { PlotGridDto } from './types/PlotGridDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
@@ -239,7 +251,7 @@ export default function App() {
 
   const [consulta, setConsulta] = useState('');
   const [focoArbol, setFocoArbol] = useState<string | null>(null);
-  const [panelDerecho, setPanelDerecho] = useState<'metas' | 'notas' | 'comentarios'>(
+  const [panelDerecho, setPanelDerecho] = useState<'metas' | 'notas' | 'comentarios' | 'plan'>(
     'metas',
   );
   const [comentarios, setComentarios] = useState<ComentarioDto[]>([]);
@@ -258,6 +270,15 @@ export default function App() {
   const [estadoEdicion, setEstadoEdicion] = useState('borrador');
   const [etiquetasEdicion, setEtiquetasEdicion] = useState('');
   const [documentoCopiado, setDocumentoCopiado] = useState<string | null>(null);
+  const [plotGrid, setPlotGrid] = useState<PlotGridDto>({ version: 1, tramas: [] });
+  const [nuevaTrama, setNuevaTrama] = useState('');
+  const [colorTrama, setColorTrama] = useState('#4d6b8a');
+  const [tramaSeleccionada, setTramaSeleccionada] = useState('');
+  const [nuevaNotaTitulo, setNuevaNotaTitulo] = useState('');
+  const [nuevaNotaTipo, setNuevaNotaTipo] = useState('cuaderno');
+  const [nuevaEscenaTitulo, setNuevaEscenaTitulo] = useState('');
+  const [rolPersonaje, setRolPersonaje] = useState('');
+  const [aliasPersonaje, setAliasPersonaje] = useState('');
   const [metaDiaria, setMetaDiaria] = useState('');
   const [metaLibro, setMetaLibro] = useState('');
   const [desafioObjetivo, setDesafioObjetivo] = useState('');
@@ -494,12 +515,19 @@ export default function App() {
   const cargarMetas = async (ruta: string) => {
     setErrorMetas(null);
     try {
-      const [metasProyecto, sesionesProyecto] = await Promise.all([
+      const [metasProyecto, sesionesProyecto, grid] = await Promise.all([
         leerMetas(ruta),
         leerSesiones(ruta, mesActual()),
+        leerPlotGrid(ruta),
       ]);
       setMetas(metasProyecto);
       setSesiones(sesionesProyecto);
+      setPlotGrid(grid);
+      setTramaSeleccionada((actual) =>
+        grid.tramas.some((trama) => trama.id === actual)
+          ? actual
+          : (grid.tramas[0]?.id ?? ''),
+      );
       setMetaDiaria(metasProyecto.diaria?.objetivo.toString() ?? '');
       setMetaLibro(metasProyecto.libro?.objetivo.toString() ?? '');
       setDesafioObjetivo(metasProyecto.desafio?.objetivo.toString() ?? '');
@@ -924,7 +952,18 @@ export default function App() {
       const actualizado =
         documento.tipo === 'escena'
           ? await actualizarEscena(actual.raiz, documento.id, estadoEdicion || null, etiquetas)
-          : await actualizarNota(actual.raiz, documento.id, etiquetas);
+          : documento.clase === 'personajes'
+            ? await actualizarPersonaje(
+                actual.raiz,
+                documento.id,
+                rolPersonaje || null,
+                documento.cast ?? [],
+                aliasPersonaje
+                  .split(',')
+                  .map((alias) => alias.trim())
+                  .filter(Boolean),
+              )
+            : await actualizarNota(actual.raiz, documento.id, etiquetas);
       setDocumentos((lista) =>
         lista.map((candidato) =>
           candidato.id === actualizado.id ? { ...candidato, ...actualizado } : candidato,
@@ -1052,6 +1091,143 @@ export default function App() {
     }
   };
 
+  const crearNotaNueva = async () => {
+    const actual = proyectoRef.current;
+    const titulo = nuevaNotaTitulo.trim();
+    if (!actual || !titulo) {
+      return;
+    }
+    try {
+      const nota = await crearNotaApi(actual.raiz, nuevaNotaTipo, titulo);
+      setDocumentos(await listar(actual.raiz, true));
+      await seleccionar(nota);
+      setNuevaNotaTitulo('');
+      setMensaje(`Nota creada: ${nota.titulo}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo crear la nota: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const crearEscenaNueva = async () => {
+    const actual = proyectoRef.current;
+    const titulo = nuevaEscenaTitulo.trim();
+    if (!actual || !titulo) {
+      return;
+    }
+    try {
+      const escena = await crearEscenaApi(actual.raiz, titulo, null, null);
+      setDocumentos(await listar(actual.raiz, true));
+      await seleccionar(escena);
+      setNuevaEscenaTitulo('');
+      setMensaje(`Escena creada: ${escena.titulo}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo crear la escena: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const crearTramaGrid = async () => {
+    const actual = proyectoRef.current;
+    const nombre = nuevaTrama.trim();
+    if (!actual || !nombre) {
+      return;
+    }
+    try {
+      const nota = await crearNotaApi(actual.raiz, 'tramas', nombre);
+      const grid: PlotGridDto = {
+        version: 1,
+        tramas: [
+          ...plotGrid.tramas,
+          { id: nota.id, nombre, color: colorTrama, puntos: [] },
+        ],
+      };
+      await guardarPlotGrid(actual.raiz, grid);
+      setPlotGrid(grid);
+      setTramaSeleccionada(nota.id);
+      setDocumentos(await listar(actual.raiz, true));
+      setNuevaTrama('');
+      setMensaje(`Trama creada: ${nombre}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo crear la trama: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const anadirPuntoGrid = async () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento || !tramaSeleccionada) {
+      return;
+    }
+    const trama = plotGrid.tramas.find((candidata) => candidata.id === tramaSeleccionada);
+    if (!trama) {
+      return;
+    }
+    if (trama.puntos.some((punto) => punto.escena === documento.id)) {
+      setMensaje('La escena activa ya está en esta trama.');
+      return;
+    }
+    const grid: PlotGridDto = {
+      version: 1,
+      tramas: plotGrid.tramas.map((candidata) =>
+        candidata.id === tramaSeleccionada
+          ? {
+              ...candidata,
+              puntos: [
+                ...candidata.puntos,
+                { escena: documento.id, orden: candidata.puntos.length + 1, etiqueta: null },
+              ],
+            }
+          : candidata,
+      ),
+    };
+    try {
+      await guardarPlotGrid(actual.raiz, grid);
+      setPlotGrid(grid);
+      setMensaje(`Escena añadida a ${trama.nombre}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo añadir el punto: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const importarArchivo = async () => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const archivo = await elegirArchivoImportacion();
+    if (!archivo) {
+      return;
+    }
+    const nombre = archivo.split(/[\\/]/).at(-1) ?? 'importado';
+    const titulo = nombre.replace(/\.(md|markdown|docx)$/i, '');
+    try {
+      const documento = /\.docx$/i.test(archivo)
+        ? await importarDocx(actual.raiz, archivo, titulo, null)
+        : await importarMarkdown(actual.raiz, archivo, titulo, null);
+      setDocumentos(await listar(actual.raiz, true));
+      await seleccionar(documento);
+      setMensaje(`Documento importado: ${documento.titulo}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo importar: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const hacerBackup = async () => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const destino = await elegirDestinoBackup(actual.titulo);
+    if (!destino) {
+      return;
+    }
+    try {
+      const ruta = await crearBackupApi(actual.raiz, destino);
+      setMensaje(`Backup creado: ${ruta}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo crear el backup: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
   const duplicarActivo = async () => {
     const documento = activoRef.current;
     if (documento) {
@@ -1087,6 +1263,9 @@ export default function App() {
         estado: null,
         archivo: null,
         etiquetas: [],
+        rol: null,
+        cast: [],
+        alias: [],
         clase: null,
       } satisfies DocumentoDto);
     await seleccionar(documento);
@@ -1266,13 +1445,21 @@ export default function App() {
     datos: DatosNuevoProyecto,
     abrir: boolean,
   ) => {
-    const resumen = await crearProyectoApi(
-      datos.ruta,
-      datos.titulo,
-      datos.autor,
-      datos.idioma,
-      datos.notasIniciales,
-    );
+    const resumen = datos.plantilla
+      ? await crearDesdePlantillaApi(
+          datos.plantilla,
+          datos.ruta,
+          datos.titulo,
+          datos.autor,
+          datos.idioma,
+        )
+      : await crearProyectoApi(
+          datos.ruta,
+          datos.titulo,
+          datos.autor,
+          datos.idioma,
+          datos.notasIniciales,
+        );
     setError(null);
     recordarProyecto(resumen, 0, datos.color);
     if (abrir) {
@@ -1538,7 +1725,16 @@ export default function App() {
     setTituloEdicion(activo?.titulo ?? '');
     setEstadoEdicion(activo?.estado ?? 'borrador');
     setEtiquetasEdicion((activo?.etiquetas ?? []).join(', '));
-  }, [activo?.id, activo?.titulo, activo?.estado, activo?.etiquetas]);
+    setRolPersonaje(activo?.rol ?? '');
+    setAliasPersonaje((activo?.alias ?? []).join(', '));
+  }, [
+    activo?.id,
+    activo?.titulo,
+    activo?.estado,
+    activo?.etiquetas,
+    activo?.rol,
+    activo?.alias,
+  ]);
 
   useEffect(() => {
     const actual = proyectoRef.current;
@@ -1891,11 +2087,23 @@ export default function App() {
 
               <h3 className="dabble-seccion">Cuaderno</h3>
               {notasVisibles.filter(
-                (documento) => !['tramas', 'personajes'].includes(documento.clase ?? ''),
+                (documento) =>
+                  !['tramas', 'personajes', 'ideas'].includes(documento.clase ?? ''),
               ).length === 0 && <p className="dabble-vacio">Sin notas de cuaderno.</p>}
               {notasVisibles
-                .filter((documento) => !['tramas', 'personajes'].includes(documento.clase ?? ''))
+                .filter(
+                  (documento) =>
+                    !['tramas', 'personajes', 'ideas'].includes(documento.clase ?? ''),
+                )
                 .map((documento) => botonDocumento(documento, '▢'))}
+
+              <h3 className="dabble-seccion">Ideas</h3>
+              {notasVisibles.filter((documento) => documento.clase === 'ideas').length === 0 && (
+                <p className="dabble-vacio">Sin ideas.</p>
+              )}
+              {notasVisibles
+                .filter((documento) => documento.clase === 'ideas')
+                .map((documento) => botonDocumento(documento, '✦'))}
 
               <h3 className="dabble-seccion">Utilidades</h3>
               <button className="dabble-utilidad" disabled>▢ Plantillas</button>
@@ -2295,6 +2503,14 @@ export default function App() {
               >
                 Comentarios
               </button>
+              <button
+                role="tab"
+                aria-selected={panelDerecho === 'plan'}
+                className={panelDerecho === 'plan' ? 'activo' : ''}
+                onClick={() => setPanelDerecho('plan')}
+              >
+                Plan
+              </button>
             </div>
             {panelDerecho === 'metas' ? (
               <>
@@ -2444,6 +2660,31 @@ export default function App() {
                         aria-label="Etiquetas del documento"
                       />
                     </label>
+                    {activo.clase === 'personajes' && (
+                      <>
+                        <label className="dabble-campo-meta">
+                          <span>Rol</span>
+                          <select
+                            value={rolPersonaje}
+                            onChange={(evento) => setRolPersonaje(evento.target.value)}
+                            aria-label="Rol del personaje"
+                          >
+                            <option value="">Sin clasificar</option>
+                            <option value="principal">Principal</option>
+                            <option value="secundario">Secundario</option>
+                          </select>
+                        </label>
+                        <label className="dabble-campo-meta">
+                          <span>Alias</span>
+                          <input
+                            value={aliasPersonaje}
+                            onChange={(evento) => setAliasPersonaje(evento.target.value)}
+                            placeholder="separados por comas"
+                            aria-label="Alias del personaje"
+                          />
+                        </label>
+                      </>
+                    )}
                     <div className="dabble-acciones-documento">
                       <button
                         className="dabble-boton"
@@ -2521,7 +2762,7 @@ export default function App() {
                   <dt>Ruta</dt><dd>{proyecto?.raiz ?? '—'}</dd>
                 </dl>
               </section>
-            ) : (
+            ) : panelDerecho === 'comentarios' ? (
               <section className="dabble-comentarios-panel">
                 <h3>Comentarios</h3>
                 {activo ? (
@@ -2600,6 +2841,115 @@ export default function App() {
                 ) : (
                   <p className="dabble-vacio">Abre un documento para ver sus comentarios.</p>
                 )}
+              </section>
+            ) : (
+              <section className="dabble-plan-panel">
+                <h3>Plot Grid</h3>
+                <label className="dabble-campo-meta">
+                  <span>Nueva trama</span>
+                  <input
+                    value={nuevaTrama}
+                    onChange={(evento) => setNuevaTrama(evento.target.value)}
+                    placeholder="Nombre de la trama"
+                    aria-label="Nombre de la nueva trama"
+                  />
+                </label>
+                <label className="dabble-campo-meta">
+                  <span>Color</span>
+                  <input
+                    type="color"
+                    value={colorTrama}
+                    onChange={(evento) => setColorTrama(evento.target.value)}
+                    aria-label="Color de la trama"
+                  />
+                </label>
+                <button className="dabble-boton" onClick={() => void crearTramaGrid()}>
+                  Crear trama
+                </button>
+
+                <label className="dabble-campo-meta">
+                  <span>Trama</span>
+                  <select
+                    value={tramaSeleccionada}
+                    onChange={(evento) => setTramaSeleccionada(evento.target.value)}
+                    aria-label="Trama seleccionada"
+                  >
+                    {plotGrid.tramas.map((trama) => (
+                      <option key={trama.id} value={trama.id}>
+                        {trama.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button className="dabble-boton" onClick={() => void anadirPuntoGrid()}>
+                  Añadir escena activa
+                </button>
+
+                {plotGrid.tramas.length === 0 ? (
+                  <p className="dabble-vacio">Sin tramas en el Plot Grid.</p>
+                ) : (
+                  <ul className="dabble-tramas">
+                    {plotGrid.tramas.map((trama) => (
+                      <li key={trama.id} className="dabble-trama">
+                        <span
+                          className="dabble-trama-color"
+                          style={{ background: trama.color }}
+                          aria-hidden="true"
+                        />
+                        <strong>{trama.nombre}</strong>
+                        <small>{trama.puntos.length} escena(s)</small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <h3>Crear documento</h3>
+                <label className="dabble-campo-meta">
+                  <span>Título de la escena</span>
+                  <input
+                    value={nuevaEscenaTitulo}
+                    onChange={(evento) => setNuevaEscenaTitulo(evento.target.value)}
+                    aria-label="Título de la nueva escena"
+                  />
+                </label>
+                <button className="dabble-boton" onClick={() => void crearEscenaNueva()}>
+                  Nueva escena
+                </button>
+                <label className="dabble-campo-meta">
+                  <span>Tipo de nota</span>
+                  <select
+                    value={nuevaNotaTipo}
+                    onChange={(evento) => setNuevaNotaTipo(evento.target.value)}
+                    aria-label="Tipo de la nueva nota"
+                  >
+                    <option value="cuaderno">Cuaderno</option>
+                    <option value="ideas">Ideas</option>
+                    <option value="personajes">Personajes</option>
+                    <option value="tramas">Tramas</option>
+                    <option value="lugares">Lugares</option>
+                    <option value="cronologia">Cronología</option>
+                    <option value="objetos">Objetos</option>
+                  </select>
+                </label>
+                <label className="dabble-campo-meta">
+                  <span>Título de la nota</span>
+                  <input
+                    value={nuevaNotaTitulo}
+                    onChange={(evento) => setNuevaNotaTitulo(evento.target.value)}
+                    aria-label="Título de la nueva nota"
+                  />
+                </label>
+                <button className="dabble-boton" onClick={() => void crearNotaNueva()}>
+                  Nueva nota
+                </button>
+
+                <h3>Importar y respaldar</h3>
+                <button className="dabble-boton" onClick={() => void importarArchivo()}>
+                  Importar Markdown o DOCX
+                </button>
+                <button className="dabble-boton" onClick={() => void hacerBackup()}>
+                  Crear backup ZIP
+                </button>
               </section>
             )}
           </aside>

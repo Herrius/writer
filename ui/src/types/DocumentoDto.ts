@@ -45,6 +45,18 @@ archivo: string | null,
  */
 etiquetas: Array<string>, 
 /**
+ * Rol del personaje.
+ */
+rol: string | null, 
+/**
+ * Cast del personaje.
+ */
+cast: Array<string>, 
+/**
+ * Alias del personaje.
+ */
+alias: Array<string>, 
+/**
  * Tipo de nota.
  */
 clase: string | null, };

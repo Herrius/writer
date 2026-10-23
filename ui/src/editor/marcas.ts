@@ -19,7 +19,7 @@ import {
  * conoce estas marcas.
  */
 
-type ClaseMarca = 'personaje' | 'trama' | 'comentario';
+type ClaseMarca = 'personaje' | 'trama' | 'comentario' | 'nota';
 
 type TokenMarca = MarkdownToken & {
   clase: ClaseMarca;
@@ -29,6 +29,7 @@ type TokenMarca = MarkdownToken & {
 };
 
 const PATRON_PERSONAJE = /^\[\[(personaje|trama):([0-7][0-9A-HJKMNP-TV-Z]{25})\|([\s\S]+?)\]\]/;
+const PATRON_NOTA = /^\[\[nota:([0-7][0-9A-HJKMNP-TV-Z]{25})\|([\s\S]+?)\]\]/;
 const PATRON_COMENTARIO_V2 =
   /^\[\[comentario:([0-7][0-9A-HJKMNP-TV-Z]{25})\|([^|]+?)\|([\s\S]+?)\]\]/;
 const PATRON_COMENTARIO = /^\[\[comentario:([^|]+?)\|([\s\S]+?)\]\]/;
@@ -63,6 +64,17 @@ const tokenizer: MarkdownTokenizer = {
         tokens: lexer.inlineTokens(contenido),
       };
       return token;
+    }
+    const deNota = PATRON_NOTA.exec(src);
+    if (deNota) {
+      const [raw, referencia, contenido] = deNota;
+      return {
+        type: 'marcaWriter',
+        raw,
+        clase: 'nota',
+        referencia,
+        tokens: lexer.inlineTokens(contenido),
+      } satisfies TokenMarca;
     }
     const deComentarioV2 = PATRON_COMENTARIO_V2.exec(src);
     if (deComentarioV2) {
@@ -117,7 +129,7 @@ const MarcaWriter = Mark.create({
 function crearMarca(clase: ClaseMarca, atributo: string) {
   return Mark.create({
     name: clase,
-    excludes: 'personaje trama comentario',
+    excludes: 'personaje trama comentario nota',
     addAttributes() {
       if (clase === 'comentario') {
         return {
@@ -171,6 +183,7 @@ function crearMarca(clase: ClaseMarca, atributo: string) {
 
 export const Personaje = crearMarca('personaje', 'id');
 export const Trama = crearMarca('trama', 'id');
+export const Nota = crearMarca('nota', 'id');
 export const Comentario = crearMarca('comentario', 'texto');
 
-export const marcasEditor = [MarcaWriter, Personaje, Trama, Comentario];
+export const marcasEditor = [MarcaWriter, Personaje, Trama, Nota, Comentario];

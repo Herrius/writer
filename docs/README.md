@@ -76,6 +76,12 @@
   — Fase 2.1: renombrar, duplicar, mover, archivo, metadatos y copia.
 - [`iteraciones/21-fase-2-2-comentarios.md`](iteraciones/21-fase-2-2-comentarios.md)
   — Fase 2.2: comentarios anclados, sticky notes, respuestas y resolución.
+- [`iteraciones/22-fase-2-3-planificacion.md`](iteraciones/22-fase-2-3-planificacion.md)
+  — Fase 2.3: Plot Grid, notas nuevas, @menciones y personajes.
+- [`iteraciones/23-fase-2-5-importacion.md`](iteraciones/23-fase-2-5-importacion.md)
+  — Fase 2.5: importación Markdown/DOCX y backup.
+- [`iteraciones/24-fase-2-6-plantillas.md`](iteraciones/24-fase-2-6-plantillas.md)
+  — Fase 2.6: plantillas locales.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

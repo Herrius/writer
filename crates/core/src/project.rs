@@ -787,6 +787,51 @@ impl Project {
         Ok(relativa)
     }
 
+    /// Actualiza los campos de ficha de un personaje.
+    pub fn actualizar_personaje(
+        &self,
+        id_o_ruta: &str,
+        rol: Option<&str>,
+        cast: &[String],
+        alias: &[String],
+    ) -> Result<String> {
+        if let Some(valor) = rol {
+            if !model::ROLES_PERSONAJE.contains(&valor) {
+                return Err(Error::Input(format!("rol de personaje no válido: {valor}")));
+            }
+        }
+        let cast = normalizar_etiquetas(cast)?;
+        let alias = normalizar_etiquetas(alias)?;
+        let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let Documento::Nota(mut encontrada) = documento else {
+            return Err(Error::Input(
+                "actualizar_personaje solo acepta notas".to_string(),
+            ));
+        };
+        if encontrada.nota.tipo != "personajes" {
+            return Err(Error::Input("la nota no es de tipo personajes".to_string()));
+        }
+        encontrada.nota.rol = rol.map(str::to_string);
+        encontrada.nota.cast = cast;
+        encontrada.nota.alias = alias;
+        let relativa = encontrada.relativa.clone();
+        let bytes = encontrada.nota.a_bytes();
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::existente(relativa.clone(), bytes)],
+            "humano",
+            "notas",
+            None,
+            None,
+        )?;
+        Ok(relativa)
+    }
+
     /// Cambia la ubicación lógica de una escena o nota.
     ///
     /// `None` la devuelve a la vista activa; `archivado` la oculta del árbol

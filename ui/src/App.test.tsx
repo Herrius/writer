@@ -76,6 +76,8 @@ vi.mock('./api', () => ({
   listarComentarios: vi.fn(),
   crearComentario: vi.fn(),
   crearSticky: vi.fn(),
+  listarPlantillas: vi.fn().mockResolvedValue([]),
+  crearDesdePlantilla: vi.fn(),
   agregarMensajeComentario: vi.fn(),
   resolverComentario: vi.fn(),
   renombrar: vi.fn(),
@@ -139,6 +141,9 @@ const documento: DocumentoDto = {
   estado: 'borrador',
   archivo: null,
   etiquetas: [],
+  rol: null,
+  cast: [],
+  alias: [],
   clase: null,
 };
 

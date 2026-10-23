@@ -18,7 +18,18 @@ use crate::yaml::{self, Campos, Valor};
 pub const ESQUEMA: i64 = 1;
 
 /// Tipos de nota admitidos, que coinciden con sus carpetas.
-pub const TIPOS_NOTA: [&str; 5] = ["tramas", "personajes", "lugares", "cronologia", "objetos"];
+pub const TIPOS_NOTA: [&str; 7] = [
+    "tramas",
+    "personajes",
+    "lugares",
+    "cronologia",
+    "objetos",
+    "cuaderno",
+    "ideas",
+];
+
+/// Roles admitidos en una ficha de personaje.
+pub const ROLES_PERSONAJE: [&str; 2] = ["principal", "secundario"];
 
 /// Estados de escena admitidos.
 pub const ESTADOS_ESCENA: [&str; 3] = ["borrador", "revision", "final"];
@@ -119,6 +130,12 @@ pub struct Nota {
     pub etiquetas: Option<Vec<String>>,
     /// Referencias libres.
     pub refs: Option<Vec<String>>,
+    /// Rol del personaje (`principal` o `secundario`).
+    pub rol: Option<String>,
+    /// Cast al que pertenece el personaje.
+    pub cast: Option<Vec<String>>,
+    /// Alias del personaje.
+    pub alias: Option<Vec<String>>,
     /// Campos desconocidos que se conservan.
     pub extra: Campos,
     /// Cuerpo Markdown.
@@ -496,6 +513,9 @@ impl Nota {
             fija: Some(false),
             etiquetas: None,
             refs: None,
+            rol: None,
+            cast: None,
+            alias: None,
             extra: Campos::new(),
             cuerpo: String::new(),
         })
@@ -535,6 +555,16 @@ impl Nota {
         let fija = booleano_opcional(campos, "fija", contexto)?;
         let etiquetas = lista_textos(campos, "etiquetas", contexto)?;
         let refs = lista_ulids(campos, "refs", contexto)?;
+        let rol = texto_opcional(campos, "rol", contexto)?;
+        if let Some(valor) = &rol {
+            if !ROLES_PERSONAJE.contains(&valor.as_str()) {
+                avisos.push(format!(
+                    "{contexto}: rol de personaje desconocido {valor:?}"
+                ));
+            }
+        }
+        let cast = lista_ulids(campos, "cast", contexto)?;
+        let alias = lista_textos(campos, "alias", contexto)?;
         let mut extra = campos.clone();
         for clave in [
             "id",
@@ -544,6 +574,9 @@ impl Nota {
             "fija",
             "etiquetas",
             "refs",
+            "rol",
+            "cast",
+            "alias",
         ] {
             extra.remove(clave);
         }
@@ -561,6 +594,9 @@ impl Nota {
                 fija,
                 etiquetas,
                 refs,
+                rol,
+                cast,
+                alias,
                 extra,
                 cuerpo: cuerpo.to_string(),
             },
@@ -592,6 +628,17 @@ impl Nota {
                 "refs".to_string(),
                 Valor::Lista(valores.iter().cloned().map(Valor::Texto).collect()),
             ));
+        }
+        if let Some(valor) = &self.rol {
+            campos.push(("rol".to_string(), Valor::Texto(valor.clone())));
+        }
+        for (clave, valor) in [("cast", &self.cast), ("alias", &self.alias)] {
+            if let Some(valores) = valor {
+                campos.push((
+                    clave.to_string(),
+                    Valor::Lista(valores.iter().cloned().map(Valor::Texto).collect()),
+                ));
+            }
         }
         for (clave, valor) in &self.extra {
             campos.push((clave.clone(), valor.clone()));

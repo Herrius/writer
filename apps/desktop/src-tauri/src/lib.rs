@@ -4,6 +4,7 @@
 //! verifica y escribe a través de `writer-core`.
 
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 use ts_rs::TS;
 use writer_core::goals::{Desafio, MetaArchivada, MetaDiaria, MetaLibro, Metas, Pausa, Sesion};
 use writer_core::project::Project;
@@ -62,6 +63,12 @@ pub struct DocumentoDto {
     pub archivo: Option<String>,
     /// Etiquetas.
     pub etiquetas: Vec<String>,
+    /// Rol del personaje.
+    pub rol: Option<String>,
+    /// Cast del personaje.
+    pub cast: Vec<String>,
+    /// Alias del personaje.
+    pub alias: Vec<String>,
     /// Tipo de nota.
     pub clase: Option<String>,
 }
@@ -329,6 +336,157 @@ pub struct SesionDto {
     pub documento: String,
     /// Autor.
     pub autor: String,
+}
+
+/// Punto de una trama en el Plot Grid.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct PuntoDto {
+    /// ULID de la escena.
+    pub escena: String,
+    /// Orden.
+    pub orden: i64,
+    /// Etiqueta.
+    pub etiqueta: Option<String>,
+}
+
+/// Trama del Plot Grid.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct TramaGridDto {
+    /// ULID de la nota.
+    pub id: String,
+    /// Nombre.
+    pub nombre: String,
+    /// Color.
+    pub color: String,
+    /// Puntos.
+    pub puntos: Vec<PuntoDto>,
+}
+
+/// Plot Grid completo.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct PlotGridDto {
+    /// Versión.
+    pub version: u32,
+    /// Tramas.
+    pub tramas: Vec<TramaGridDto>,
+}
+
+impl From<writer_core::planning::Punto> for PuntoDto {
+    fn from(valor: writer_core::planning::Punto) -> Self {
+        Self {
+            escena: valor.escena,
+            orden: valor.orden,
+            etiqueta: valor.etiqueta,
+        }
+    }
+}
+
+impl From<PuntoDto> for writer_core::planning::Punto {
+    fn from(valor: PuntoDto) -> Self {
+        Self {
+            escena: valor.escena,
+            orden: valor.orden,
+            etiqueta: valor.etiqueta,
+        }
+    }
+}
+
+impl From<writer_core::planning::TramaGrid> for TramaGridDto {
+    fn from(valor: writer_core::planning::TramaGrid) -> Self {
+        Self {
+            id: valor.id,
+            nombre: valor.nombre,
+            color: valor.color,
+            puntos: valor.puntos.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<TramaGridDto> for writer_core::planning::TramaGrid {
+    fn from(valor: TramaGridDto) -> Self {
+        Self {
+            id: valor.id,
+            nombre: valor.nombre,
+            color: valor.color,
+            puntos: valor.puntos.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<writer_core::planning::PlotGrid> for PlotGridDto {
+    fn from(valor: writer_core::planning::PlotGrid) -> Self {
+        Self {
+            version: valor.version,
+            tramas: valor.tramas.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<PlotGridDto> for writer_core::planning::PlotGrid {
+    fn from(valor: PlotGridDto) -> Self {
+        Self {
+            version: valor.version,
+            tramas: valor.tramas.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+/// Estructura de una plantilla.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct EstructuraDto {
+    /// Libros.
+    pub libros: u32,
+    /// Capítulos por libro.
+    pub capitulos_por_libro: u32,
+    /// Escenas por capítulo.
+    pub escenas_por_capitulo: u32,
+}
+
+/// Plantilla local.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct PlantillaDto {
+    /// Slug de carpeta.
+    pub slug: String,
+    /// Versión.
+    pub version: u32,
+    /// Nombre.
+    pub nombre: String,
+    /// Descripción.
+    pub descripcion: String,
+    /// Idioma.
+    pub idioma: Option<String>,
+    /// Estructura.
+    pub estructura: EstructuraDto,
+    /// Notas iniciales.
+    pub notas_iniciales: Vec<String>,
+}
+
+impl From<(String, writer_core::templates::Plantilla)> for PlantillaDto {
+    fn from((slug, valor): (String, writer_core::templates::Plantilla)) -> Self {
+        Self {
+            slug,
+            version: valor.version,
+            nombre: valor.nombre,
+            descripcion: valor.descripcion,
+            idioma: valor.idioma,
+            estructura: EstructuraDto {
+                libros: valor.estructura.libros,
+                capitulos_por_libro: valor.estructura.capitulos_por_libro,
+                escenas_por_capitulo: valor.estructura.escenas_por_capitulo,
+            },
+            notas_iniciales: valor.notas_iniciales,
+        }
+    }
 }
 
 /// Ancla de un comentario.
@@ -611,6 +769,110 @@ fn agregar_sesion(ruta: String, sesion: SesionDto) -> Result<String, ErrorDto> {
 fn leer_sesiones(ruta: String, mes: String) -> Result<Vec<SesionDto>, ErrorDto> {
     writer_core::goals::leer_sesiones(std::path::Path::new(&ruta), &mes)
         .map(|sesiones| sesiones.into_iter().map(Into::into).collect())
+        .map_err(error)
+}
+
+fn directorio_plantillas(app: &tauri::AppHandle) -> Result<std::path::PathBuf, ErrorDto> {
+    app.path()
+        .app_data_dir()
+        .map(|dir| dir.join("plantillas"))
+        .map_err(|error| ErrorDto {
+            tipo: TipoError::Io,
+            mensaje: format!("no se pudo resolver el directorio de datos: {error}"),
+        })
+}
+
+#[tauri::command]
+fn importar_markdown(
+    ruta: String,
+    archivo: String,
+    titulo: String,
+    tipo_nota: Option<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = writer_core::import::importar_markdown(
+        &Project::new(&ruta),
+        std::path::Path::new(&archivo),
+        &titulo,
+        tipo_nota.as_deref(),
+    )
+    .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
+fn importar_docx(
+    ruta: String,
+    archivo: String,
+    titulo: String,
+    tipo_nota: Option<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = writer_core::import::importar_docx(
+        &Project::new(&ruta),
+        std::path::Path::new(&archivo),
+        &titulo,
+        tipo_nota.as_deref(),
+    )
+    .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
+fn crear_backup(ruta: String, destino: String) -> Result<String, ErrorDto> {
+    writer_core::import::crear_backup(std::path::Path::new(&ruta), std::path::Path::new(&destino))
+        .map(|ruta| ruta.display().to_string())
+        .map_err(error)
+}
+
+#[tauri::command]
+fn restaurar_backup(archivo: String, destino: String) -> Result<(), ErrorDto> {
+    writer_core::import::restaurar_backup(
+        std::path::Path::new(&archivo),
+        std::path::Path::new(&destino),
+    )
+    .map(|_| ())
+    .map_err(error)
+}
+
+#[tauri::command]
+fn listar_plantillas(app: tauri::AppHandle) -> Result<Vec<PlantillaDto>, ErrorDto> {
+    let directorio = directorio_plantillas(&app)?;
+    writer_core::templates::listar_plantillas(&directorio)
+        .map(|plantillas| plantillas.into_iter().map(Into::into).collect())
+        .map_err(error)
+}
+
+#[tauri::command]
+fn crear_desde_plantilla(
+    app: tauri::AppHandle,
+    slug: String,
+    ruta: String,
+    titulo: String,
+    autor: Option<String>,
+    idioma: Option<String>,
+) -> Result<ProyectoDto, ErrorDto> {
+    let directorio = directorio_plantillas(&app)?;
+    writer_core::templates::crear_desde_plantilla(
+        &directorio,
+        &slug,
+        std::path::Path::new(&ruta),
+        &titulo,
+        autor.as_deref(),
+        idioma.as_deref(),
+    )
+    .map_err(error)?;
+    abrir_proyecto(ruta)
+}
+
+#[tauri::command]
+fn leer_plot_grid(ruta: String) -> Result<PlotGridDto, ErrorDto> {
+    writer_core::planning::leer_plot_grid(std::path::Path::new(&ruta))
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn guardar_plot_grid(ruta: String, grid: PlotGridDto) -> Result<(), ErrorDto> {
+    writer_core::planning::guardar_plot_grid(std::path::Path::new(&ruta), &grid.into())
         .map_err(error)
 }
 
@@ -901,6 +1163,27 @@ fn proyecto_e2e() -> Option<String> {
 }
 
 #[tauri::command]
+fn crear_nota(ruta: String, tipo: String, titulo: String) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = Project::new(&ruta)
+        .crear_nota(&tipo, &titulo)
+        .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
+fn crear_escena(
+    ruta: String,
+    titulo: String,
+    libro: Option<String>,
+    capitulo: Option<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = Project::new(&ruta)
+        .crear_escena(&titulo, libro.as_deref(), capitulo.as_deref(), None)
+        .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
 fn mover(
     ruta: String,
     objetivo: String,
@@ -940,6 +1223,20 @@ fn actualizar_nota(
 ) -> Result<DocumentoDto, ErrorDto> {
     Project::new(&ruta)
         .actualizar_nota(&objetivo, &etiquetas)
+        .map_err(error)?;
+    leer(ruta, objetivo)
+}
+
+#[tauri::command]
+fn actualizar_personaje(
+    ruta: String,
+    objetivo: String,
+    rol: Option<String>,
+    cast: Vec<String>,
+    alias: Vec<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    Project::new(&ruta)
+        .actualizar_personaje(&objetivo, rol.as_deref(), &cast, &alias)
         .map_err(error)?;
     leer(ruta, objetivo)
 }
@@ -999,6 +1296,9 @@ fn documento_dto(documento: Documento) -> DocumentoDto {
             estado: encontrada.escena.estado,
             archivo: encontrada.escena.archivo,
             etiquetas: encontrada.escena.etiquetas.unwrap_or_default(),
+            rol: None,
+            cast: Vec::new(),
+            alias: Vec::new(),
             clase: None,
         },
         Documento::Nota(encontrada) => DocumentoDto {
@@ -1012,6 +1312,9 @@ fn documento_dto(documento: Documento) -> DocumentoDto {
             estado: None,
             archivo: encontrada.nota.archivo,
             etiquetas: encontrada.nota.etiquetas.unwrap_or_default(),
+            rol: encontrada.nota.rol,
+            cast: encontrada.nota.cast.unwrap_or_default(),
+            alias: encontrada.nota.alias.unwrap_or_default(),
             clase: Some(encontrada.nota.tipo),
         },
     }
@@ -1068,9 +1371,12 @@ pub fn run() {
             descartar_cuarentena,
             proyecto_e2e,
             escribir,
+            crear_nota,
+            crear_escena,
             mover,
             actualizar_escena,
             actualizar_nota,
+            actualizar_personaje,
             cambiar_archivo,
             renombrar,
             duplicar,
@@ -1078,6 +1384,14 @@ pub fn run() {
             guardar_metas,
             agregar_sesion,
             leer_sesiones,
+            leer_plot_grid,
+            guardar_plot_grid,
+            listar_plantillas,
+            crear_desde_plantilla,
+            importar_markdown,
+            importar_docx,
+            crear_backup,
+            restaurar_backup,
             listar_comentarios,
             crear_comentario,
             crear_sticky,
@@ -1123,6 +1437,11 @@ mod tests {
         AnclaDto::export_all(&config).expect("exportar AnclaDto");
         MensajeDto::export_all(&config).expect("exportar MensajeDto");
         ComentarioDto::export_all(&config).expect("exportar ComentarioDto");
+        PuntoDto::export_all(&config).expect("exportar PuntoDto");
+        TramaGridDto::export_all(&config).expect("exportar TramaGridDto");
+        PlotGridDto::export_all(&config).expect("exportar PlotGridDto");
+        EstructuraDto::export_all(&config).expect("exportar EstructuraDto");
+        PlantillaDto::export_all(&config).expect("exportar PlantillaDto");
     }
 
     #[test]
@@ -1319,6 +1638,37 @@ mod tests {
         assert_eq!(archivada.archivo.as_deref(), Some("archivado"));
         let restaurada = cambiar_archivo(ruta, escena.id.clone(), None).expect("restaurar");
         assert!(restaurada.archivo.is_none());
+    }
+
+    #[test]
+    fn plot_grid_sobre_un_proyecto_real() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let raiz = directorio.path().join("planificacion");
+        let ruta = raiz.display().to_string();
+        crear_proyecto(ruta.clone(), "Plan".to_string(), None, None, false)
+            .expect("crear proyecto");
+        let documentos = listar(ruta.clone(), true).expect("listar");
+        let escena = documentos
+            .iter()
+            .find(|documento| documento.tipo == "escena")
+            .expect("escena");
+        let grid = PlotGridDto {
+            version: 1,
+            tramas: vec![TramaGridDto {
+                id: "01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
+                nombre: "El faro".to_string(),
+                color: "#4d6b8a".to_string(),
+                puntos: vec![PuntoDto {
+                    escena: escena.id.clone(),
+                    orden: 10,
+                    etiqueta: Some("giro".to_string()),
+                }],
+            }],
+        };
+        guardar_plot_grid(ruta.clone(), grid).expect("guardar grid");
+        let leido = leer_plot_grid(ruta).expect("leer grid");
+        assert_eq!(leido.tramas.len(), 1);
+        assert_eq!(leido.tramas[0].puntos[0].escena, escena.id);
     }
 
     #[test]

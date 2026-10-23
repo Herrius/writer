@@ -318,23 +318,15 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 
 ### Siguiente tarea inmediata
 
-1. **Fase 2.0 — contratos y modularización**: contratos escritos; faltan DTOs,
-   fixtures v1/v2 y modularización. El estado está en
+1. **Fase 2 — funcionalidad**: 2.1 manuscrito, 2.2 comentarios, 2.3
+   planificación, 2.4 metas, 2.5 importación/backup y 2.6 plantillas
+   implementadas. El detalle está en las iteraciones 19–24 y en
    [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md).
-2. **Fase 2.4 — metas**: implementada de extremo a extremo en
-   [`docs/iteraciones/19-fase-2-4-metas.md`](docs/iteraciones/19-fase-2-4-metas.md);
-   faltan rachas, gráfico histórico, backup y revisión.
-3. **Fase 2.1 — manuscrito**: funcionalidad completa (renombrar, duplicar,
-   arrastrar/soltar, archivo/papelera, estados, etiquetas, filtros y
-   copiar/pegar) en
-   [`docs/iteraciones/20-fase-2-1-manuscrito.md`](docs/iteraciones/20-fase-2-1-manuscrito.md);
-   pendiente revisión formal de QA/UX y reordenar dentro del capítulo.
-4. **Fase 2.2 — comentarios v2**: implementados anclas, sticky, respuestas y
-   resolución. Faltan huérfanos, edición/borrado, copiar/pegar y
-   previsualización.
-5. **Fase 2.3 — planificación**: siguiente bloque. Después 2.5
-   importación/exportación y 2.6 plantillas.
-6. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
+2. **Fase 2.7 — cierre**: falta la revisión formal QA/UX, completar rachas y
+   gráfico de metas, huérfanos/edición de comentarios, PDF/HTML/RTF y la
+   modularización de 2.0 (los módulos ya existen por feature, pero
+   `project.rs` y `App.tsx` siguen siendo grandes).
+3. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
    original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
    checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,
    CI remoto) siguen registrados y no forman parte del alcance de Fase 1.

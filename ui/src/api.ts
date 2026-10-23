@@ -8,6 +8,8 @@ import type { ErrorDto } from './types/ErrorDto';
 import type { EscaneoDto } from './types/EscaneoDto';
 import type { GuardadoDto } from './types/GuardadoDto';
 import type { MetasDto } from './types/MetasDto';
+import type { PlotGridDto } from './types/PlotGridDto';
+import type { PlantillaDto } from './types/PlantillaDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { SesionDto } from './types/SesionDto';
 import type { ReversionDto } from './types/ReversionDto';
@@ -49,6 +51,7 @@ const demoMetas: MetasDto = {
 let metasDemoActuales: MetasDto = demoMetas;
 const sesionesDemo: SesionDto[] = [];
 const comentariosDemo: ComentarioDto[] = [];
+let plotGridDemo: PlotGridDto = { version: 1, tramas: [] };
 
 const demoCuarentena: CuarentenaDto[] = [
   {
@@ -73,6 +76,9 @@ const demoDocumentos: DocumentoDto[] = [
     estado: 'revision',
     archivo: null,
     etiquetas: [],
+    rol: null,
+    cast: [],
+    alias: [],
     clase: null,
   },
   {
@@ -87,6 +93,9 @@ const demoDocumentos: DocumentoDto[] = [
     estado: 'borrador',
     archivo: null,
     etiquetas: [],
+    rol: null,
+    cast: [],
+    alias: [],
     clase: null,
   },
   {
@@ -100,6 +109,9 @@ const demoDocumentos: DocumentoDto[] = [
     estado: null,
     archivo: null,
     etiquetas: [],
+    rol: null,
+    cast: [],
+    alias: [],
     clase: 'personajes',
   },
   {
@@ -113,6 +125,9 @@ const demoDocumentos: DocumentoDto[] = [
     estado: null,
     archivo: null,
     etiquetas: [],
+    rol: null,
+    cast: [],
+    alias: [],
     clase: 'tramas',
   },
 ];
@@ -490,6 +505,37 @@ export async function actualizarNota(
   return invoke<DocumentoDto>('actualizar_nota', { ruta, objetivo, etiquetas });
 }
 
+export async function actualizarPersonaje(
+  ruta: string,
+  objetivo: string,
+  rol: string | null,
+  cast: string[],
+  alias: string[],
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw {
+        tipo: 'no-encontrado',
+        mensaje: `documento no encontrado en la demo: ${objetivo}`,
+      } satisfies ErrorDto;
+    }
+    documento.rol = rol;
+    documento.cast = cast;
+    documento.alias = alias;
+    return { ...documento };
+  }
+  return invoke<DocumentoDto>('actualizar_personaje', {
+    ruta,
+    objetivo,
+    rol,
+    cast,
+    alias,
+  });
+}
+
 export async function cambiarArchivo(
   ruta: string,
   objetivo: string,
@@ -554,6 +600,184 @@ export async function duplicar(ruta: string, objetivo: string): Promise<Document
     return { ...copia };
   }
   return invoke<DocumentoDto>('duplicar', { ruta, objetivo });
+}
+
+export async function crearNota(
+  ruta: string,
+  tipo: string,
+  titulo: string,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const nota: DocumentoDto = {
+      tipo: 'nota',
+      id: `demo-nota-${Date.now()}`,
+      ruta: `notas/${tipo}/${titulo.toLowerCase().replaceAll(' ', '-')}.md`,
+      titulo,
+      cuerpo: '',
+      hashArchivo: `demo:${Date.now()}`,
+      orden: null,
+      estado: null,
+      archivo: null,
+      etiquetas: [],
+      rol: null,
+      cast: [],
+      alias: [],
+      clase: tipo,
+    };
+    demoDocumentos.push(nota);
+    return { ...nota };
+  }
+  return invoke<DocumentoDto>('crear_nota', { ruta, tipo, titulo });
+}
+
+export async function crearEscena(
+  ruta: string,
+  titulo: string,
+  libro: string | null,
+  capitulo: string | null,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const escena: DocumentoDto = {
+      tipo: 'escena',
+      id: `demo-escena-${Date.now()}`,
+      ruta: `manuscrito/${libro ?? '01-libro'}/${capitulo ?? '01-capitulo'}/999-${Date.now()}.md`,
+      titulo,
+      cuerpo: '',
+      hashArchivo: `demo:${Date.now()}`,
+      orden: 30,
+      estado: 'borrador',
+      archivo: null,
+      etiquetas: [],
+      rol: null,
+      cast: [],
+      alias: [],
+      clase: null,
+    };
+    demoDocumentos.push(escena);
+    return { ...escena };
+  }
+  return invoke<DocumentoDto>('crear_escena', { ruta, titulo, libro, capitulo });
+}
+
+export async function elegirArchivoImportacion(): Promise<string | null> {
+  if (!esTauri) {
+    return window.prompt('Ruta del archivo a importar (.md o .docx)');
+  }
+  const seleccion = await open({
+    multiple: false,
+    title: 'Importar documento',
+    filters: [
+      { name: 'Documentos', extensions: ['md', 'markdown', 'docx'] },
+      { name: 'Markdown', extensions: ['md', 'markdown'] },
+      { name: 'Word', extensions: ['docx'] },
+    ],
+  });
+  return typeof seleccion === 'string' ? seleccion : null;
+}
+
+export async function elegirDestinoBackup(titulo: string): Promise<string | null> {
+  const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'proyecto'}.zip`;
+  if (!esTauri) {
+    return window.prompt('Ruta del backup ZIP', nombre);
+  }
+  const seleccion = await save({
+    title: 'Guardar backup del proyecto',
+    defaultPath: nombre,
+    filters: [{ name: 'Backup writer', extensions: ['zip'] }],
+  });
+  return typeof seleccion === 'string' ? seleccion : null;
+}
+
+export async function importarMarkdown(
+  ruta: string,
+  archivo: string,
+  titulo: string,
+  tipoNota: string | null,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    throw { tipo: 'formato', mensaje: 'Importar requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  return invoke<DocumentoDto>('importar_markdown', { ruta, archivo, titulo, tipoNota });
+}
+
+export async function importarDocx(
+  ruta: string,
+  archivo: string,
+  titulo: string,
+  tipoNota: string | null,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    throw { tipo: 'formato', mensaje: 'Importar requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  return invoke<DocumentoDto>('importar_docx', { ruta, archivo, titulo, tipoNota });
+}
+
+export async function crearBackup(ruta: string, destino: string): Promise<string> {
+  if (!esTauri) {
+    throw { tipo: 'io', mensaje: 'El backup requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  return invoke<string>('crear_backup', { ruta, destino });
+}
+
+export async function restaurarBackup(archivo: string, destino: string): Promise<void> {
+  if (!esTauri) {
+    throw { tipo: 'io', mensaje: 'Restaurar requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  await invoke('restaurar_backup', { archivo, destino });
+}
+
+export async function listarPlantillas(): Promise<PlantillaDto[]> {
+  if (!esTauri) {
+    return [
+      {
+        slug: 'tres-actos',
+        version: 1,
+        nombre: 'Novela en tres actos',
+        descripcion: 'Estructura base con tres capítulos y fichas iniciales.',
+        idioma: 'es',
+        estructura: { libros: 1, capitulosPorLibro: 3, escenasPorCapitulo: 1 },
+        notasIniciales: ['personajes', 'tramas', 'lugares'],
+      },
+    ];
+  }
+  return invoke<PlantillaDto[]>('listar_plantillas');
+}
+
+export async function crearDesdePlantilla(
+  slug: string,
+  ruta: string,
+  titulo: string,
+  autor: string | null,
+  idioma: string | null,
+): Promise<ProyectoDto> {
+  if (!esTauri) {
+    throw {
+      tipo: 'proyecto',
+      mensaje: 'Crear desde plantilla requiere la app de escritorio.',
+    } satisfies ErrorDto;
+  }
+  return invoke<ProyectoDto>('crear_desde_plantilla', {
+    slug,
+    ruta,
+    titulo,
+    autor,
+    idioma,
+  });
+}
+
+export async function leerPlotGrid(ruta: string): Promise<PlotGridDto> {
+  if (!esTauri) {
+    return plotGridDemo;
+  }
+  return invoke<PlotGridDto>('leer_plot_grid', { ruta });
+}
+
+export async function guardarPlotGrid(ruta: string, grid: PlotGridDto): Promise<void> {
+  if (!esTauri) {
+    plotGridDemo = grid;
+    return;
+  }
+  await invoke('guardar_plot_grid', { ruta, grid });
 }
 
 export async function buscar(

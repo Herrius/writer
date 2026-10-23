@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { elegirCarpetaCreacion, errorDe } from './api';
+import { elegirCarpetaCreacion, errorDe, listarPlantillas } from './api';
+import type { PlantillaDto } from './types/PlantillaDto';
 import { colorDesdeTitulo, slugProyecto, type Reciente } from './recientes';
 
 export type DatosNuevoProyecto = {
@@ -10,6 +11,7 @@ export type DatosNuevoProyecto = {
   idioma: string;
   notasIniciales: boolean;
   color: string;
+  plantilla: string | null;
 };
 
 type Props = {
@@ -95,6 +97,8 @@ export function Inicio({
   const [carpetaPadre, setCarpetaPadre] = useState('');
   const [color, setColor] = useState(COLORES[0]);
   const [notasIniciales, setNotasIniciales] = useState(true);
+  const [plantilla, setPlantilla] = useState('');
+  const [plantillas, setPlantillas] = useState<PlantillaDto[]>([]);
   const [nombreEditado, setNombreEditado] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +108,12 @@ export function Inicio({
   const modalRef = useRef<HTMLFormElement>(null);
   const focoPrevioRef = useRef<HTMLElement | null>(null);
   const crearRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    listarPlantillas()
+      .then(setPlantillas)
+      .catch(() => setPlantillas([]));
+  }, []);
 
   const filtrados = useMemo(() => {
     const termino = consulta.trim().toLocaleLowerCase();
@@ -135,6 +145,7 @@ export function Inicio({
     setCarpetaPadre('');
     setColor(colorDesdeTitulo(tituloInicial || 'writer'));
     setNotasIniciales(true);
+    setPlantilla('');
     setNombreEditado(false);
     setError(null);
     setExito(null);
@@ -239,6 +250,7 @@ export function Inicio({
           idioma: nuevoIdioma,
           notasIniciales,
           color,
+          plantilla: plantilla || null,
         },
         abrir,
       );
@@ -668,6 +680,26 @@ export function Inicio({
                       />
                       Crear notas iniciales de personajes, tramas y lugares
                     </label>
+                    {plantillas.length > 0 && (
+                      <label className="campo-carpeta">
+                        <span>Plantilla (opcional)</span>
+                        <select
+                          value={plantilla}
+                          onChange={(evento) => setPlantilla(evento.target.value)}
+                          aria-label="Plantilla del proyecto"
+                        >
+                          <option value="">Sin plantilla</option>
+                          {plantillas.map((opcion) => (
+                            <option key={opcion.slug} value={opcion.slug}>
+                              {opcion.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="nota-campo">
+                          La plantilla genera estructura y notas; no copia historial.
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
               </div>
