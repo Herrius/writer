@@ -1,15 +1,15 @@
 # Iteración 19 — Fase 2.4: núcleo de metas y sesiones
 
 - **Fecha:** 2026-10-23
-- **Estado:** núcleo implementado; Tauri y UI pendientes.
+- **Estado:** implementado de extremo a extremo; pendiente revisión y
+  estadísticas avanzadas.
 - **Contrato:** [`../metas-v1.md`](../metas-v1.md) y
   [`../esquema-v2.md`](../esquema-v2.md) §4.
 - **Fase:** 2.4 (metas, estadísticas y temporizador).
 
 ## 1. Alcance de este pase
 
-Se implementó la capa de datos local del proyecto, sin conectar todavía la
-interfaz:
+Se implementó la capa de datos local y se conectó con Tauri y la UI:
 
 - `Metas` con meta diaria, de libro, desafío y archivadas.
 - `Sesion` con preset, pausas, palabras, documento y autor.
@@ -25,6 +25,11 @@ interfaz:
 | `crates/core/src/goals.rs` | Nuevo módulo con modelo, validación, lectura/escritura y 7 pruebas |
 | `crates/core/src/lib.rs` | Expone `pub mod goals` |
 | `crates/core/src/fsutil.rs` | `validar_escritor` comprueba `metas`, `sesiones`, `comentarios` y `planificacion` si existen |
+| `apps/desktop/src-tauri/src/lib.rs` | DTOs y comandos `leer_metas`, `guardar_metas`, `agregar_sesion`, `leer_sesiones`; exportación ts-rs |
+| `ui/src/api.ts` | Puente Tauri y modo demo para metas y sesiones |
+| `ui/src/App.tsx` | Panel de metas, presets, temporizador, pausa/reanudar/finalizar y resumen del día |
+| `ui/src/styles.css` | Campos, error, resumen y estados del temporizador |
+| `e2e/fase-2-metas.spec.ts` | Flujo real de guardar meta y ejecutar temporizador |
 
 ## 3. Verificación
 
@@ -32,7 +37,12 @@ interfaz:
 cargo fmt --all                                         OK
 cargo clippy -p writer-core --all-targets -- -D warnings OK
 cargo test -p writer-core --all-targets --locked        41 unitarias + 35 integración
-cargo test -p writer-core goals                         7/7
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+  metas_y_sesiones_sobre_un_proyecto_real               OK
+pnpm typecheck                                          OK
+pnpm ui:test                                            60/60
+pnpm exec playwright test e2e/fase-2-metas.spec.ts     1/1
+pnpm e2e                                                26/26
 ```
 
 Pruebas nuevas:
@@ -47,12 +57,11 @@ Pruebas nuevas:
 
 ## 4. Pendiente
 
-- DTOs ts-rs y comandos Tauri `leer_metas`, `guardar_metas`,
-  `agregar_sesion` y `leer_sesiones`.
-- UI del panel Metas: metas, rachas, gráfico y temporizador.
-- Cálculo de palabras por sesión y estadísticas.
+- Rachas, gráfico de 30 días y estadísticas históricas.
 - Integración con backup/exportación.
-- Pruebas de UI/E2E y revisión de accesibilidad.
+- Revisión de accesibilidad del panel y del temporizador.
+- Prueba de escritorio con Tauri (la UI se probó en demo y con el comando
+  Tauri aislado).
 
 ## 5. Decisión
 
@@ -60,5 +69,5 @@ El sidecar no entra en el log de operaciones del manuscrito: es una métrica
 local, con escritura atómica y `fsync`. El manuscrito sigue siendo la verdad y
 un sidecar corrupto no lo toca.
 
-El siguiente pase conecta Tauri y la UI. Hasta entonces, la funcionalidad no se
-anuncia como disponible.
+El temporizador y las metas ya están conectados. La fase 2.4 queda funcional,
+pero no se declara cerrada hasta la revisión y las estadísticas restantes.

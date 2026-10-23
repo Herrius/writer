@@ -6,7 +6,9 @@ import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { ErrorDto } from './types/ErrorDto';
 import type { EscaneoDto } from './types/EscaneoDto';
 import type { GuardadoDto } from './types/GuardadoDto';
+import type { MetasDto } from './types/MetasDto';
 import type { ProyectoDto } from './types/ProyectoDto';
+import type { SesionDto } from './types/SesionDto';
 import type { ReversionDto } from './types/ReversionDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
@@ -34,6 +36,17 @@ const demoProyecto: ProyectoDto = {
   errores: [],
   avisos: [],
 };
+
+const demoMetas: MetasDto = {
+  version: 1,
+  diaria: { objetivo: 500, desde: '2026-10-23' },
+  libro: { objetivo: 80000 },
+  desafio: null,
+  archivadas: [],
+};
+
+let metasDemoActuales: MetasDto = demoMetas;
+const sesionesDemo: SesionDto[] = [];
 
 const demoCuarentena: CuarentenaDto[] = [
   {
@@ -199,6 +212,36 @@ export async function leer(ruta: string, objetivo: string): Promise<DocumentoDto
     return { ...documento };
   }
   return invoke<DocumentoDto>('leer', { ruta, objetivo });
+}
+
+export async function leerMetas(ruta: string): Promise<MetasDto> {
+  if (!esTauri) {
+    return metasDemoActuales;
+  }
+  return invoke<MetasDto>('leer_metas', { ruta });
+}
+
+export async function guardarMetas(ruta: string, metas: MetasDto): Promise<void> {
+  if (!esTauri) {
+    metasDemoActuales = metas;
+    return;
+  }
+  await invoke('guardar_metas', { ruta, metas });
+}
+
+export async function agregarSesion(ruta: string, sesion: SesionDto): Promise<string> {
+  if (!esTauri) {
+    sesionesDemo.push(sesion);
+    return '(demo)';
+  }
+  return invoke<string>('agregar_sesion', { ruta, sesion });
+}
+
+export async function leerSesiones(ruta: string, mes: string): Promise<SesionDto[]> {
+  if (!esTauri) {
+    return sesionesDemo.filter((sesion) => sesion.inicio.startsWith(mes));
+  }
+  return invoke<SesionDto[]>('leer_sesiones', { ruta, mes });
 }
 
 export async function verificar(ruta: string): Promise<EscaneoDto> {

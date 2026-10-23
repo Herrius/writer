@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import {
   abrirProyecto,
+  agregarSesion,
   buscar,
   crearProyecto,
   cuarentena,
@@ -11,8 +12,11 @@ import {
   elegirDestinoDocx,
   escribir,
   exportarDocx,
+  guardarMetas,
   historial,
   leer,
+  leerMetas,
+  leerSesiones,
   listar,
   mostrar,
   revertir,
@@ -58,6 +62,10 @@ vi.mock('./api', () => ({
   exportarDocx: vi.fn(),
   cuarentena: vi.fn(),
   descartarCuarentena: vi.fn(),
+  leerMetas: vi.fn(),
+  guardarMetas: vi.fn(),
+  agregarSesion: vi.fn(),
+  leerSesiones: vi.fn(),
   proyectoE2e: vi.fn().mockResolvedValue(null),
   errorDe: (fallo: unknown) => {
     if (typeof fallo === 'object' && fallo !== null && 'tipo' in fallo && 'mensaje' in fallo) {
@@ -81,6 +89,10 @@ const elegirDestinoDocxMock = vi.mocked(elegirDestinoDocx);
 const exportarDocxMock = vi.mocked(exportarDocx);
 const cuarentenaMock = vi.mocked(cuarentena);
 const descartarCuarentenaMock = vi.mocked(descartarCuarentena);
+const leerMetasMock = vi.mocked(leerMetas);
+const guardarMetasMock = vi.mocked(guardarMetas);
+const agregarSesionMock = vi.mocked(agregarSesion);
+const leerSesionesMock = vi.mocked(leerSesiones);
 
 const proyecto: ProyectoDto = {
   raiz: '/tmp/novela',
@@ -190,6 +202,16 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
   exportarDocxMock.mockResolvedValue('/tmp/salida.docx');
   cuarentenaMock.mockResolvedValue([]);
   descartarCuarentenaMock.mockResolvedValue();
+  leerMetasMock.mockResolvedValue({
+    version: 1,
+    diaria: null,
+    libro: null,
+    desafio: null,
+    archivadas: [],
+  });
+  guardarMetasMock.mockResolvedValue();
+  agregarSesionMock.mockResolvedValue('(demo)');
+  leerSesionesMock.mockResolvedValue([]);
 }
 
 async function abrirDemo(): Promise<HTMLTextAreaElement> {

@@ -177,8 +177,8 @@ writer/
   escribir el destino.
 - `verify::Documento::hash()` expone el hash del archivo escaneado.
 - `goals`: metas y sesiones locales en `.escritor/metas/` y
-  `.escritor/sesiones/`, con validación y escritura atómica. **Núcleo
-  implementado; Tauri y UI pendientes.**
+  `.escritor/sesiones/`, con validación y escritura atómica. **Implementado en
+  núcleo, Tauri y UI; pendientes rachas, gráfico y backup.**
 
 ### Comandos Tauri
 
@@ -315,9 +315,9 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 1. **Fase 2.0 — contratos y modularización**: contratos escritos; faltan DTOs,
    fixtures v1/v2 y modularización. El estado está en
    [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md).
-2. **Fase 2.4 — metas**: núcleo local implementado en
+2. **Fase 2.4 — metas**: implementada de extremo a extremo en
    [`docs/iteraciones/19-fase-2-4-metas.md`](docs/iteraciones/19-fase-2-4-metas.md);
-   faltan comandos Tauri, UI y estadísticas.
+   faltan rachas, gráfico histórico, backup y revisión.
 3. **Fase 2.1–2.6 — resto del núcleo local**: manuscrito, comentarios,
    planificación, importación/exportación y plantillas. Se abre por bloques,
    con los módulos ya separados.

@@ -2617,6 +2617,40 @@ button.guardar:disabled {
   margin: 0.8rem auto 0;
 }
 
+.dabble-campo-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.55rem;
+  color: #756c61;
+  font-size: 0.72rem;
+  text-align: left;
+}
+
+.dabble-campo-meta input {
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--borde-control);
+  border-radius: 0.3rem;
+  background: #fff;
+  color: #2f2a24;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.dabble-error {
+  margin: 0.5rem 0 0;
+  color: #8e3b32;
+  font-size: 0.72rem;
+  text-align: left;
+}
+
+.dabble-resumen {
+  margin: 0.6rem 0 0;
+  color: #756c61;
+  font-size: 0.72rem;
+}
+
 .dabble-timer {
   margin: 1rem;
   padding: 0.8rem;
@@ -2629,6 +2663,8 @@ button.guardar:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.8rem;
 }
@@ -2640,7 +2676,16 @@ button.guardar:disabled {
   border-radius: 50%;
   background: #3f6190;
   color: #fff;
+  cursor: pointer;
+}
+
+.dabble-play:hover {
+  background: #34506a;
+}
+
+.dabble-timer-opciones button:disabled {
   cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .dabble-timer-opciones {

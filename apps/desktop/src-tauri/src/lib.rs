@@ -3,8 +3,11 @@
 //! La UI no implementa reglas: abre un proyecto, lista documentos, lee cuerpos,
 //! verifica y escribe a través de `writer-core`.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use writer_core::goals::{
+    Desafio, MetaArchivada, MetaDiaria, MetaLibro, Metas, Pausa, Sesion,
+};
 use writer_core::project::Project;
 use writer_core::verify::{Documento, Escaneo};
 use writer_core::Error as ErrorNucleo;
@@ -225,6 +228,283 @@ pub struct EscaneoDto {
     pub errores: Vec<String>,
     /// Avisos.
     pub avisos: Vec<String>,
+}
+
+/// Meta diaria.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct MetaDiariaDto {
+    /// Palabras objetivo por día.
+    pub objetivo: i64,
+    /// Fecha de inicio.
+    pub desde: String,
+}
+
+/// Meta de libro.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct MetaLibroDto {
+    /// Palabras objetivo.
+    pub objetivo: i64,
+}
+
+/// Desafío con fecha límite.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DesafioDto {
+    /// Palabras objetivo.
+    pub objetivo: i64,
+    /// Fecha límite.
+    pub limite: String,
+}
+
+/// Meta archivada.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct MetaArchivadaDto {
+    /// Tipo de meta.
+    pub tipo: String,
+    /// Palabras objetivo.
+    pub objetivo: i64,
+    /// Inicio opcional.
+    pub desde: Option<String>,
+    /// Fin opcional.
+    pub hasta: Option<String>,
+    /// Motivo.
+    pub motivo: Option<String>,
+}
+
+/// Metas locales del proyecto.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct MetasDto {
+    /// Versión de la extensión.
+    pub version: u32,
+    /// Meta diaria.
+    pub diaria: Option<MetaDiariaDto>,
+    /// Meta de libro.
+    pub libro: Option<MetaLibroDto>,
+    /// Desafío.
+    pub desafio: Option<DesafioDto>,
+    /// Metas archivadas.
+    pub archivadas: Vec<MetaArchivadaDto>,
+}
+
+/// Pausa de una sesión.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct PausaDto {
+    /// Inicio RFC 3339.
+    pub inicio: String,
+    /// Fin RFC 3339.
+    pub fin: String,
+}
+
+/// Sesión de escritura.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct SesionDto {
+    /// ULID.
+    pub id: String,
+    /// Inicio RFC 3339.
+    pub inicio: String,
+    /// Fin RFC 3339.
+    pub fin: String,
+    /// Preset en minutos.
+    pub preset: u32,
+    /// Pausas.
+    pub pausas: Vec<PausaDto>,
+    /// Palabras.
+    pub palabras: i64,
+    /// Documento.
+    pub documento: String,
+    /// Autor.
+    pub autor: String,
+}
+
+impl From<MetaDiariaDto> for MetaDiaria {
+    fn from(valor: MetaDiariaDto) -> Self {
+        Self {
+            objetivo: valor.objetivo,
+            desde: valor.desde,
+        }
+    }
+}
+
+impl From<MetaDiaria> for MetaDiariaDto {
+    fn from(valor: MetaDiaria) -> Self {
+        Self {
+            objetivo: valor.objetivo,
+            desde: valor.desde,
+        }
+    }
+}
+
+impl From<MetaLibroDto> for MetaLibro {
+    fn from(valor: MetaLibroDto) -> Self {
+        Self {
+            objetivo: valor.objetivo,
+        }
+    }
+}
+
+impl From<MetaLibro> for MetaLibroDto {
+    fn from(valor: MetaLibro) -> Self {
+        Self {
+            objetivo: valor.objetivo,
+        }
+    }
+}
+
+impl From<DesafioDto> for Desafio {
+    fn from(valor: DesafioDto) -> Self {
+        Self {
+            objetivo: valor.objetivo,
+            limite: valor.limite,
+        }
+    }
+}
+
+impl From<Desafio> for DesafioDto {
+    fn from(valor: Desafio) -> Self {
+        Self {
+            objetivo: valor.objetivo,
+            limite: valor.limite,
+        }
+    }
+}
+
+impl From<MetaArchivadaDto> for MetaArchivada {
+    fn from(valor: MetaArchivadaDto) -> Self {
+        Self {
+            tipo: valor.tipo,
+            objetivo: valor.objetivo,
+            desde: valor.desde,
+            hasta: valor.hasta,
+            motivo: valor.motivo,
+        }
+    }
+}
+
+impl From<MetaArchivada> for MetaArchivadaDto {
+    fn from(valor: MetaArchivada) -> Self {
+        Self {
+            tipo: valor.tipo,
+            objetivo: valor.objetivo,
+            desde: valor.desde,
+            hasta: valor.hasta,
+            motivo: valor.motivo,
+        }
+    }
+}
+
+impl From<MetasDto> for Metas {
+    fn from(valor: MetasDto) -> Self {
+        Self {
+            version: valor.version,
+            diaria: valor.diaria.map(Into::into),
+            libro: valor.libro.map(Into::into),
+            desafio: valor.desafio.map(Into::into),
+            archivadas: valor.archivadas.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<Metas> for MetasDto {
+    fn from(valor: Metas) -> Self {
+        Self {
+            version: valor.version,
+            diaria: valor.diaria.map(Into::into),
+            libro: valor.libro.map(Into::into),
+            desafio: valor.desafio.map(Into::into),
+            archivadas: valor.archivadas.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<PausaDto> for Pausa {
+    fn from(valor: PausaDto) -> Self {
+        Self {
+            inicio: valor.inicio,
+            fin: valor.fin,
+        }
+    }
+}
+
+impl From<Pausa> for PausaDto {
+    fn from(valor: Pausa) -> Self {
+        Self {
+            inicio: valor.inicio,
+            fin: valor.fin,
+        }
+    }
+}
+
+impl From<SesionDto> for Sesion {
+    fn from(valor: SesionDto) -> Self {
+        Self {
+            id: valor.id,
+            inicio: valor.inicio,
+            fin: valor.fin,
+            preset: valor.preset,
+            pausas: valor.pausas.into_iter().map(Into::into).collect(),
+            palabras: valor.palabras,
+            documento: valor.documento,
+            autor: valor.autor,
+        }
+    }
+}
+
+impl From<Sesion> for SesionDto {
+    fn from(valor: Sesion) -> Self {
+        Self {
+            id: valor.id,
+            inicio: valor.inicio,
+            fin: valor.fin,
+            preset: valor.preset,
+            pausas: valor.pausas.into_iter().map(Into::into).collect(),
+            palabras: valor.palabras,
+            documento: valor.documento,
+            autor: valor.autor,
+        }
+    }
+}
+
+#[tauri::command]
+fn leer_metas(ruta: String) -> Result<MetasDto, ErrorDto> {
+    writer_core::goals::leer_metas(std::path::Path::new(&ruta))
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn guardar_metas(ruta: String, metas: MetasDto) -> Result<(), ErrorDto> {
+    writer_core::goals::guardar_metas(std::path::Path::new(&ruta), &metas.into()).map_err(error)
+}
+
+#[tauri::command]
+fn agregar_sesion(ruta: String, sesion: SesionDto) -> Result<String, ErrorDto> {
+    let mut sesion: Sesion = sesion.into();
+    if sesion.id.trim().is_empty() {
+        sesion.id = writer_core::ulid::nuevo().map_err(error)?;
+    }
+    writer_core::goals::agregar_sesion(std::path::Path::new(&ruta), &sesion)
+        .map(|ruta| ruta.display().to_string())
+        .map_err(error)
+}
+
+#[tauri::command]
+fn leer_sesiones(ruta: String, mes: String) -> Result<Vec<SesionDto>, ErrorDto> {
+    writer_core::goals::leer_sesiones(std::path::Path::new(&ruta), &mes)
+        .map(|sesiones| sesiones.into_iter().map(Into::into).collect())
+        .map_err(error)
 }
 
 #[tauri::command]
@@ -534,7 +814,11 @@ pub fn run() {
             cuarentena,
             descartar_cuarentena,
             proyecto_e2e,
-            escribir
+            escribir,
+            leer_metas,
+            guardar_metas,
+            agregar_sesion,
+            leer_sesiones
         ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar writer");
@@ -564,6 +848,13 @@ mod tests {
         RevisionDetalleDto::export_all(&config).expect("exportar RevisionDetalleDto");
         ReversionDto::export_all(&config).expect("exportar ReversionDto");
         CuarentenaDto::export_all(&config).expect("exportar CuarentenaDto");
+        MetaDiariaDto::export_all(&config).expect("exportar MetaDiariaDto");
+        MetaLibroDto::export_all(&config).expect("exportar MetaLibroDto");
+        DesafioDto::export_all(&config).expect("exportar DesafioDto");
+        MetaArchivadaDto::export_all(&config).expect("exportar MetaArchivadaDto");
+        MetasDto::export_all(&config).expect("exportar MetasDto");
+        PausaDto::export_all(&config).expect("exportar PausaDto");
+        SesionDto::export_all(&config).expect("exportar SesionDto");
     }
 
     #[test]
@@ -706,5 +997,49 @@ mod tests {
         .expect_err("id inexistente");
         assert_eq!(fallo.tipo, TipoError::NoEncontrado);
         assert!(fallo.mensaje.contains("no encontrado"));
+    }
+
+    #[test]
+    fn metas_y_sesiones_sobre_un_proyecto_real() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let raiz = directorio.path().join("metas");
+        let ruta = raiz.display().to_string();
+        crear_proyecto(
+            ruta.clone(),
+            "Metas".to_string(),
+            Some("Autora".to_string()),
+            Some("es".to_string()),
+            false,
+        )
+        .expect("crear proyecto");
+
+        let metas = MetasDto {
+            version: 1,
+            diaria: Some(MetaDiariaDto {
+                objetivo: 500,
+                desde: "2026-10-23".to_string(),
+            }),
+            libro: Some(MetaLibroDto { objetivo: 80_000 }),
+            desafio: None,
+            archivadas: vec![],
+        };
+        guardar_metas(ruta.clone(), metas).expect("guardar metas");
+        let leidas = leer_metas(ruta.clone()).expect("leer metas");
+        assert_eq!(leidas.diaria.as_ref().map(|meta| meta.objetivo), Some(500));
+
+        let sesion = SesionDto {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
+            inicio: "2026-10-23T10:00:00.000Z".to_string(),
+            fin: "2026-10-23T10:25:00.000Z".to_string(),
+            preset: 25,
+            pausas: vec![],
+            palabras: 412,
+            documento: "manuscrito/01-libro/01-capitulo/001-escena.md".to_string(),
+            autor: "local".to_string(),
+        };
+        agregar_sesion(ruta.clone(), sesion).expect("agregar sesión");
+        let sesiones = leer_sesiones(ruta, "2026-10".to_string()).expect("leer sesiones");
+        assert_eq!(sesiones.len(), 1);
+        assert_eq!(sesiones[0].palabras, 412);
     }
 }

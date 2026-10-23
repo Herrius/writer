@@ -7,6 +7,7 @@ import {
 } from 'react';
 import {
   abrirProyecto,
+  agregarSesion,
   buscar as buscarEnProyecto,
   crearProyecto as crearProyectoApi,
   cuarentena as pedirCuarentena,
@@ -17,8 +18,11 @@ import {
   esTauri,
   escribir,
   exportarDocx,
+  guardarMetas,
   historial as pedirHistorial,
   leer,
+  leerMetas,
+  leerSesiones,
   listar,
   mostrar as pedirRevision,
   proyectoE2e,
@@ -27,9 +31,12 @@ import {
 import type { BusquedaDto } from './types/BusquedaDto';
 import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { DocumentoDto } from './types/DocumentoDto';
+import type { MetasDto } from './types/MetasDto';
+import type { PausaDto } from './types/PausaDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
+import type { SesionDto } from './types/SesionDto';
 import type { TipoError } from './types/TipoError';
 import { EditorMarkdown } from './EditorMarkdown';
 import { Inicio, type DatosNuevoProyecto } from './Inicio';
@@ -61,6 +68,20 @@ type ConfirmacionReversion = {
 };
 
 const RETARDO_AUTOGUARDADO = 900;
+
+function mesActual(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function fechaHoy(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatearTiempo(segundos: number): string {
+  const minutos = Math.floor(segundos / 60);
+  const resto = segundos % 60;
+  return `${minutos}:${resto.toString().padStart(2, '0')}`;
+}
 
 type GrupoDocumentos = {
   clave: string;
@@ -207,6 +228,17 @@ export default function App() {
   const [consulta, setConsulta] = useState('');
   const [focoArbol, setFocoArbol] = useState<string | null>(null);
   const [panelDerecho, setPanelDerecho] = useState<'metas' | 'notas'>('metas');
+  const [metas, setMetas] = useState<MetasDto | null>(null);
+  const [sesiones, setSesiones] = useState<SesionDto[]>([]);
+  const [errorMetas, setErrorMetas] = useState<string | null>(null);
+  const [metaDiaria, setMetaDiaria] = useState('');
+  const [metaLibro, setMetaLibro] = useState('');
+  const [desafioObjetivo, setDesafioObjetivo] = useState('');
+  const [desafioLimite, setDesafioLimite] = useState('');
+  const [preset, setPreset] = useState(5);
+  const [restante, setRestante] = useState(5 * 60);
+  const [temporizadorActivo, setTemporizadorActivo] = useState(false);
+  const [temporizadorPausado, setTemporizadorPausado] = useState(false);
   const [resultados, setResultados] = useState<BusquedaDto[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
@@ -244,6 +276,10 @@ export default function App() {
   const cuerpoEditorRef = useRef('');
   const drenajeRef = useRef<Promise<boolean> | null>(null);
   const temporizadorRef = useRef<number | null>(null);
+  const inicioSesionRef = useRef<string | null>(null);
+  const palabrasInicioRef = useRef(0);
+  const pausasRef = useRef<PausaDto[]>([]);
+  const pausaInicioRef = useRef<string | null>(null);
   const accionesRef = useRef<{ guardar: () => Promise<boolean>; abrir: () => Promise<void> } | null>(
     null,
   );
@@ -406,12 +442,37 @@ export default function App() {
     });
   };
 
+  const cargarMetas = async (ruta: string) => {
+    setErrorMetas(null);
+    try {
+      const [metasProyecto, sesionesProyecto] = await Promise.all([
+        leerMetas(ruta),
+        leerSesiones(ruta, mesActual()),
+      ]);
+      setMetas(metasProyecto);
+      setSesiones(sesionesProyecto);
+      setMetaDiaria(metasProyecto.diaria?.objetivo.toString() ?? '');
+      setMetaLibro(metasProyecto.libro?.objetivo.toString() ?? '');
+      setDesafioObjetivo(metasProyecto.desafio?.objetivo.toString() ?? '');
+      setDesafioLimite(metasProyecto.desafio?.limite ?? '');
+    } catch (fallo) {
+      setMetas(null);
+      setSesiones([]);
+      setErrorMetas(errorDe(fallo).mensaje);
+    }
+  };
+
   const cargar = async (ruta: string, objetivoPreferido?: string | null) => {
     if (cargando.current) {
       return;
     }
     cargando.current = true;
     setEstado('cargando');
+    setTemporizadorActivo(false);
+    setTemporizadorPausado(false);
+    inicioSesionRef.current = null;
+    pausaInicioRef.current = null;
+    pausasRef.current = [];
     setError(null);
     setMensaje(null);
     setErrorGuardado(null);
@@ -455,6 +516,7 @@ export default function App() {
       } catch {
         setCuarentena([]);
       }
+      await cargarMetas(ruta);
       setEstado('listo');
     } catch (fallo) {
       const detalle = errorDe(fallo);
@@ -556,6 +618,117 @@ export default function App() {
         drenajeRef.current = null;
       }
     }
+  };
+
+  const guardarMetasPanel = async () => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const numero = (texto: string) => {
+      const limpio = texto.trim();
+      if (!limpio) {
+        return null;
+      }
+      const valor = Number(limpio);
+      return Number.isFinite(valor) && valor >= 0 ? Math.floor(valor) : null;
+    };
+    const diaria = numero(metaDiaria);
+    const libro = numero(metaLibro);
+    const desafio = numero(desafioObjetivo);
+    const nuevo: MetasDto = {
+      version: 1,
+      diaria: diaria === null ? null : { objetivo: diaria, desde: metas?.diaria?.desde ?? fechaHoy() },
+      libro: libro === null ? null : { objetivo: libro },
+      desafio:
+        desafio === null || !desafioLimite
+          ? null
+          : { objetivo: desafio, limite: desafioLimite },
+      archivadas: metas?.archivadas ?? [],
+    };
+    try {
+      await guardarMetas(actual.raiz, nuevo);
+      setMetas(nuevo);
+      setErrorMetas(null);
+      setMensaje('Metas guardadas.');
+    } catch (fallo) {
+      setErrorMetas(errorDe(fallo).mensaje);
+    }
+  };
+
+  const iniciarTemporizador = () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento) {
+      setErrorMetas('Abre un documento antes de iniciar el temporizador.');
+      return;
+    }
+    inicioSesionRef.current = new Date().toISOString();
+    palabrasInicioRef.current = palabrasDocumento;
+    pausasRef.current = [];
+    pausaInicioRef.current = null;
+    setRestante(preset * 60);
+    setTemporizadorActivo(true);
+    setTemporizadorPausado(false);
+    setErrorMetas(null);
+  };
+
+  const pausarTemporizador = () => {
+    if (!temporizadorActivo || temporizadorPausado) {
+      return;
+    }
+    pausaInicioRef.current = new Date().toISOString();
+    setTemporizadorPausado(true);
+  };
+
+  const reanudarTemporizador = () => {
+    if (!temporizadorPausado) {
+      return;
+    }
+    const inicio = pausaInicioRef.current;
+    if (inicio) {
+      pausasRef.current = [...pausasRef.current, { inicio, fin: new Date().toISOString() }];
+    }
+    pausaInicioRef.current = null;
+    setTemporizadorPausado(false);
+  };
+
+  const finalizarTemporizador = async () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    const inicio = inicioSesionRef.current;
+    if (!actual || !documento || !inicio) {
+      return;
+    }
+    if (temporizadorPausado && pausaInicioRef.current) {
+      pausasRef.current = [
+        ...pausasRef.current,
+        { inicio: pausaInicioRef.current, fin: new Date().toISOString() },
+      ];
+    }
+    const sesion: SesionDto = {
+      id: '',
+      inicio,
+      fin: new Date().toISOString(),
+      preset,
+      pausas: pausasRef.current,
+      palabras: Math.max(0, palabrasDocumento - palabrasInicioRef.current),
+      documento: documento.ruta,
+      autor: actual.autor?.trim() || 'local',
+    };
+    try {
+      await agregarSesion(actual.raiz, sesion);
+      setSesiones(await leerSesiones(actual.raiz, mesActual()));
+      setMensaje(`Sesión de ${preset} min registrada.`);
+      setErrorMetas(null);
+    } catch (fallo) {
+      setErrorMetas(errorDe(fallo).mensaje);
+    }
+    setTemporizadorActivo(false);
+    setTemporizadorPausado(false);
+    inicioSesionRef.current = null;
+    pausaInicioRef.current = null;
+    pausasRef.current = [];
   };
 
   const alCambiar = (cuerpo: string) => {
@@ -1085,6 +1258,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!temporizadorActivo || temporizadorPausado) {
+      return;
+    }
+    const intervalo = window.setInterval(() => {
+      setRestante((valor) => Math.max(0, valor - 1));
+    }, 1000);
+    return () => window.clearInterval(intervalo);
+  }, [temporizadorActivo, temporizadorPausado]);
+
+  useEffect(() => {
+    if (temporizadorActivo && restante === 0 && !temporizadorPausado) {
+      setTemporizadorPausado(true);
+      pausaInicioRef.current = new Date().toISOString();
+    }
+  }, [restante, temporizadorActivo, temporizadorPausado]);
+
+  useEffect(() => {
     if (errorGuardado) {
       // El aviso está en el flujo normal para no tapar el documento con zoom
       // alto. Al aparecer, el panel vuelve arriba y el foco va al aviso.
@@ -1100,6 +1290,9 @@ export default function App() {
       ? pendienteRef.current.cuerpo
       : (activo?.cuerpo ?? '');
   const palabrasDocumento = contarPalabras(textoSinMarcas(cuerpoVisible));
+  const palabrasHoy = sesiones
+    .filter((sesion) => sesion.inicio.startsWith(fechaHoy()))
+    .reduce((total, sesion) => total + sesion.palabras, 0);
   const modoBusqueda = consulta.trim().length >= 2;
 
   const botonDocumento = (documento: DocumentoDto, icono: string) => (
@@ -1710,21 +1903,109 @@ export default function App() {
             {panelDerecho === 'metas' ? (
               <>
                 <section className="dabble-metas">
-                  <div className="dabble-grafico" aria-hidden="true">
-                    <span /><span /><span /><span /><span /><span /><span /><span />
-                  </div>
-                  <h3>Establece tus metas de escritura</h3>
+                  <h3>Tus metas</h3>
                   <p>Sigue tu progreso con hábitos diarios, metas de libro o desafíos a plazo.</p>
-                  <button className="dabble-boton" disabled>+ Agregar una meta</button>
+                  <label className="dabble-campo-meta">
+                    <span>Meta diaria (palabras)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={metaDiaria}
+                      onChange={(evento) => setMetaDiaria(evento.target.value)}
+                      aria-label="Meta diaria de palabras"
+                    />
+                  </label>
+                  <label className="dabble-campo-meta">
+                    <span>Meta del libro (palabras)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={metaLibro}
+                      onChange={(evento) => setMetaLibro(evento.target.value)}
+                      aria-label="Meta de palabras del libro"
+                    />
+                  </label>
+                  <label className="dabble-campo-meta">
+                    <span>Desafío (palabras)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={desafioObjetivo}
+                      onChange={(evento) => setDesafioObjetivo(evento.target.value)}
+                      aria-label="Objetivo del desafío"
+                    />
+                  </label>
+                  <label className="dabble-campo-meta">
+                    <span>Fecha límite</span>
+                    <input
+                      type="date"
+                      value={desafioLimite}
+                      onChange={(evento) => setDesafioLimite(evento.target.value)}
+                      aria-label="Fecha límite del desafío"
+                    />
+                  </label>
+                  <button className="dabble-boton" onClick={() => void guardarMetasPanel()}>
+                    Guardar metas
+                  </button>
+                  {errorMetas && (
+                    <p className="dabble-error" role="alert">
+                      {errorMetas}
+                    </p>
+                  )}
+                  <p className="dabble-resumen">
+                    {palabrasHoy.toLocaleString('es')} palabras hoy · {sesiones.length} sesiones
+                    este mes
+                  </p>
                 </section>
                 <section className="dabble-timer">
                   <div className="dabble-timer-cabecera">
-                    <strong>5:00</strong>
-                    <button className="dabble-play" disabled aria-label="Iniciar temporizador">▶</button>
+                    <strong>{formatearTiempo(restante)}</strong>
+                    {!temporizadorActivo ? (
+                      <button
+                        className="dabble-play"
+                        aria-label="Iniciar temporizador"
+                        onClick={iniciarTemporizador}
+                      >
+                        ▶
+                      </button>
+                    ) : temporizadorPausado ? (
+                      <button
+                        className="dabble-play"
+                        aria-label="Reanudar temporizador"
+                        onClick={reanudarTemporizador}
+                      >
+                        ▶
+                      </button>
+                    ) : (
+                      <button
+                        className="dabble-play"
+                        aria-label="Pausar temporizador"
+                        onClick={pausarTemporizador}
+                      >
+                        ❚❚
+                      </button>
+                    )}
+                    {temporizadorActivo && (
+                      <button
+                        className="dabble-boton"
+                        onClick={() => void finalizarTemporizador()}
+                      >
+                        Finalizar
+                      </button>
+                    )}
                   </div>
                   <div className="dabble-timer-opciones">
                     {[5, 10, 15, 25, 30].map((minutos) => (
-                      <button key={minutos} className={minutos === 5 ? 'activo' : ''} disabled>
+                      <button
+                        key={minutos}
+                        className={minutos === preset ? 'activo' : ''}
+                        aria-pressed={minutos === preset}
+                        disabled={temporizadorActivo}
+                        onClick={() => {
+                          setPreset(minutos);
+                          setRestante(minutos * 60);
+                        }}
+                      >
                         {minutos}
                       </button>
                     ))}
