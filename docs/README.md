@@ -70,6 +70,8 @@
   — Fase 1: contrato visual, retirada de bloques y ajuste del panel de Proyectos.
 - [`iteraciones/18-fase-2-0.md`](iteraciones/18-fase-2-0.md) — Fase 2.0:
   contratos de almacenamiento y modularización para el trabajo en paralelo.
+- [`iteraciones/19-fase-2-4-metas.md`](iteraciones/19-fase-2-4-metas.md) —
+  Fase 2.4: núcleo local de metas y sesiones.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

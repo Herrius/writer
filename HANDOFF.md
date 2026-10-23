@@ -176,6 +176,9 @@ writer/
 - La exportación DOCX valida los caracteres permitidos por XML 1.0 antes de
   escribir el destino.
 - `verify::Documento::hash()` expone el hash del archivo escaneado.
+- `goals`: metas y sesiones locales en `.escritor/metas/` y
+  `.escritor/sesiones/`, con validación y escritura atómica. **Núcleo
+  implementado; Tauri y UI pendientes.**
 
 ### Comandos Tauri
 
@@ -309,14 +312,15 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 
 ### Siguiente tarea inmediata
 
-1. **Fase 2.0 — contratos y modularización**: en curso. El plan y las
-   decisiones iniciales están en
-   [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md). Primer
-   entregable: `docs/esquema-v2.md` y los contratos de comentarios, metas,
-   planificación, plantillas e importación.
-2. **Fase 2.1–2.6 — núcleo local**: manuscrito, comentarios, planificación,
-   metas, importación/exportación y plantillas. Se abre solo después de cerrar
-   2.0 y de que los módulos permitan dos carriles sin conflictos.
+1. **Fase 2.0 — contratos y modularización**: contratos escritos; faltan DTOs,
+   fixtures v1/v2 y modularización. El estado está en
+   [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md).
+2. **Fase 2.4 — metas**: núcleo local implementado en
+   [`docs/iteraciones/19-fase-2-4-metas.md`](docs/iteraciones/19-fase-2-4-metas.md);
+   faltan comandos Tauri, UI y estadísticas.
+3. **Fase 2.1–2.6 — resto del núcleo local**: manuscrito, comentarios,
+   planificación, importación/exportación y plantillas. Se abre por bloques,
+   con los módulos ya separados.
 3. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
    original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
    checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,
