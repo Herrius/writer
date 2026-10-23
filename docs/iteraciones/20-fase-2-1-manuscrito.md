@@ -2,6 +2,7 @@
 
 - **Fecha:** 2026-10-23
 - **Estado:** renombrar y duplicar implementados; resto de 2.1 pendiente.
+- **Commit:** `2a8dd8c`.
 - **Contrato:** [`../esquema-v1.md`](../esquema-v1.md) (escenas y notas) y
   [`../esquema-v2.md`](../esquema-v2.md) (extensiones).
 
