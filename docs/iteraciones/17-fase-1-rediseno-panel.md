@@ -311,5 +311,6 @@ repite la revisión UX sobre el nuevo commit.
   de campos del modal, deuda previa) y P4 5.
 - Informe: [`../revisiones/fase-1-ux-2026-10-22-r2.md`](../revisiones/fase-1-ux-2026-10-22-r2.md).
 - Propuesta de aceptación: [`../revisiones/fase-1-product-owner-2026-10-22.md`](../revisiones/fase-1-product-owner-2026-10-22.md).
-- **Estado:** pendiente de firma del product owner. Release público no
-  autorizado; Windows pendiente.
+- **Estado:** **aprobada con observaciones** por el product owner el
+  2026-10-22. Release público no autorizado; Windows pendiente. La deuda pasa a
+  la Fase 2.0 y a las fases siguientes.

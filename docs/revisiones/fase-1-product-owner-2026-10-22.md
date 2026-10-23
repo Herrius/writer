@@ -4,8 +4,9 @@
 - **Commit de código y tests:** `1857431`
 - **Tag:** `fase-1-congelado-r2`
 - **Alcance:** rediseño del panel de Proyectos (local/offline).
-- **Estado:** **pendiente de firma del product owner**. La fase está completada
-  por el builder y revisada por QA, seguridad, release y UX.
+- **Estado:** **aprobado con observaciones**. Firma registrada por instrucción
+  del product owner el 2026-10-22. La fase está completada por el builder y
+  revisada por QA, seguridad, release y UX.
 
 ## 1. Resumen
 
@@ -73,10 +74,12 @@ python scripts/ci.py calidad           OK (94/94)
 - La deuda P3/P4 queda registrada para las fases siguientes; no bloquea el
   cierre local de la Fase 1.
 
-## 6. Decisión propuesta
+## 6. Decisión
 
 **Aprobado con observaciones.** Se cierra la Fase 1 en Linux x86_64 y se
-autoriza el arranque de la Fase 2.0 (contratos y modularización) cuando el
-product owner firme.
+autoriza el arranque de la Fase 2.0 (contratos y modularización).
 
-**Firma del product owner:** pendiente.
+UX-F1-13 se corrige en el primer pase de accesibilidad de la Fase 2.0; el resto
+de la deuda queda registrada para las fases siguientes.
+
+**Firma del product owner:** registrada el 2026-10-22.
