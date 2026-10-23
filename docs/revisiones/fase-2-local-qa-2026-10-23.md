@@ -294,5 +294,5 @@ También se corrigieron varios P3: HTML `<SCRIPT>` en mayúsculas, archivos vac�
 symlinks en sidecars y plantillas, límite agregado de plantillas, anclas con
 límites de palabra y offsets/hash, y controles sin acción.
 
-Pendiente de re-revisión: repetir los gates y esta QA sobre el commit de
-corrección. La deuda P3/P4 restante sigue en el cierre de la Fase 2.
+Commit de corrección: `9a7469b`. Pendiente de re-revisión: repetir esta QA
+sobre ese commit. La deuda P3/P4 restante sigue en el cierre de la Fase 2.
