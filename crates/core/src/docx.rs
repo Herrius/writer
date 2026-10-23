@@ -514,7 +514,7 @@ fn escapar_xml(texto: &str) -> String {
 /// `[[comentario:nota|texto]]` se convierten en `texto` solo cuando aparecen en
 /// prosa. Los bloques de código, el código inline y las construcciones
 /// escapadas se copian tal cual.
-fn quitar_marcas(markdown: &str) -> String {
+pub(crate) fn quitar_marcas(markdown: &str) -> String {
     // El parser CommonMark decide qué rangos son texto de prosa. Así los
     // delimitadores dentro de código (incluidas listas y citas) y destinos de
     // enlaces no se confunden con anotaciones.

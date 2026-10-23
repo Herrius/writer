@@ -675,6 +675,87 @@ impl Project {
         Ok((id, relativa))
     }
 
+    /// Reordena una escena dentro de su capítulo.
+    pub fn reordenar_escena(&self, id_o_ruta: &str, nuevo_orden: i64) -> Result<String> {
+        if !(1..=99_999).contains(&nuevo_orden) {
+            return Err(Error::Input(
+                "'orden' debe estar entre 1 y 99999".to_string(),
+            ));
+        }
+        let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let Documento::Escena(mut encontrada) = documento else {
+            return Err(Error::Input("solo se pueden reordenar escenas".to_string()));
+        };
+        let prefijo = encontrada
+            .relativa
+            .rsplit_once('/')
+            .map(|(padre, _)| format!("{padre}/"))
+            .unwrap_or_default();
+        if sesion.escaneo.escenas.iter().any(|escena| {
+            escena.relativa.starts_with(&prefijo)
+                && escena.escena.orden == nuevo_orden
+                && escena.escena.id != encontrada.escena.id
+        }) {
+            return Err(Error::Conflict(format!(
+                "'orden' {nuevo_orden} ya está usado en el capítulo"
+            )));
+        }
+        encontrada.escena.orden = nuevo_orden;
+        let relativa = encontrada.relativa.clone();
+        let bytes = encontrada.escena.a_bytes();
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::existente(relativa.clone(), bytes)],
+            "humano",
+            "estructura",
+            None,
+            None,
+        )?;
+        Ok(relativa)
+    }
+
+    /// Convierte una nota de Ideas en un proyecto nuevo.
+    pub fn convertir_idea_en_proyecto(
+        &self,
+        id_o_ruta: &str,
+        destino: &std::path::Path,
+        titulo: &str,
+    ) -> Result<std::path::PathBuf> {
+        let documento = self.leer(id_o_ruta)?;
+        let Documento::Nota(encontrada) = documento else {
+            return Err(Error::Input(
+                "solo una nota de Ideas puede convertirse en proyecto".to_string(),
+            ));
+        };
+        if encontrada.nota.tipo != "ideas" {
+            return Err(Error::Input("la nota no es de tipo ideas".to_string()));
+        }
+        let nuevo = Project::new(destino);
+        nuevo.init(
+            titulo,
+            encontrada.nota.extra.get("autor").and_then(|valor| {
+                if let crate::yaml::Valor::Texto(texto) = valor {
+                    Some(texto.as_str())
+                } else {
+                    None
+                }
+            }),
+            None,
+        )?;
+        if let Some(primera) = nuevo.listar(false)?.into_iter().next() {
+            let id = primera.id().to_string();
+            nuevo.eliminar(&id)?;
+        }
+        let (escena, _) = nuevo.crear_escena(titulo, None, None, None)?;
+        nuevo.escribir_cuerpo(&escena, &encontrada.nota.cuerpo)?;
+        Ok(destino.to_path_buf())
+    }
+
     /// Cambia el título visible de una escena o nota.
     ///
     /// No cambia el nombre del archivo: las rutas y los IDs se mantienen para
@@ -1197,6 +1278,18 @@ impl Project {
         let contenido = crate::docx::exportar(&sesion.escaneo, incluir_notas)?;
         fsutil::escribir_atomico(&destino_abs, &contenido)?;
         Ok(destino_abs)
+    }
+
+    /// Exporta el manuscrito a PDF con el formato de manuscrito por defecto.
+    pub fn exportar_pdf(&self, destino: &Path, forzar: bool) -> Result<PathBuf> {
+        let sesion = self.lectura()?;
+        if !sesion.escaneo.errores.is_empty() {
+            return Err(Error::Project(format!(
+                "no se exporta un proyecto con errores: {}",
+                sesion.escaneo.errores.join("; ")
+            )));
+        }
+        crate::pdf::exportar(&sesion.escaneo, destino, forzar)
     }
 
     fn preparar_destino(&self, destino: &Path, forzar: bool) -> Result<PathBuf> {

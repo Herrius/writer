@@ -2861,6 +2861,43 @@ button.guardar:disabled {
   font-size: 0.7rem;
 }
 
+.dabble-trama-linea {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+  padding: 0.25rem 0.1rem;
+}
+
+.dabble-trama-linea span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / 12%);
+}
+
+.dabble-puntos {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dabble-punto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  border: 1px solid #ece7df;
+  border-radius: 0.3rem;
+  background: #fbfaf7;
+  font-size: 0.72rem;
+}
+
 .dabble-notas-panel h3 {
   margin: 0.2rem 0 0.5rem;
   font-size: 0.85rem;

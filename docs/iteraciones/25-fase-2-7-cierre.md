@@ -25,11 +25,11 @@
 ```text
 cargo fmt --all --check                                   OK
 cargo clippy --workspace --all-targets --all-features     OK
-cargo test --workspace --all-targets --locked             67 + 36 + 25
+cargo test --workspace --all-targets --locked             69 + 37 + 25
 cargo test desktop                                        7/7
 pnpm typecheck                                            OK
 pnpm ui:test                                              63/63
-pnpm e2e                                                  34/34
+pnpm e2e                                                  36/36
 python scripts/ci.py interfaz                             OK
 python scripts/ci.py producto                             OK
 python scripts/ci.py seguridad                            OK
@@ -52,20 +52,19 @@ python scripts/ci.py empaquetado                          OK
 
 ### Funcional
 
-- Comentarios: editar/borrar mensajes con historial visible, copiar/pegar con y
-  sin comentarios, comentarios de solo lectura en previsualización.
-- Metas: estadísticas históricas fuera del mes actual.
-- Planificación: vista gráfica del Plot Grid, edición/borrado de puntos,
-  resolución de @menciones a títulos y conversión de Ideas a proyecto.
-- Importación: selección parcial, previsualización y PDF nativo con formato de
-  manuscrito (hoy se usa el diálogo de impresión).
-- Plantillas: copiar contenido personalizado de `manuscrito/` y `notas/`.
+- Planificación: edición de nombre/color de trama y puntos implementados; la
+  vista es una línea de puntos, no un lienzo con arrastre.
+- Importación: selección múltiple y confirmación implementadas; falta la
+  previsualización del contenido.
+- Plantillas: gestión desde la UI (importar, borrar, duplicar) fuera del
+  contrato mínimo.
+- Comentarios: salto al ancla implementado; queda pulir el resaltado visual.
 
 ### Técnica
 
-- `project.rs` y `App.tsx` siguen siendo grandes; la separación por feature
-  existe en el núcleo (`goals`, `comments`, `planning`, `templates`, `import`)
-  pero falta dividir la UI y `styles.css` por feature.
+- `project.rs`, `App.tsx` y `styles.css` siguen siendo grandes; la separación
+  por feature existe en el núcleo (`goals`, `comments`, `planning`, `templates`,
+  `import`, `pdf`) pero falta dividir la UI y `styles.css` por feature.
 - Reordenar escenas dentro del mismo capítulo por drag & drop.
 - Cobertura de accesibilidad de los paneles nuevos.
 - Windows sigue sin build, instalador ni pruebas; release público no

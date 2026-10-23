@@ -12,6 +12,9 @@ import {
   actualizarPersonaje,
   agregarMensajeComentario,
   agregarSesion,
+  archivarComentario,
+  borrarMensajeComentario,
+  editarMensajeComentario,
   buscar as buscarEnProyecto,
   cambiarArchivo as cambiarArchivoApi,
   crearBackup as crearBackupApi,
@@ -20,20 +23,25 @@ import {
   crearEscena as crearEscenaApi,
   crearNota as crearNotaApi,
   crearProyecto as crearProyectoApi,
+  convertirIdeaEnProyecto,
   crearSticky,
   cuarentena as pedirCuarentena,
   descartarCuarentena,
   duplicar as duplicarDocumento,
-  elegirArchivoImportacion,
+  elegirArchivosImportacion,
   elegirArchivoBackup,
+  elegirCarpetaCreacion,
   elegirCarpetaRestauracion,
   elegirDestinoBackup,
   elegirDestinoDocx,
+  elegirDestinoPdf,
   elegirProyecto,
   errorDe,
   esTauri,
   escribir,
   exportarDocx,
+  exportarPdf,
+  guardarFormatoPdf,
   guardarMetas,
   guardarPlotGrid,
   historial as pedirHistorial,
@@ -42,14 +50,18 @@ import {
   importarMarkdown,
   importarRtf,
   leer,
+  leerFormatoPdf,
   leerMetas,
   leerPlotGrid,
-  leerSesiones,
+  listarSesiones,
   listar,
+  listarComentarios,
   mostrar as pedirRevision,
   mover as moverDocumentoApi,
   proyectoE2e,
   renombrar as renombrarDocumento,
+  reordenarEscena,
+  reabrirComentario,
   resolverComentario,
   restaurarBackup as restaurarBackupApi,
   revertir as revertirRevision,
@@ -61,6 +73,7 @@ import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { MetasDto } from './types/MetasDto';
 import type { PausaDto } from './types/PausaDto';
+import type { FormatoPdfDto } from './types/FormatoPdfDto';
 import type { PlotGridDto } from './types/PlotGridDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
@@ -71,7 +84,13 @@ import { EditorMarkdown } from './EditorMarkdown';
 import { Inicio, type DatosNuevoProyecto } from './Inicio';
 import { analizarCompatibilidad } from './markdown/compatibilidad';
 import { contarPalabras, textoSinMarcas } from './palabras';
-import { colorDesdeTitulo, guardarRecientes, leerRecientes, type Reciente } from './recientes';
+import {
+  colorDesdeTitulo,
+  guardarRecientes,
+  leerRecientes,
+  slugProyecto,
+  type Reciente,
+} from './recientes';
 
 type Estado = 'inicio' | 'cargando' | 'listo' | 'error';
 type Vista = 'editor' | 'fuente' | 'historial';
@@ -97,17 +116,6 @@ type ConfirmacionReversion = {
 };
 
 const RETARDO_AUTOGUARDADO = 900;
-
-function mesActual(): string {
-  return new Date().toISOString().slice(0, 7);
-}
-
-function mesAnterior(): string {
-  const fecha = new Date();
-  fecha.setDate(1);
-  fecha.setMonth(fecha.getMonth() - 1);
-  return fecha.toISOString().slice(0, 7);
-}
 
 function fechaHoy(): string {
   return new Date().toISOString().slice(0, 10);
@@ -273,6 +281,10 @@ export default function App() {
   const [filtroComentarios, setFiltroComentarios] = useState<'todos' | 'abiertos' | 'resueltos' | 'huerfanos'>(
     'todos',
   );
+  const [comentariosProyecto, setComentariosProyecto] = useState<ComentarioDto[]>([]);
+  const [mensajeEditando, setMensajeEditando] = useState<string | null>(null);
+  const [textoEdicionMensaje, setTextoEdicionMensaje] = useState('');
+  const [anclaComentario, setAnclaComentario] = useState<string | null>(null);
   const [metas, setMetas] = useState<MetasDto | null>(null);
   const [sesiones, setSesiones] = useState<SesionDto[]>([]);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
@@ -289,9 +301,17 @@ export default function App() {
   const [nuevaTrama, setNuevaTrama] = useState('');
   const [colorTrama, setColorTrama] = useState('#4d6b8a');
   const [tramaSeleccionada, setTramaSeleccionada] = useState('');
+  const [nombreTramaEdit, setNombreTramaEdit] = useState('');
+  const [colorTramaEdit, setColorTramaEdit] = useState('#4d6b8a');
   const [nuevaNotaTitulo, setNuevaNotaTitulo] = useState('');
   const [nuevaNotaTipo, setNuevaNotaTipo] = useState('cuaderno');
   const [nuevaEscenaTitulo, setNuevaEscenaTitulo] = useState('');
+  const [tipoImportacion, setTipoImportacion] = useState('');
+  const [formatoPdf, setFormatoPdf] = useState<FormatoPdfDto>({
+    fuente: 12,
+    interlineado: 18,
+    margen: 72,
+  });
   const [rolPersonaje, setRolPersonaje] = useState('');
   const [aliasPersonaje, setAliasPersonaje] = useState('');
   const [metaDiaria, setMetaDiaria] = useState('');
@@ -530,12 +550,12 @@ export default function App() {
 
   const cargarMetas = async (ruta: string) => {
     setErrorMetas(null);
-    const [metasResultado, sesionesResultado, sesionesAnteriores, gridResultado] =
+    const [metasResultado, sesionesResultado, gridResultado, formatoResultado] =
       await Promise.allSettled([
         leerMetas(ruta),
-        leerSesiones(ruta, mesActual()),
-        leerSesiones(ruta, mesAnterior()),
+        listarSesiones(ruta),
         leerPlotGrid(ruta),
+        leerFormatoPdf(ruta),
       ]);
     const errores: string[] = [];
     if (metasResultado.status === 'fulfilled') {
@@ -553,12 +573,7 @@ export default function App() {
       errores.push(`Metas: ${errorDe(metasResultado.reason).mensaje}`);
     }
     if (sesionesResultado.status === 'fulfilled') {
-      const anteriores =
-        sesionesAnteriores.status === 'fulfilled' ? sesionesAnteriores.value : [];
-      setSesiones([...anteriores, ...sesionesResultado.value]);
-      if (sesionesAnteriores.status === 'rejected') {
-        errores.push(`Sesiones anteriores: ${errorDe(sesionesAnteriores.reason).mensaje}`);
-      }
+      setSesiones(sesionesResultado.value);
     } else {
       setSesiones([]);
       errores.push(`Sesiones: ${errorDe(sesionesResultado.reason).mensaje}`);
@@ -574,6 +589,11 @@ export default function App() {
       setPlotGrid({ version: 1, tramas: [] });
       setTramaSeleccionada('');
       errores.push(`Planificación: ${errorDe(gridResultado.reason).mensaje}`);
+    }
+    if (formatoResultado.status === 'fulfilled') {
+      setFormatoPdf(formatoResultado.value);
+    } else {
+      errores.push(`Formato PDF: ${errorDe(formatoResultado.reason).mensaje}`);
     }
     if (errores.length > 0) {
       setErrorMetas(errores.join(' · '));
@@ -856,7 +876,7 @@ export default function App() {
     };
     try {
       await agregarSesion(actual.raiz, sesion);
-      setSesiones(await leerSesiones(actual.raiz, mesActual()));
+      setSesiones(await listarSesiones(actual.raiz));
       setMensaje(`Sesión de ${preset} min registrada.`);
       setErrorMetas(null);
     } catch (fallo) {
@@ -993,6 +1013,55 @@ export default function App() {
     }
   };
 
+  const reordenarActivo = async (delta: number) => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento || documento.tipo !== 'escena' || documento.orden === null) {
+      return;
+    }
+    const hermanas = escenas
+      .filter((candidata) => {
+        const partes = candidata.ruta.split('/');
+        const propias = documento.ruta.split('/');
+        return partes[1] === propias[1] && partes[2] === propias[2];
+      })
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    const indice = hermanas.findIndex((candidata) => candidata.id === documento.id);
+    const vecina = hermanas[indice + delta];
+    if (!vecina || vecina.orden === null || documento.orden === null) {
+      return;
+    }
+    try {
+      await reordenarEscena(actual.raiz, documento.id, vecina.orden);
+      await reordenarEscena(actual.raiz, vecina.id, documento.orden);
+      setDocumentos(await listar(actual.raiz, true));
+      setMensaje('Orden de escenas actualizado.');
+    } catch (fallo) {
+      setMensaje(`No se pudo reordenar: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const convertirIdeaActiva = async () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento || documento.clase !== 'ideas') {
+      return;
+    }
+    const padre = await elegirCarpetaCreacion();
+    if (!padre) {
+      return;
+    }
+    const titulo = documento.titulo;
+    const destino = `${padre.replace(/[\\/]+$/, '')}/${slugProyecto(titulo)}`;
+    try {
+      const resumen = await convertirIdeaEnProyecto(actual.raiz, documento.id, destino, titulo);
+      recordarProyecto(resumen, 0);
+      setMensaje(`Idea convertida en proyecto: ${resumen.titulo}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo convertir la idea: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
   const guardarMetadatosActivo = async () => {
     const actual = proyectoRef.current;
     const documento = activoRef.current;
@@ -1078,6 +1147,103 @@ export default function App() {
       setRespuestas((valor) => ({ ...valor, [id]: '' }));
     } catch (fallo) {
       setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
+  const reabrirHilo = async (id: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    try {
+      const actualizado = await reabrirComentario(actual.raiz, id, actual.autor?.trim() || 'local');
+      setComentarios((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+      setComentariosProyecto((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+    } catch (fallo) {
+      setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
+  const archivarHilo = async (id: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    try {
+      await archivarComentario(actual.raiz, id);
+      setComentarios((lista) => lista.filter((comentario) => comentario.id !== id));
+      setComentariosProyecto((lista) => lista.filter((comentario) => comentario.id !== id));
+    } catch (fallo) {
+      setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
+  const editarMensaje = async (id: string, mensajeId: string) => {
+    const actual = proyectoRef.current;
+    const texto = textoEdicionMensaje.trim();
+    if (!actual || !texto) {
+      return;
+    }
+    try {
+      const actualizado = await editarMensajeComentario(
+        actual.raiz,
+        id,
+        mensajeId,
+        actual.autor?.trim() || 'local',
+        texto,
+      );
+      setComentarios((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+      setComentariosProyecto((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+      setMensajeEditando(null);
+      setTextoEdicionMensaje('');
+    } catch (fallo) {
+      setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
+  const borrarMensaje = async (id: string, mensajeId: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    try {
+      const actualizado = await borrarMensajeComentario(
+        actual.raiz,
+        id,
+        mensajeId,
+        actual.autor?.trim() || 'local',
+      );
+      setComentarios((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+      setComentariosProyecto((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+    } catch (fallo) {
+      setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
+  const copiarTexto = async (conComentarios: boolean) => {
+    const texto = conComentarios
+      ? cuerpoVisible
+      : cuerpoVisible.replace(
+          /\[\[comentario:(?:[0-9A-HJKMNP-TV-Z]{26}\|[^|]*\|)?([\s\S]*?)\]\]/g,
+          '$1',
+        );
+    try {
+      await navigator.clipboard.writeText(texto);
+      setMensaje(conComentarios ? 'Texto copiado con comentarios.' : 'Texto copiado sin comentarios.');
+    } catch {
+      setMensaje('No se pudo copiar al portapapeles.');
     }
   };
 
@@ -1215,6 +1381,100 @@ export default function App() {
     }
   };
 
+  const actualizarTrama = async () => {
+    const actual = proyectoRef.current;
+    const trama = plotGrid.tramas.find((candidata) => candidata.id === tramaSeleccionada);
+    if (!actual || !trama || !nombreTramaEdit.trim()) {
+      return;
+    }
+    const nombre = nombreTramaEdit.trim();
+    if (nombre !== trama.nombre) {
+      try {
+        await renombrarDocumento(actual.raiz, trama.id, nombre);
+      } catch (fallo) {
+        setMensaje(`No se pudo renombrar la nota de la trama: ${errorDe(fallo).mensaje}`);
+        return;
+      }
+    }
+    const grid: PlotGridDto = {
+      version: 1,
+      tramas: plotGrid.tramas.map((candidata) =>
+        candidata.id === trama.id
+          ? { ...candidata, nombre, color: colorTramaEdit }
+          : candidata,
+      ),
+    };
+    try {
+      await guardarPlotGrid(actual.raiz, grid);
+      setPlotGrid(grid);
+      setDocumentos(await listar(actual.raiz, true));
+      setMensaje('Trama actualizada.');
+    } catch (fallo) {
+      setMensaje(`No se pudo actualizar la trama: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const quitarPuntoGrid = async (tramaId: string, escenaId: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const grid: PlotGridDto = {
+      version: 1,
+      tramas: plotGrid.tramas.map((trama) =>
+        trama.id === tramaId
+          ? { ...trama, puntos: trama.puntos.filter((punto) => punto.escena !== escenaId) }
+          : trama,
+      ),
+    };
+    try {
+      await guardarPlotGrid(actual.raiz, grid);
+      setPlotGrid(grid);
+    } catch (fallo) {
+      setMensaje(`No se pudo quitar el punto: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const moverPuntoGrid = async (tramaId: string, escenaId: string, delta: number) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const trama = plotGrid.tramas.find((candidata) => candidata.id === tramaId);
+    if (!trama) {
+      return;
+    }
+    const puntos = [...trama.puntos].sort((a, b) => a.orden - b.orden);
+    const indice = puntos.findIndex((punto) => punto.escena === escenaId);
+    const destino = indice + delta;
+    if (indice < 0 || destino < 0 || destino >= puntos.length) {
+      return;
+    }
+    [puntos[indice], puntos[destino]] = [puntos[destino], puntos[indice]];
+    const grid: PlotGridDto = {
+      version: 1,
+      tramas: plotGrid.tramas.map((candidata) =>
+        candidata.id === tramaId
+          ? { ...candidata, puntos: puntos.map((punto, posicion) => ({ ...punto, orden: posicion + 1 })) }
+          : candidata,
+      ),
+    };
+    try {
+      await guardarPlotGrid(actual.raiz, grid);
+      setPlotGrid(grid);
+    } catch (fallo) {
+      setMensaje(`No se pudo mover el punto: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  useEffect(() => {
+    const trama = plotGrid.tramas.find((candidata) => candidata.id === tramaSeleccionada);
+    if (trama) {
+      setNombreTramaEdit(trama.nombre);
+      setColorTramaEdit(trama.color);
+    }
+  }, [tramaSeleccionada, plotGrid.tramas]);
+
   const anadirPuntoGrid = async () => {
     const actual = proyectoRef.current;
     const documento = activoRef.current;
@@ -1264,23 +1524,32 @@ export default function App() {
     if (!actual) {
       return;
     }
-    const archivo = await elegirArchivoImportacion();
-    if (!archivo) {
+    const archivos = await elegirArchivosImportacion();
+    if (archivos.length === 0) {
       return;
     }
-    const nombre = archivo.split(/[\\/]/).at(-1) ?? 'importado';
-    const titulo = nombre.replace(/\.(md|markdown|docx)$/i, '');
+    if (!window.confirm(`Se importarán ${archivos.length} archivo(s):\n${archivos.join('\n')}`)) {
+      return;
+    }
     try {
-      const documento = /\.docx$/i.test(archivo)
-        ? await importarDocx(actual.raiz, archivo, titulo, null)
-        : /\.html?$/i.test(archivo)
-          ? await importarHtml(actual.raiz, archivo, titulo, null)
-          : /\.rtf$/i.test(archivo)
-            ? await importarRtf(actual.raiz, archivo, titulo, null)
-            : await importarMarkdown(actual.raiz, archivo, titulo, null);
+      const tipoNota = tipoImportacion || null;
+      let ultimo = null;
+      for (const archivo of archivos) {
+        const nombre = archivo.split(/[\\/]/).at(-1) ?? 'importado';
+        const titulo = nombre.replace(/\.(md|markdown|docx|html?|rtf)$/i, '');
+        ultimo = /\.docx$/i.test(archivo)
+          ? await importarDocx(actual.raiz, archivo, titulo, tipoNota)
+          : /\.html?$/i.test(archivo)
+            ? await importarHtml(actual.raiz, archivo, titulo, tipoNota)
+            : /\.rtf$/i.test(archivo)
+              ? await importarRtf(actual.raiz, archivo, titulo, tipoNota)
+              : await importarMarkdown(actual.raiz, archivo, titulo, tipoNota);
+      }
       setDocumentos(await listar(actual.raiz, true));
-      await seleccionar(documento);
-      setMensaje(`Documento importado: ${documento.titulo}.`);
+      if (ultimo) {
+        await seleccionar(ultimo);
+      }
+      setMensaje(`${archivos.length} documento(s) importado(s).`);
     } catch (fallo) {
       setMensaje(`No se pudo importar: ${errorDe(fallo).mensaje}`);
     }
@@ -1587,6 +1856,41 @@ export default function App() {
     setMensaje(null);
   };
 
+  const guardarFormato = async () => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    try {
+      await guardarFormatoPdf(actual.raiz, formatoPdf);
+      setMensaje('Formato de PDF guardado.');
+    } catch (fallo) {
+      setMensaje(`No se pudo guardar el formato: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const exportarPdfActivo = async () => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se exporta mientras haya cambios sin guardar.');
+      return;
+    }
+    const destino = await elegirDestinoPdf(actual.titulo);
+    if (!destino) {
+      return;
+    }
+    try {
+      const ruta = await exportarPdf(actual.raiz, destino, true);
+      setMensaje(`PDF exportado: ${ruta}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo exportar el PDF: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
   const exportarDocumento = async () => {
     if (exportando || revirtiendoRef.current) {
       return;
@@ -1835,6 +2139,29 @@ export default function App() {
 
   useEffect(() => {
     const actual = proyectoRef.current;
+    if (!actual) {
+      setComentariosProyecto([]);
+      return;
+    }
+    let cancelado = false;
+    listarComentarios(actual.raiz)
+      .then((lista) => {
+        if (!cancelado) {
+          setComentariosProyecto(lista);
+        }
+      })
+      .catch(() => {
+        if (!cancelado) {
+          setComentariosProyecto([]);
+        }
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [proyecto?.raiz]);
+
+  useEffect(() => {
+    const actual = proyectoRef.current;
     if (!actual || !activo) {
       setComentarios([]);
       return;
@@ -1844,6 +2171,10 @@ export default function App() {
       .then((lista) => {
         if (!cancelado) {
           setComentarios(lista);
+          setComentariosProyecto((todas) => [
+            ...todas.filter((comentario) => comentario.documento !== activo.ruta),
+            ...lista,
+          ]);
           setErrorComentarios(null);
         }
       })
@@ -2442,6 +2773,23 @@ export default function App() {
                         ) : (
                           <p className="vacio">(archivo eliminado)</p>
                         )}
+                        {comentariosProyecto
+                          .filter(
+                            (comentario) =>
+                              comentario.documento === contenido.ruta &&
+                              (!comentario.ancla ||
+                                (contenido.contenido ?? '').includes(comentario.ancla.texto)),
+                          )
+                          .map((comentario) => (
+                            <div key={comentario.id} className="dabble-hilo">
+                              <strong>{comentario.estado}</strong>
+                              {comentario.mensajes.map((mensaje) => (
+                                <p key={mensaje.id} className="dabble-mensaje">
+                                  {mensaje.texto}
+                                </p>
+                              ))}
+                            </div>
+                          ))}
                       </details>
                     ))}
                   </>
@@ -2522,6 +2870,7 @@ export default function App() {
                     personajes={personajes}
                     tramas={tramas}
                     onCambio={alCambiar}
+                    ancla={anclaComentario}
                     onComentario={async (texto, textoMarcado) => {
                       const actual = proyectoRef.current;
                       const documento = activoRef.current;
@@ -2709,8 +3058,13 @@ export default function App() {
                     </p>
                   )}
                   <p className="dabble-resumen">
-                    {palabrasHoy.toLocaleString('es')} palabras hoy · {sesiones.length} sesiones
-                    este mes · racha {racha} día{racha === 1 ? '' : 's'}
+                    {palabrasHoy.toLocaleString('es')} palabras hoy ·{' '}
+                    {
+                      sesiones.filter((sesion) =>
+                        sesion.inicio.startsWith(new Date().toISOString().slice(0, 7)),
+                      ).length
+                    }{' '}
+                    sesiones este mes · racha {racha} día{racha === 1 ? '' : 's'}
                   </p>
                   <div className="dabble-grafico" aria-hidden="true">
                     {ultimosDias.map((dia) => (
@@ -2862,6 +3216,16 @@ export default function App() {
                         Duplicar
                       </button>
                     </div>
+                    {activo.tipo === 'escena' && (
+                      <div className="dabble-acciones-documento">
+                        <button className="dabble-boton" onClick={() => void reordenarActivo(-1)}>
+                          Subir
+                        </button>
+                        <button className="dabble-boton" onClick={() => void reordenarActivo(1)}>
+                          Bajar
+                        </button>
+                      </div>
+                    )}
                     <div className="dabble-acciones-documento">
                       <button className="dabble-boton" onClick={copiarActivo}>
                         Copiar
@@ -2877,9 +3241,63 @@ export default function App() {
                     </div>
                     <div className="dabble-acciones-documento">
                       <button className="dabble-boton" onClick={() => window.print()}>
-                        Imprimir / PDF
+                        Imprimir
+                      </button>
+                      <button className="dabble-boton" onClick={() => void exportarPdfActivo()}>
+                        Exportar PDF
                       </button>
                     </div>
+                    <label className="dabble-campo-meta">
+                      <span>Fuente PDF (pt)</span>
+                      <input
+                        type="number"
+                        min={6}
+                        max={36}
+                        value={formatoPdf.fuente}
+                        onChange={(evento) =>
+                          setFormatoPdf((valor) => ({
+                            ...valor,
+                            fuente: Number(evento.target.value),
+                          }))
+                        }
+                        aria-label="Fuente del PDF"
+                      />
+                    </label>
+                    <label className="dabble-campo-meta">
+                      <span>Interlineado PDF (pt)</span>
+                      <input
+                        type="number"
+                        min={6}
+                        max={72}
+                        value={formatoPdf.interlineado}
+                        onChange={(evento) =>
+                          setFormatoPdf((valor) => ({
+                            ...valor,
+                            interlineado: Number(evento.target.value),
+                          }))
+                        }
+                        aria-label="Interlineado del PDF"
+                      />
+                    </label>
+                    <label className="dabble-campo-meta">
+                      <span>Margen PDF (pt)</span>
+                      <input
+                        type="number"
+                        min={36}
+                        max={144}
+                        value={formatoPdf.margen}
+                        onChange={(evento) =>
+                          setFormatoPdf((valor) => ({
+                            ...valor,
+                            margen: Number(evento.target.value),
+                          }))
+                        }
+                        aria-label="Margen del PDF"
+                      />
+                    </label>
+                    <button className="dabble-boton" onClick={() => void guardarFormato()}>
+                      Guardar formato PDF
+                    </button>
                     <div className="dabble-acciones-documento secundarias">
                       {activo.archivo ? (
                         <button
@@ -2948,6 +3366,14 @@ export default function App() {
                         <option value="huerfanos">Huérfanos</option>
                       </select>
                     </label>
+                    <div className="dabble-acciones-documento">
+                      <button className="dabble-boton" onClick={() => void copiarTexto(true)}>
+                        Copiar con comentarios
+                      </button>
+                      <button className="dabble-boton" onClick={() => void copiarTexto(false)}>
+                        Copiar sin comentarios
+                      </button>
+                    </div>
                     <label className="dabble-campo-meta">
                       <span>Nota rápida</span>
                       <input
@@ -2981,11 +3407,96 @@ export default function App() {
                               </strong>
                               <span>{comentario.estado}</span>
                             </div>
+                            {comentario.ancla && (
+                              <button
+                                className="dabble-boton"
+                                onClick={() => {
+                                  setVista('editor');
+                                  setAnclaComentario(comentario.ancla?.texto ?? null);
+                                }}
+                              >
+                                Ir al ancla
+                              </button>
+                            )}
+                            <div className="dabble-acciones-documento">
+                              {comentario.estado === 'abierto' ? (
+                                <button
+                                  className="dabble-boton"
+                                  onClick={() => void resolverHilo(comentario.id)}
+                                >
+                                  Resolver
+                                </button>
+                              ) : (
+                                <button
+                                  className="dabble-boton"
+                                  onClick={() => void reabrirHilo(comentario.id)}
+                                >
+                                  Reabrir
+                                </button>
+                              )}
+                              <button
+                                className="dabble-boton"
+                                onClick={() => void archivarHilo(comentario.id)}
+                              >
+                                Archivar hilo
+                              </button>
+                            </div>
                             {comentario.mensajes.map((mensaje) => (
-                              <p key={mensaje.id} className="dabble-mensaje">
-                                {mensaje.texto}
-                              </p>
+                              <div key={mensaje.id} className="dabble-mensaje-fila">
+                                <p className="dabble-mensaje">
+                                  <small>{mensaje.tipo}</small> {mensaje.texto}
+                                </p>
+                                {['comentario', 'respuesta'].includes(mensaje.tipo) && (
+                                  <div className="dabble-acciones-documento">
+                                    <button
+                                      className="dabble-boton"
+                                      onClick={() => {
+                                        setMensajeEditando(mensaje.id);
+                                        setTextoEdicionMensaje(mensaje.texto);
+                                      }}
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      className="dabble-boton"
+                                      onClick={() => void borrarMensaje(comentario.id, mensaje.id)}
+                                    >
+                                      Borrar mensaje
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             ))}
+                            {mensajeEditando &&
+                              comentario.mensajes.some(
+                                (mensaje) => mensaje.id === mensajeEditando,
+                              ) && (
+                                <>
+                                  <input
+                                    value={textoEdicionMensaje}
+                                    onChange={(evento) =>
+                                      setTextoEdicionMensaje(evento.target.value)
+                                    }
+                                    aria-label="Editar mensaje"
+                                  />
+                                  <div className="dabble-acciones-documento">
+                                    <button
+                                      className="dabble-boton"
+                                      onClick={() =>
+                                        void editarMensaje(comentario.id, mensajeEditando)
+                                      }
+                                    >
+                                      Guardar edición
+                                    </button>
+                                    <button
+                                      className="dabble-boton"
+                                      onClick={() => setMensajeEditando(null)}
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                </>
+                              )}
                             {comentario.estado === 'abierto' && (
                               <>
                                 <input
@@ -3006,12 +3517,6 @@ export default function App() {
                                     disabled={(respuestas[comentario.id] ?? '').trim() === ''}
                                   >
                                     Responder
-                                  </button>
-                                  <button
-                                    className="dabble-boton"
-                                    onClick={() => void resolverHilo(comentario.id)}
-                                  >
-                                    Resolver
                                   </button>
                                 </div>
                               </>
@@ -3073,6 +3578,26 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+                <label className="dabble-campo-meta">
+                  <span>Nombre de la trama</span>
+                  <input
+                    value={nombreTramaEdit}
+                    onChange={(evento) => setNombreTramaEdit(evento.target.value)}
+                    aria-label="Nombre de la trama seleccionada"
+                  />
+                </label>
+                <label className="dabble-campo-meta">
+                  <span>Color de la trama</span>
+                  <input
+                    type="color"
+                    value={colorTramaEdit}
+                    onChange={(evento) => setColorTramaEdit(evento.target.value)}
+                    aria-label="Color de la trama seleccionada"
+                  />
+                </label>
+                <button className="dabble-boton" onClick={() => void actualizarTrama()}>
+                  Guardar trama
+                </button>
                 <button
                   className="dabble-boton"
                   onClick={() => void anadirPuntoGrid()}
@@ -3085,20 +3610,79 @@ export default function App() {
                   <p className="dabble-vacio">Sin tramas en el Plot Grid.</p>
                 ) : (
                   <ul className="dabble-tramas">
-                    {plotGrid.tramas.map((trama) => (
-                      <li key={trama.id} className="dabble-trama">
-                        <span
-                          className="dabble-trama-color"
-                          style={{ background: trama.color }}
-                          aria-hidden="true"
-                        />
-                        <strong>{trama.nombre}</strong>
-                        <small>{trama.puntos.length} escena(s)</small>
-                      </li>
-                    ))}
+                    {plotGrid.tramas.map((trama) => {
+                      const puntos = [...trama.puntos].sort((a, b) => a.orden - b.orden);
+                      return (
+                        <li key={trama.id} className="dabble-trama">
+                          <span
+                            className="dabble-trama-color"
+                            style={{ background: trama.color }}
+                            aria-hidden="true"
+                          />
+                          <strong>{trama.nombre}</strong>
+                          <small>{trama.puntos.length} escena(s)</small>
+                          {puntos.length > 0 && (
+                            <div className="dabble-trama-linea" aria-hidden="true">
+                              {puntos.map((punto) => (
+                                <span
+                                  key={punto.escena}
+                                  title={punto.etiqueta ?? undefined}
+                                  style={{ background: trama.color }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {trama.id === tramaSeleccionada && puntos.length > 0 && (
+                            <ul className="dabble-puntos">
+                              {puntos.map((punto) => {
+                                const escena = documentos.find(
+                                  (documento) => documento.id === punto.escena,
+                                );
+                                return (
+                                  <li key={punto.escena} className="dabble-punto">
+                                    <span>{escena?.titulo ?? 'Escena desconocida'}</span>
+                                    <div className="dabble-acciones-documento">
+                                      <button
+                                        className="dabble-boton"
+                                        onClick={() =>
+                                          void moverPuntoGrid(trama.id, punto.escena, -1)
+                                        }
+                                      >
+                                        ↑
+                                      </button>
+                                      <button
+                                        className="dabble-boton"
+                                        onClick={() =>
+                                          void moverPuntoGrid(trama.id, punto.escena, 1)
+                                        }
+                                      >
+                                        ↓
+                                      </button>
+                                      <button
+                                        className="dabble-boton"
+                                        onClick={() =>
+                                          void quitarPuntoGrid(trama.id, punto.escena)
+                                        }
+                                      >
+                                        Quitar
+                                      </button>
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
 
+                {activo?.clase === 'ideas' && (
+                  <button className="dabble-boton" onClick={() => void convertirIdeaActiva()}>
+                    Convertir idea en proyecto
+                  </button>
+                )}
                 <h3>Crear documento</h3>
                 <label className="dabble-campo-meta">
                   <span>Título de la escena</span>
@@ -3140,6 +3724,23 @@ export default function App() {
                 </button>
 
                 <h3>Importar y respaldar</h3>
+                <label className="dabble-campo-meta">
+                  <span>Importar como</span>
+                  <select
+                    value={tipoImportacion}
+                    onChange={(evento) => setTipoImportacion(evento.target.value)}
+                    aria-label="Importar como"
+                  >
+                    <option value="">Escena</option>
+                    <option value="cuaderno">Nota de cuaderno</option>
+                    <option value="ideas">Idea</option>
+                    <option value="personajes">Personaje</option>
+                    <option value="tramas">Trama</option>
+                    <option value="lugares">Lugar</option>
+                    <option value="cronologia">Cronología</option>
+                    <option value="objetos">Objeto</option>
+                  </select>
+                </label>
                 <button className="dabble-boton" onClick={() => void importarArchivo()}>
                   Importar documento
                 </button>

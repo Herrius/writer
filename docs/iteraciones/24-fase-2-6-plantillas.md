@@ -1,7 +1,8 @@
 # Iteración 24 — Fase 2.6: plantillas locales
 
 - **Fecha:** 2026-10-23
-- **Estado:** plantillas locales y creación desde plantilla implementadas.
+- **Estado:** plantillas locales, estructura y contenido, y creación desde
+  plantilla implementadas.
 - **Contrato:** [`../plantillas-v1.md`](../plantillas-v1.md).
 
 ## 1. Alcance
@@ -23,8 +24,6 @@ pnpm ui:test                                              63/63
 
 ## 3. Pendiente
 
-- Copiar contenido personalizado de `manuscrito/` y `notas/` de la plantilla;
-  hoy se genera estructura y notas iniciales.
 - Gestión de plantillas desde la UI (importar, borrar, duplicar).
 - Prueba de escritorio con el directorio de datos real.
 

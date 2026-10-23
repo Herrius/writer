@@ -437,6 +437,92 @@ fn ruta_comentario(raiz: &Path, id: &str) -> Result<PathBuf> {
     Ok(directorio.join(format!("{id}.json")))
 }
 
+/// Reabre un hilo resuelto.
+pub fn reabrir_comentario(raiz: &Path, id: &str, autor: &str) -> Result<Comentario> {
+    let mut comentario = leer_comentario(raiz, id)?;
+    if comentario.estado == "abierto" {
+        return Ok(comentario);
+    }
+    comentario
+        .mensajes
+        .push(Mensaje::nuevo("resolucion", autor, "Hilo reabierto.")?);
+    comentario.estado = "abierto".to_string();
+    comentario.actualizado = time::ahora();
+    comentario.validar()?;
+    guardar_comentario(raiz, &comentario)?;
+    Ok(comentario)
+}
+
+/// Edita un mensaje añadiendo un evento `edicion` con el texto nuevo.
+pub fn editar_mensaje(
+    raiz: &Path,
+    id: &str,
+    mensaje_id: &str,
+    autor: &str,
+    texto: &str,
+) -> Result<Comentario> {
+    let mut comentario = leer_comentario(raiz, id)?;
+    if !comentario
+        .mensajes
+        .iter()
+        .any(|mensaje| mensaje.id == mensaje_id)
+    {
+        return Err(Error::NotFound(format!(
+            "mensaje no encontrado: {mensaje_id}"
+        )));
+    }
+    let mut mensaje = Mensaje::nuevo("edicion", autor, texto)?;
+    mensaje.reemplaza = Some(mensaje_id.to_string());
+    comentario.mensajes.push(mensaje);
+    comentario.actualizado = time::ahora();
+    comentario.validar()?;
+    guardar_comentario(raiz, &comentario)?;
+    Ok(comentario)
+}
+
+/// Borra un mensaje añadiendo un evento `borrado` (no destruye el historial).
+pub fn borrar_mensaje(raiz: &Path, id: &str, mensaje_id: &str, autor: &str) -> Result<Comentario> {
+    let mut comentario = leer_comentario(raiz, id)?;
+    if !comentario
+        .mensajes
+        .iter()
+        .any(|mensaje| mensaje.id == mensaje_id)
+    {
+        return Err(Error::NotFound(format!(
+            "mensaje no encontrado: {mensaje_id}"
+        )));
+    }
+    let mut mensaje = Mensaje::nuevo("borrado", autor, "Mensaje borrado.")?;
+    mensaje.reemplaza = Some(mensaje_id.to_string());
+    comentario.mensajes.push(mensaje);
+    comentario.actualizado = time::ahora();
+    comentario.validar()?;
+    guardar_comentario(raiz, &comentario)?;
+    Ok(comentario)
+}
+
+/// Archiva un hilo: mueve el sidecar a `comentarios/archivados/`.
+///
+/// No borra el ancla del Markdown; la UI debe quitarla antes si corresponde.
+pub fn archivar_comentario(raiz: &Path, id: &str) -> Result<()> {
+    leer_comentario(raiz, id)?;
+    let directorio = directorio_comentarios(raiz, true)?
+        .ok_or_else(|| Error::Project("no se pudo abrir .escritor/comentarios".to_string()))?;
+    let archivados = directorio.join("archivados");
+    if !archivados.exists() {
+        std::fs::create_dir(&archivados)
+            .map_err(|error| Error::Io(error).with_path(&archivados))?;
+        fsutil::fsync_dir(&directorio)?;
+    }
+    let archivados = fsutil::directorio_real(&archivados)?;
+    let origen = directorio.join(format!("{id}.json"));
+    let destino = archivados.join(format!("{id}.json"));
+    std::fs::rename(&origen, &destino).map_err(|error| Error::Io(error).with_path(&origen))?;
+    fsutil::fsync_dir(&directorio)?;
+    fsutil::fsync_dir(&archivados)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -267,6 +267,32 @@ pub fn agregar_sesion(raiz: &Path, sesion: &Sesion) -> Result<PathBuf> {
     Ok(ruta)
 }
 
+/// Lee todas las sesiones del proyecto, ordenadas por inicio.
+pub fn listar_sesiones(raiz: &Path) -> Result<Vec<Sesion>> {
+    let escritor = escritor(raiz)?;
+    let directorio = escritor.join("sesiones");
+    if !directorio.is_dir() {
+        return Ok(Vec::new());
+    }
+    let directorio = fsutil::directorio_real(&directorio)?;
+    let mut sesiones = Vec::new();
+    for entrada in
+        std::fs::read_dir(&directorio).map_err(|error| Error::Io(error).with_path(&directorio))?
+    {
+        let entrada = entrada.map_err(|error| Error::Io(error).with_path(&directorio))?;
+        let ruta = entrada.path();
+        if ruta.extension().and_then(|valor| valor.to_str()) != Some("jsonl") {
+            continue;
+        }
+        let Some(mes) = ruta.file_stem().and_then(|valor| valor.to_str()) else {
+            continue;
+        };
+        sesiones.extend(leer_sesiones(raiz, mes)?);
+    }
+    sesiones.sort_by(|a, b| a.inicio.cmp(&b.inicio));
+    Ok(sesiones)
+}
+
 /// Lee las sesiones de un mes (`YYYY-MM`).
 pub fn leer_sesiones(raiz: &Path, mes: &str) -> Result<Vec<Sesion>> {
     validar_mes(mes)?;

@@ -1,8 +1,9 @@
 # Iteración 22 — Fase 2.3: planificación
 
 - **Fecha:** 2026-10-23
-- **Estado:** Plot Grid, tipos de nota nuevos, @menciones y campos de personaje
-  implementados; falta revisión de UX.
+- **Estado:** Plot Grid con puntos editables (mover/eliminar), tipos de nota
+  nuevos, @menciones, campos de personaje y conversión de Ideas a proyecto
+  implementados; falta la vista gráfica de líneas y la revisión de UX.
 - **Contrato:** [`../planificacion-v1.md`](../planificacion-v1.md).
 
 ## 1. Alcance
@@ -33,9 +34,8 @@ pnpm exec playwright test e2e/fase-2-3-planificacion.spec.ts 1/1
 ## 3. Pendiente
 
 - Vista visual del Plot Grid (cuadrícula/líneas) más allá de la lista.
-- Editar/eliminar puntos y tramas desde la UI.
+- Editar nombre/color de una trama desde la UI (los puntos ya se mueven y eliminan).
 - Resolver @menciones a títulos y salto a la nota.
-- Conversión de Ideas a proyecto.
 - Revisión de accesibilidad.
 
 ## 4. Límites

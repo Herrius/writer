@@ -133,6 +133,22 @@ fn renombrar_y_duplicar_documentos() {
 }
 
 #[test]
+fn exportar_pdf_genera_documento_local() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto
+        .init("Novela", Some("Autora"), Some("es"))
+        .expect("init");
+    let destino = directorio.path().join("salida.pdf");
+    let exportado = proyecto
+        .exportar_pdf(&destino, false)
+        .expect("exportar PDF");
+    let bytes = std::fs::read(exportado).expect("leer PDF");
+    assert!(bytes.starts_with(b"%PDF-1.4"));
+    assert!(bytes.windows(5).any(|ventana| ventana == b"%%EOF"));
+}
+
+#[test]
 fn escritura_con_hash_base_detecta_cambios_externos() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));

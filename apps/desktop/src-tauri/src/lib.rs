@@ -766,6 +766,13 @@ fn agregar_sesion(ruta: String, sesion: SesionDto) -> Result<String, ErrorDto> {
 }
 
 #[tauri::command]
+fn listar_sesiones(ruta: String) -> Result<Vec<SesionDto>, ErrorDto> {
+    writer_core::goals::listar_sesiones(std::path::Path::new(&ruta))
+        .map(|sesiones| sesiones.into_iter().map(Into::into).collect())
+        .map_err(error)
+}
+
+#[tauri::command]
 fn leer_sesiones(ruta: String, mes: String) -> Result<Vec<SesionDto>, ErrorDto> {
     writer_core::goals::leer_sesiones(std::path::Path::new(&ruta), &mes)
         .map(|sesiones| sesiones.into_iter().map(Into::into).collect())
@@ -962,6 +969,49 @@ fn agregar_mensaje_comentario(
     writer_core::comments::agregar_mensaje(std::path::Path::new(&ruta), &id, &tipo, &autor, &texto)
         .map(Into::into)
         .map_err(error)
+}
+
+#[tauri::command]
+fn reabrir_comentario(ruta: String, id: String, autor: String) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::reabrir_comentario(std::path::Path::new(&ruta), &id, &autor)
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn editar_mensaje_comentario(
+    ruta: String,
+    id: String,
+    mensaje_id: String,
+    autor: String,
+    texto: String,
+) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::editar_mensaje(
+        std::path::Path::new(&ruta),
+        &id,
+        &mensaje_id,
+        &autor,
+        &texto,
+    )
+    .map(Into::into)
+    .map_err(error)
+}
+
+#[tauri::command]
+fn borrar_mensaje_comentario(
+    ruta: String,
+    id: String,
+    mensaje_id: String,
+    autor: String,
+) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::borrar_mensaje(std::path::Path::new(&ruta), &id, &mensaje_id, &autor)
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn archivar_comentario(ruta: String, id: String) -> Result<(), ErrorDto> {
+    writer_core::comments::archivar_comentario(std::path::Path::new(&ruta), &id).map_err(error)
 }
 
 #[tauri::command]
@@ -1170,6 +1220,59 @@ fn exportar_docx(
         .map_err(error)
 }
 
+/// Formato de manuscrito para PDF.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct FormatoPdfDto {
+    /// Fuente en puntos.
+    pub fuente: f32,
+    /// Interlineado en puntos.
+    pub interlineado: f32,
+    /// Margen en puntos.
+    pub margen: f32,
+}
+
+impl From<writer_core::pdf::Formato> for FormatoPdfDto {
+    fn from(valor: writer_core::pdf::Formato) -> Self {
+        Self {
+            fuente: valor.fuente,
+            interlineado: valor.interlineado,
+            margen: valor.margen,
+        }
+    }
+}
+
+impl From<FormatoPdfDto> for writer_core::pdf::Formato {
+    fn from(valor: FormatoPdfDto) -> Self {
+        Self {
+            fuente: valor.fuente,
+            interlineado: valor.interlineado,
+            margen: valor.margen,
+        }
+    }
+}
+
+#[tauri::command]
+fn leer_formato_pdf(ruta: String) -> Result<FormatoPdfDto, ErrorDto> {
+    writer_core::pdf::leer_formato(std::path::Path::new(&ruta))
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn guardar_formato_pdf(ruta: String, formato: FormatoPdfDto) -> Result<(), ErrorDto> {
+    writer_core::pdf::guardar_formato(std::path::Path::new(&ruta), &formato.into()).map_err(error)
+}
+
+#[tauri::command]
+fn exportar_pdf(ruta: String, destino: String, forzar: bool) -> Result<String, ErrorDto> {
+    Project::new(&ruta)
+        .exportar_pdf(std::path::Path::new(&destino), forzar)
+        .map(|ruta| ruta.display().to_string())
+        .map_err(error)
+}
+
 #[tauri::command]
 fn cuarentena(ruta: String) -> Result<Vec<CuarentenaDto>, ErrorDto> {
     let items = Project::new(&ruta).cuarentena().map_err(error)?;
@@ -1299,6 +1402,27 @@ fn cambiar_archivo(
 }
 
 #[tauri::command]
+fn reordenar_escena(ruta: String, objetivo: String, orden: i64) -> Result<DocumentoDto, ErrorDto> {
+    Project::new(&ruta)
+        .reordenar_escena(&objetivo, orden)
+        .map_err(error)?;
+    leer(ruta, objetivo)
+}
+
+#[tauri::command]
+fn convertir_idea_en_proyecto(
+    ruta: String,
+    objetivo: String,
+    destino: String,
+    titulo: String,
+) -> Result<ProyectoDto, ErrorDto> {
+    Project::new(&ruta)
+        .convertir_idea_en_proyecto(&objetivo, std::path::Path::new(&destino), &titulo)
+        .map_err(error)?;
+    abrir_proyecto(destino)
+}
+
+#[tauri::command]
 fn renombrar(ruta: String, objetivo: String, titulo: String) -> Result<DocumentoDto, ErrorDto> {
     Project::new(&ruta)
         .renombrar(&objetivo, &titulo)
@@ -1412,6 +1536,9 @@ pub fn run() {
             mostrar,
             revertir,
             exportar_docx,
+            exportar_pdf,
+            leer_formato_pdf,
+            guardar_formato_pdf,
             cuarentena,
             descartar_cuarentena,
             proyecto_e2e,
@@ -1423,12 +1550,15 @@ pub fn run() {
             actualizar_nota,
             actualizar_personaje,
             cambiar_archivo,
+            reordenar_escena,
+            convertir_idea_en_proyecto,
             renombrar,
             duplicar,
             leer_metas,
             guardar_metas,
             agregar_sesion,
             leer_sesiones,
+            listar_sesiones,
             leer_plot_grid,
             guardar_plot_grid,
             listar_plantillas,
@@ -1443,6 +1573,10 @@ pub fn run() {
             crear_comentario,
             crear_sticky,
             agregar_mensaje_comentario,
+            editar_mensaje_comentario,
+            borrar_mensaje_comentario,
+            reabrir_comentario,
+            archivar_comentario,
             resolver_comentario,
             sincronizar_comentarios_huerfanos,
             marcar_comentario_huerfano
@@ -1490,6 +1624,7 @@ mod tests {
         PlotGridDto::export_all(&config).expect("exportar PlotGridDto");
         EstructuraDto::export_all(&config).expect("exportar EstructuraDto");
         PlantillaDto::export_all(&config).expect("exportar PlantillaDto");
+        FormatoPdfDto::export_all(&config).expect("exportar FormatoPdfDto");
     }
 
     #[test]

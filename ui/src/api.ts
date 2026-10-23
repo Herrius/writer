@@ -8,6 +8,7 @@ import type { ErrorDto } from './types/ErrorDto';
 import type { EscaneoDto } from './types/EscaneoDto';
 import type { GuardadoDto } from './types/GuardadoDto';
 import type { MetasDto } from './types/MetasDto';
+import type { FormatoPdfDto } from './types/FormatoPdfDto';
 import type { PlotGridDto } from './types/PlotGridDto';
 import type { PlantillaDto } from './types/PlantillaDto';
 import type { ProyectoDto } from './types/ProyectoDto';
@@ -197,6 +198,44 @@ export async function crearProyecto(
   });
 }
 
+export async function elegirDestinoPdf(titulo: string): Promise<string | null> {
+  const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'novela'}.pdf`;
+  if (!esTauri) {
+    return window.prompt('Ruta del PDF', nombre);
+  }
+  const seleccion = await save({
+    title: 'Exportar manuscrito a PDF',
+    defaultPath: nombre,
+    filters: [{ name: 'Documento PDF', extensions: ['pdf'] }],
+  });
+  return typeof seleccion === 'string' ? seleccion : null;
+}
+
+export async function leerFormatoPdf(ruta: string): Promise<FormatoPdfDto> {
+  if (!esTauri) {
+    return { fuente: 12, interlineado: 18, margen: 72 };
+  }
+  return invoke<FormatoPdfDto>('leer_formato_pdf', { ruta });
+}
+
+export async function guardarFormatoPdf(ruta: string, formato: FormatoPdfDto): Promise<void> {
+  if (!esTauri) {
+    return;
+  }
+  await invoke('guardar_formato_pdf', { ruta, formato });
+}
+
+export async function exportarPdf(
+  ruta: string,
+  destino: string,
+  forzar: boolean,
+): Promise<string> {
+  if (!esTauri) {
+    return destino;
+  }
+  return invoke<string>('exportar_pdf', { ruta, destino, forzar });
+}
+
 export async function elegirDestinoDocx(titulo: string): Promise<string | null> {
   const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'novela'}.docx`;
   if (!esTauri) {
@@ -261,6 +300,13 @@ export async function agregarSesion(ruta: string, sesion: SesionDto): Promise<st
     return '(demo)';
   }
   return invoke<string>('agregar_sesion', { ruta, sesion });
+}
+
+export async function listarSesiones(ruta: string): Promise<SesionDto[]> {
+  if (!esTauri) {
+    return sesionesDemo;
+  }
+  return invoke<SesionDto[]>('listar_sesiones', { ruta });
 }
 
 export async function leerSesiones(ruta: string, mes: string): Promise<SesionDto[]> {
@@ -416,6 +462,89 @@ export async function sincronizarComentariosHuerfanos(
     documento,
     texto,
   });
+}
+
+export async function reabrirComentario(
+  ruta: string,
+  id: string,
+  autor: string,
+): Promise<ComentarioDto> {
+  if (!esTauri) {
+    const comentario = comentariosDemo.find((candidato) => candidato.id === id);
+    if (!comentario) {
+      throw { tipo: 'no-encontrado', mensaje: `comentario no encontrado: ${id}` } satisfies ErrorDto;
+    }
+    comentario.estado = 'abierto';
+    comentario.actualizado = new Date().toISOString();
+    return comentario;
+  }
+  return invoke<ComentarioDto>('reabrir_comentario', { ruta, id, autor });
+}
+
+export async function editarMensajeComentario(
+  ruta: string,
+  id: string,
+  mensajeId: string,
+  autor: string,
+  texto: string,
+): Promise<ComentarioDto> {
+  if (!esTauri) {
+    const comentario = comentariosDemo.find((candidato) => candidato.id === id);
+    if (!comentario) {
+      throw { tipo: 'no-encontrado', mensaje: `comentario no encontrado: ${id}` } satisfies ErrorDto;
+    }
+    comentario.mensajes.push({
+      id: `demo-edicion-${Date.now()}`,
+      tipo: 'edicion',
+      autor,
+      ts: new Date().toISOString(),
+      texto,
+      reemplaza: mensajeId,
+    });
+    return comentario;
+  }
+  return invoke<ComentarioDto>('editar_mensaje_comentario', {
+    ruta,
+    id,
+    mensajeId,
+    autor,
+    texto,
+  });
+}
+
+export async function borrarMensajeComentario(
+  ruta: string,
+  id: string,
+  mensajeId: string,
+  autor: string,
+): Promise<ComentarioDto> {
+  if (!esTauri) {
+    const comentario = comentariosDemo.find((candidato) => candidato.id === id);
+    if (!comentario) {
+      throw { tipo: 'no-encontrado', mensaje: `comentario no encontrado: ${id}` } satisfies ErrorDto;
+    }
+    comentario.mensajes.push({
+      id: `demo-borrado-${Date.now()}`,
+      tipo: 'borrado',
+      autor,
+      ts: new Date().toISOString(),
+      texto: 'Mensaje borrado.',
+      reemplaza: mensajeId,
+    });
+    return comentario;
+  }
+  return invoke<ComentarioDto>('borrar_mensaje_comentario', { ruta, id, mensajeId, autor });
+}
+
+export async function archivarComentario(ruta: string, id: string): Promise<void> {
+  if (!esTauri) {
+    const indice = comentariosDemo.findIndex((candidato) => candidato.id === id);
+    if (indice >= 0) {
+      comentariosDemo.splice(indice, 1);
+    }
+    return;
+  }
+  await invoke('archivar_comentario', { ruta, id });
 }
 
 export async function resolverComentario(
@@ -578,6 +707,36 @@ export async function cambiarArchivo(
   return invoke<DocumentoDto>('cambiar_archivo', { ruta, objetivo, archivo });
 }
 
+export async function reordenarEscena(
+  ruta: string,
+  objetivo: string,
+  orden: number,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw { tipo: 'no-encontrado', mensaje: `documento no encontrado: ${objetivo}` } satisfies ErrorDto;
+    }
+    documento.orden = orden;
+    return { ...documento };
+  }
+  return invoke<DocumentoDto>('reordenar_escena', { ruta, objetivo, orden });
+}
+
+export async function convertirIdeaEnProyecto(
+  ruta: string,
+  objetivo: string,
+  destino: string,
+  titulo: string,
+): Promise<ProyectoDto> {
+  if (!esTauri) {
+    throw { tipo: 'proyecto', mensaje: 'Convertir una idea requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  return invoke<ProyectoDto>('convertir_idea_en_proyecto', { ruta, objetivo, destino, titulo });
+}
+
 export async function renombrar(
   ruta: string,
   objetivo: string,
@@ -680,12 +839,13 @@ export async function crearEscena(
   return invoke<DocumentoDto>('crear_escena', { ruta, titulo, libro, capitulo });
 }
 
-export async function elegirArchivoImportacion(): Promise<string | null> {
+export async function elegirArchivosImportacion(): Promise<string[]> {
   if (!esTauri) {
-    return window.prompt('Ruta del archivo a importar (.md o .docx)');
+    const ruta = window.prompt('Ruta del archivo a importar (.md, .docx, .html o .rtf)');
+    return ruta ? [ruta] : [];
   }
   const seleccion = await open({
-    multiple: false,
+    multiple: true,
     title: 'Importar documento',
     filters: [
       { name: 'Documentos', extensions: ['md', 'markdown', 'docx', 'html', 'htm', 'rtf'] },
@@ -695,7 +855,10 @@ export async function elegirArchivoImportacion(): Promise<string | null> {
       { name: 'RTF', extensions: ['rtf'] },
     ],
   });
-  return typeof seleccion === 'string' ? seleccion : null;
+  if (typeof seleccion === 'string') {
+    return [seleccion];
+  }
+  return Array.isArray(seleccion) ? seleccion : [];
 }
 
 export async function elegirDestinoBackup(titulo: string): Promise<string | null> {

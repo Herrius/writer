@@ -1,8 +1,10 @@
 # Iteración 21 — Fase 2.2: comentarios v2
 
 - **Fecha:** 2026-10-23
-- **Estado:** comentarios anclados, sticky notes, respuestas, resolución,
-  huérfanos y filtros implementados; faltan edición/borrado y previsualización.
+- **Estado:** comentarios anclados, sticky notes, hilos, respuestas, resolución,
+  reapertura, archivo, edición/borrado con historial, huérfanos, filtros,
+  copiar con/sin comentarios, previsualización de solo lectura y salto al
+  ancla en el editor.
 - **Contrato:** [`../comentarios-v2.md`](../comentarios-v2.md).
 
 ## 1. Alcance de este pase
@@ -52,9 +54,6 @@ pnpm exec playwright test e2e/fase-2-2-comentario-anclado.spec.ts 1/1
 
 ## 5. Pendiente de 2.2
 
-- Editar y borrar mensajes con historial visible.
-- Copiar/pegar texto con y sin comentarios.
-- Comentarios de solo lectura en la previsualización de una revisión.
 - Filtros abiertos/resueltos/huérfanos y salto al ancla.
 - Revisión de accesibilidad del panel.
 

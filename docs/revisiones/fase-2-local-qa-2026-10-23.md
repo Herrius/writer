@@ -292,7 +292,10 @@ El builder corrigió los ocho P2 y añadió pruebas de regresión:
 
 También se corrigieron varios P3: HTML `<SCRIPT>` en mayúsculas, archivos vacíos,
 symlinks en sidecars y plantillas, límite agregado de plantillas, anclas con
-límites de palabra y offsets/hash, y controles sin acción.
+límites de palabra y offsets/hash, controles sin acción, edición/borrado de
+comentarios, reapertura/archivo de hilos, copia con/sin comentarios, salto al
+ancla, PDF nativo con formato configurable, racha contra la meta, 30 días,
+selección múltiple de importación y edición de tramas/puntos.
 
 Commit de corrección: `9a7469b`. Pendiente de re-revisión: repetir esta QA
 sobre ese commit. La deuda P3/P4 restante sigue en el cierre de la Fase 2.

@@ -23,6 +23,7 @@ pub mod index;
 pub mod lock;
 pub mod model;
 pub mod oplog;
+pub mod pdf;
 pub mod planning;
 pub mod project;
 pub mod recovery;

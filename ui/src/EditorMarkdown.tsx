@@ -19,6 +19,7 @@ type Props = {
   tramas: OpcionMarca[];
   onCambio: (markdown: string) => void;
   onComentario?: (texto: string, textoMarcado: string) => Promise<string | null>;
+  ancla?: string | null;
 };
 
 export function EditorMarkdown({
@@ -28,6 +29,7 @@ export function EditorMarkdown({
   tramas,
   onCambio,
   onComentario,
+  ancla,
 }: Props) {  const alCambiar = useRef(onCambio);
   alCambiar.current = onCambio;
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
@@ -36,6 +38,7 @@ export function EditorMarkdown({
   const [palabras, setPalabras] = useState(() =>
     contarPalabras(textoSinMarcas(markdown)),
   );
+  const ultimaAncla = useRef<string | null>(null);
 
   const editor = useEditor({
     extensions: extensionesEditor,
@@ -62,6 +65,29 @@ export function EditorMarkdown({
       editor.setEditable(editable);
     }
   }, [editor, editable]);
+
+  useEffect(() => {
+    if (!ancla || ancla === ultimaAncla.current) {
+      return;
+    }
+    let inicio: number | null = null;
+    let fin: number | null = null;
+    editor?.state.doc.descendants((nodo, posicion) => {
+      if (inicio !== null) {
+        return false;
+      }
+      if (nodo.isText && nodo.text && nodo.text.includes(ancla)) {
+        inicio = posicion + nodo.text.indexOf(ancla);
+        fin = inicio + ancla.length;
+        return false;
+      }
+      return true;
+    });
+    if (inicio !== null && fin !== null) {
+      editor?.chain().focus().setTextSelection({ from: inicio, to: fin }).scrollIntoView().run();
+      ultimaAncla.current = ancla;
+    }
+  }, [editor, ancla]);
 
   useEffect(() => {
     actualizarReferencias(personajes, tramas);
