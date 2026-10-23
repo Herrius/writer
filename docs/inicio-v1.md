@@ -1,7 +1,8 @@
-# Inicio y creación de proyectos — v1 (Fase 2.1)
+# Inicio y creación de proyectos — v1 (Fase 2.1; panel revisado en Fase 1)
 
-- **Fecha:** 2026-10-21
-- **Estado:** implementado y aprobado con observaciones en el Bloque 2.2.
+- **Fecha:** 2026-10-21; actualizado 2026-10-22.
+- **Estado:** implementado. El panel de Proyectos se rediseñó en la Fase 1 y
+  está pendiente de la firma del product owner.
 
 ## 1. Panel de Proyectos
 
@@ -22,7 +23,11 @@
   deshabilitados como **excepción aprobada por el product owner** al criterio
   “no hay controles visibles sin acción”.
 - La tarjeta “Crear nuevo proyecto” mide lo mismo que una tarjeta de proyecto
-  completa: portada 2:3 más zona de datos. En estado vacío conserva esa altura.
+  completa: portada 2:3 más zona de datos. En estado vacío conserva esa altura
+  en 1440, 960 y 700; a 960/200 % el mensaje de vacío pasa a una fila completa y
+  la tarjeta mantiene su medida.
+- La vista de lista conserva filas compactas también en el estado vacío.
+- El buscador muestra un anillo de foco visible cuando recibe foco.
 - El proyecto se abre al pulsar una tarjeta; los recientes se actualizan al
   abrir o crear. “Abrir proyecto” está siempre visible en la cabecera, además
   del estado vacío.

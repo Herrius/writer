@@ -9,6 +9,7 @@
   --tinta: #2f2922;
   --tinta-suave: #6d6257;
   --linea: #d9cfc0;
+  --borde-control: #94897a;
   --acento: #9b4a2f;
   --acento-suave: #f0dfd5;
   --verde: #3f6b4f;
@@ -1419,7 +1420,8 @@ button.guardar:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 44px;
+  min-height: 44px;
+  height: auto;
   padding: 0 1.4rem;
   border-bottom: 1px solid #e6e1d9;
   background: #fbfaf7;
@@ -1523,10 +1525,16 @@ button.guardar:disabled {
   gap: 0.35rem;
   min-width: 170px;
   padding: 0.3rem 0.5rem;
-  border: 1px solid #dcd5ca;
+  border: 1px solid var(--borde-control);
   border-radius: 0.4rem;
   background: #fff;
   color: #7b7166;
+}
+
+.buscador-inicio:focus-within {
+  border-color: var(--acento);
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
 }
 
 .buscador-inicio input {
@@ -1542,7 +1550,7 @@ button.guardar:disabled {
 .boton-inicio,
 .boton-primario {
   padding: 0.42rem 0.7rem;
-  border: 1px solid #d8d0c4;
+  border: 1px solid var(--borde-control);
   border-radius: 0.4rem;
   background: #fff;
   color: #4a4238;
@@ -1574,7 +1582,7 @@ button.guardar:disabled {
   display: flex;
   gap: 0.15rem;
   padding: 0.15rem;
-  border: 1px solid #d8d0c4;
+  border: 1px solid var(--borde-control);
   border-radius: 0.45rem;
   background: #fff;
 }
@@ -1654,7 +1662,7 @@ button.guardar:disabled {
 .mis-proyectos-acciones > button:not(.icono-inicio) {
   min-width: 28px;
   height: 28px;
-  border: 1px solid #e1d9cd;
+  border: 1px solid var(--borde-control);
   border-radius: 0.3rem;
   background: #fff;
   color: #6b6156;
@@ -1674,6 +1682,7 @@ button.guardar:disabled {
   gap: 1rem;
   padding: 1.2rem;
   min-height: 230px;
+  container-type: inline-size;
 }
 
 .proyectos-lista {
@@ -1683,6 +1692,7 @@ button.guardar:disabled {
 .crear-tarjeta {
   position: relative;
   display: block;
+  align-self: start;
   padding: 0;
   border: 0;
   border-radius: 0.45rem;
@@ -1697,7 +1707,7 @@ button.guardar:disabled {
 .crear-tarjeta::after {
   position: absolute;
   inset: 0;
-  border: 2px dashed #cfc7bb;
+  border: 2px dashed var(--borde-control);
   border-radius: inherit;
   content: "";
   pointer-events: none;
@@ -1708,7 +1718,7 @@ button.guardar:disabled {
 }
 
 .crear-tarjeta:hover::after {
-  border-color: #a99d8c;
+  border-color: #8a8074;
 }
 
 .crear-medida {
@@ -1833,6 +1843,16 @@ button.guardar:disabled {
   font-size: 0.8rem;
 }
 
+/* A 200 % el panel se estrecha en píxeles CSS; el mensaje de vacío pasa a una
+   fila completa para no comprimirse en una sola columna. */
+@container (max-width: 600px) {
+  .proyectos-vacio {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-top: 0.75rem;
+  }
+}
+
 .crear-plantilla {
   display: block;
   margin: 0.2rem 0 1rem 1.2rem;
@@ -1843,6 +1863,7 @@ button.guardar:disabled {
   font: inherit;
   font-size: 0.76rem;
   cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .inicio-sidebar {
@@ -3014,8 +3035,12 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 .proyectos-lista .tarjeta-datos small {
   grid-column: 2;
   grid-row: 1 / span 2;
-  color: #8a8074;
+  color: #756b5f;
   font-size: 0.74rem;
+}
+
+.proyectos-lista .proyectos-vacio {
+  grid-column: 1 / -1;
 }
 
 .modal-proyecto {

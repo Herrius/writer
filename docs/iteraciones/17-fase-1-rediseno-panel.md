@@ -259,3 +259,39 @@ python scripts/ci.py calidad        OK (94/94)
 La Fase 1 queda **completada por el builder** y congelada para revisión. No se
 declara aprobada hasta la firma del product owner. El siguiente paso es el
 pipeline QA → seguridad → release → UX → product owner.
+
+## F1.5.1 — Correcciones de la revisión UX
+
+La revisión UX bloqueó la fase por un P2 (foco del buscador) y dejó cinco P3 y
+seis P4. Se corrigieron en un pase único:
+
+- **UX-F1-01 (P2):** `.buscador-inicio:focus-within` añade anillo de 2 px
+  `#9b4a2f` y borde de acento; E2E comprueba el estilo calculado.
+- **UX-F1-02 (P3):** `.crear-tarjeta { align-self: start }` evita que la fila
+  del grid estire la tarjeta; una container query de 600 px pasa el mensaje de
+  vacío a fila completa cuando el panel se estrecha a 200 %. La tarjeta mide
+  481,20 px y el mensaje deja de comprimirse en 237 px.
+- **UX-F1-03 (P3):** `.proyectos-lista .proyectos-vacio` usa
+  `grid-column: 1 / -1`; la lista vacía vuelve a ser compacta y no solapa.
+- **UX-F1-04 (P3):** el recuento de lista usa `#756b5f` (5,22:1) en vez de
+  `#8a8074` (3,87:1).
+- **UX-F1-05 (P3):** token `--borde-control: #94897a` (≥3:1 sobre blanco) para
+  buscador, botones, pestañas, vistas y borde discontinuo de creación.
+- **UX-F1-06 (P3):** la portada se marca `aria-hidden`; el nombre accesible de
+  la tarjeta queda «título autor palabras» una sola vez.
+- **P4:** la topbar usa `min-height` (no `height`) y deja de cortar «Ver demo»
+  a 200 %; «Crear desde plantilla» baja a opacidad 0,55; los avatares quedan
+  `aria-hidden` porque son decorativos.
+
+Verificación:
+
+```text
+pnpm typecheck                         OK
+pnpm ui:test                           60/60
+pnpm exec playwright test e2e/fase-1-panel.spec.ts   11/11
+```
+
+Quedan como deuda P4 aceptada: `tablist` sin `tabpanel`/flechas, recorte de la
+portada del modal a 200 % y la cobertura de release sobre reproducibilidad. Se
+repite la revisión UX sobre el nuevo commit y se recongela con
+`fase-1-congelado-r2`.

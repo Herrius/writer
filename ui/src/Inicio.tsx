@@ -67,6 +67,7 @@ function Portada({
     <div
       className={`portada ${compacta ? 'portada-compacta' : ''}`}
       style={{ background: `linear-gradient(155deg, ${color}, #2f2732)` }}
+      aria-hidden="true"
     >
       <span className="portada-linea" />
       <strong>{titulo || 'Proyecto sin título'}</strong>
@@ -281,7 +282,7 @@ export function Inicio({
           >
             ◔
           </button>
-          <span className="avatar-inicio" aria-label={`Sesión de ${autorBienvenida}`}>
+          <span className="avatar-inicio" aria-hidden="true">
             {autorBienvenida.charAt(0).toLocaleUpperCase()}
           </span>
         </div>
