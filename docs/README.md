@@ -82,6 +82,8 @@
   — Fase 2.5: importación Markdown/DOCX y backup.
 - [`iteraciones/24-fase-2-6-plantillas.md`](iteraciones/24-fase-2-6-plantillas.md)
   — Fase 2.6: plantillas locales.
+- [`iteraciones/25-fase-2-7-cierre.md`](iteraciones/25-fase-2-7-cierre.md) —
+  Fase 2.7: integración, gates y cierre funcional de la Fase 2.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

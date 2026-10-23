@@ -1,11 +1,11 @@
 # HANDOFF — estado para retomar
 
-- **Fecha:** 2026-10-22
+- **Fecha:** 2026-10-23
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** **Fase 1 del rediseño del panel aprobada con observaciones**
-  en `1857431` (tag `fase-1-congelado-r2`, Linux x86_64) y **Fase 2.0 de
-  contratos y modularización en curso**. Las fases 2, 2.1 y el Bloque 2.2
-  siguen aprobadas con observaciones.
+- **Fase actual:** **Fase 2 funcional completa y verificada en Linux x86_64**,
+  pendiente de la revisión formal de QA/UX. La Fase 1 del panel sigue aprobada
+  con observaciones en `1857431` (tag `fase-1-congelado-r2`). Las fases 2, 2.1
+  y el Bloque 2.2 anteriores siguen aprobadas con observaciones.
 - **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado
   y validado en Linux x86_64; Windows pendiente de build y pruebas.
 - **Plan general anterior:** **pospuesto de forma permanente hasta nuevo aviso**
@@ -16,10 +16,9 @@
 - **Plan de ejecución:**
   [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md) — features,
   commits, agentes, paralelismo, gates y estimaciones.
-- **Siguiente tarea:** Fase 2.0 — contratos escritos; faltan DTOs, fixtures v1/v2
-  y modularización. El estado está en
-  [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md) y los
-  contratos en `docs/esquema-v2.md` y derivados.
+- **Siguiente tarea:** pipeline de revisión de la Fase 2 sobre el commit de
+  cierre y aceptación de la deuda de
+  [`docs/iteraciones/25-fase-2-7-cierre.md`](docs/iteraciones/25-fase-2-7-cierre.md).
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
   Bloque 2.2 congelado en `76b139f`; Fase 1 r1 en `744aaa5` y r2 en `1857431`
   con tags `fase-1-congelado` y `fase-1-congelado-r2` (sin remoto).
@@ -177,14 +176,22 @@ writer/
   escribir el destino.
 - `verify::Documento::hash()` expone el hash del archivo escaneado.
 - `goals`: metas y sesiones locales en `.escritor/metas/` y
-  `.escritor/sesiones/`, con validación y escritura atómica. **Implementado en
-  núcleo, Tauri y UI; pendientes rachas, gráfico y backup.**
+  `.escritor/sesiones/`, con validación, escritura atómica, racha y gráfico de
+  7 días. **Implementado; faltan estadísticas históricas.**
 - **Manuscrito:** `renombrar`, `duplicar`, arrastrar/soltar, archivo/papelera,
   estados, etiquetas, filtros por etiqueta y copiar/pegar documentos.
   **Implementado; pendiente revisión y reordenar dentro del capítulo.**
 - **Comentarios v2:** sidecar `.escritor/comentarios/`, anclas con ULID,
-  sticky notes, respuestas y resolución. **Implementado; faltan huérfanos,
-  edición/borrado, copiar/pegar y previsualización.**
+  sticky notes, respuestas, resolución, huérfanos y filtros. **Implementado;
+  faltan edición/borrado con historial y previsualización.**
+- **Planificación:** Plot Grid local, notas `cuaderno`/`ideas`, @menciones y
+  rol/alias de personajes. **Implementado; falta la vista gráfica y la
+  conversión de Ideas a proyecto.**
+- **Plantillas:** plantillas locales en el directorio de datos y creación desde
+  plantilla. **Implementado; falta copiar contenido personalizado.**
+- **Importación/backup:** Markdown, DOCX, HTML y RTF con límites, backup ZIP,
+  restauración validada e impresión. **Implementado; faltan PDF nativo,
+  selección parcial y validación en Word/LibreOffice.**
 
 ### Comandos Tauri
 
@@ -304,6 +311,24 @@ pnpm ui:build                       OK
 La r2 (`1857431`) corrige el foco del buscador y los estados vacíos/contraste
 detectados por UX; repite estos gates y añade 13 pruebas E2E del panel.
 
+### Fase 2 local/offline (2026-10-23)
+
+```text
+cargo test --workspace --all-targets --locked   61 + 36 + 25
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   7/7
+pnpm typecheck                       OK
+pnpm ui:test                         63/63
+pnpm e2e                             34/34
+python scripts/ci.py interfaz        OK
+python scripts/ci.py producto        OK
+python scripts/ci.py seguridad       OK
+python scripts/ci.py e2e-tauri       OK
+python scripts/ci.py empaquetado     OK
+```
+
+Cierre funcional y deuda en
+[`docs/iteraciones/25-fase-2-7-cierre.md`](docs/iteraciones/25-fase-2-7-cierre.md).
+
 `cargo-deny` del desktop tiene una excepción documentada en `deny.toml`:
 `RUSTSEC-2024-0370` (`proc-macro-error`, unmaintained) llega por gtk-rs/Tauri en
 Linux y no tiene reemplazo compatible con Tauri 2.12. No es una vulnerabilidad
@@ -318,15 +343,15 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 
 ### Siguiente tarea inmediata
 
-1. **Fase 2 — funcionalidad**: 2.1 manuscrito, 2.2 comentarios, 2.3
-   planificación, 2.4 metas, 2.5 importación/backup y 2.6 plantillas
-   implementadas. El detalle está en las iteraciones 19–24 y en
-   [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md).
-2. **Fase 2.7 — cierre**: falta la revisión formal QA/UX, completar rachas y
-   gráfico de metas, huérfanos/edición de comentarios, PDF/HTML/RTF y la
-   modularización de 2.0 (los módulos ya existen por feature, pero
-   `project.rs` y `App.tsx` siguen siendo grandes).
-3. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
+1. **Fase 2 — funcionalidad implementada**: manuscrito, comentarios,
+   planificación, metas, importación/backup y plantillas. El cierre y la deuda
+   están en [`docs/iteraciones/25-fase-2-7-cierre.md`](docs/iteraciones/25-fase-2-7-cierre.md).
+2. **Fase 2.7 — revisión formal**: QA, seguridad, release y UX sobre el commit
+   de cierre; aceptar o corregir la deuda de §4 del cierre.
+3. **Deuda técnica de Fase 2**: dividir `App.tsx`/`styles.css` por feature,
+   completar edición/borrado de comentarios y previsualización, PDF nativo y
+   copia de contenido de plantillas.
+4. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
    original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
    checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,
    CI remoto) siguen registrados y no forman parte del alcance de Fase 1.
