@@ -16,10 +16,10 @@
 - **Plan de ejecución:**
   [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md) — features,
   commits, agentes, paralelismo, gates y estimaciones.
-- **Siguiente tarea:** Fase 2.0 — contratos y modularización. El arranque está
-  documentado en
-  [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md); el
-  primer pase corrige UX-F1-13 y define el esquema v2 antes de tocar features.
+- **Siguiente tarea:** Fase 2.0 — contratos escritos; faltan DTOs, fixtures v1/v2
+  y modularización. El estado está en
+  [`docs/iteraciones/18-fase-2-0.md`](docs/iteraciones/18-fase-2-0.md) y los
+  contratos en `docs/esquema-v2.md` y derivados.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
   Bloque 2.2 congelado en `76b139f`; Fase 1 r1 en `744aaa5` y r2 en `1857431`
   con tags `fase-1-congelado` y `fase-1-congelado-r2` (sin remoto).

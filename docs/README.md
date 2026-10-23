@@ -6,6 +6,19 @@
   ejecución por features, agentes, paralelismo, gates y estimaciones.
 - [`esquema-v1.md`](esquema-v1.md) — contrato del proyecto en disco (escenas, notas,
   `proyecto.yml`, log de operaciones, blobs, índice, cuarentena).
+- [`esquema-v2.md`](esquema-v2.md) — extensiones locales aditivas: comentarios,
+  metas, planificación, plantillas, importación y backup.
+- [`comentarios-v2.md`](comentarios-v2.md) — anclas, hilos, huérfanos y sticky
+  notes.
+- [`metas-v1.md`](metas-v1.md) — metas, sesiones, rachas y temporizador.
+- [`planificacion-v1.md`](planificacion-v1.md) — Plot Grid, personajes, Story
+  Notes, @menciones e Ideas.
+- [`plantillas-v1.md`](plantillas-v1.md) — plantillas locales y creación desde
+  plantilla.
+- [`importacion-v1.md`](importacion-v1.md) — importación DOCX/Markdown/HTML/RTF
+  y backup.
+- [`exportacion-v2.md`](exportacion-v2.md) — Markdown, DOCX, PDF y formato de
+  manuscrito.
 - [`protocolo-commit.md`](protocolo-commit.md) — orden de la transacción, CAS,
   recuperación y pruebas de caída.
 - [`markdown-v1.md`](markdown-v1.md) — contrato del editor: esquema aceptado,
