@@ -48,7 +48,7 @@ Medidas clave tras la corrección:
   506,44 px; sin solapamiento;
 - lista vacía a 1440: tarjeta 1011,63 × 64,00; mensaje debajo;
 - buscador enfocado: `outline: 2px solid #9b4a2f`, borde `#9b4a2f`;
-- bordes de controles: `#94897a` (3,17:1 sobre blanco);
+- bordes de controles: `#94897a` (3,43:1 sobre blanco);
 - tarjeta accesible: «El umbral Marta Ruiz 12.345 palabras», sin duplicar.
 
 ## 3. Estado de los informes

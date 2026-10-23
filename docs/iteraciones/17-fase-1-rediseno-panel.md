@@ -304,3 +304,12 @@ Commit de corrección: `1857431`; tag `fase-1-congelado-r2`; acta
 Quedan como deuda P4 aceptada: `tablist` sin `tabpanel`/flechas, recorte de la
 portada del modal a 200 % y la cobertura de release sobre reproducibilidad. Se
 repite la revisión UX sobre el nuevo commit.
+
+### Cierre de Fase 1
+
+- UX r2 revisó `1857431` y aprobó con observaciones: P1 0, P2 0, P3 1 (bordes
+  de campos del modal, deuda previa) y P4 5.
+- Informe: [`../revisiones/fase-1-ux-2026-10-22-r2.md`](../revisiones/fase-1-ux-2026-10-22-r2.md).
+- Propuesta de aceptación: [`../revisiones/fase-1-product-owner-2026-10-22.md`](../revisiones/fase-1-product-owner-2026-10-22.md).
+- **Estado:** pendiente de firma del product owner. Release público no
+  autorizado; Windows pendiente.

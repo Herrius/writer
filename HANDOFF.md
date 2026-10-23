@@ -2,10 +2,9 @@
 
 - **Fecha:** 2026-10-22
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** **Fase 1 del rediseño del panel completada por el builder y
-  recongelada tras las correcciones UX** en `1857431` (tag
-  `fase-1-congelado-r2`, Linux x86_64). Las fases 2, 2.1 y el Bloque 2.2 siguen
-  aprobadas con observaciones.
+- **Fase actual:** **Fase 1 del rediseño del panel completada y revisada; pendiente
+  de firma del product owner** en `1857431` (tag `fase-1-congelado-r2`, Linux
+  x86_64). Las fases 2, 2.1 y el Bloque 2.2 siguen aprobadas con observaciones.
 - **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado
   y validado en Linux x86_64; Windows pendiente de build y pruebas.
 - **Plan general anterior:** **pospuesto de forma permanente hasta nuevo aviso**
@@ -16,9 +15,10 @@
 - **Plan de ejecución:**
   [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md) — features,
   commits, agentes, paralelismo, gates y estimaciones.
-- **Siguiente tarea:** repetir UX/accesibilidad/rendimiento sobre `1857431` y
-  pasar al product owner. QA, seguridad y release ya emitieron informes y los
-  gates se repitieron en r2.
+- **Siguiente tarea:** firma del product owner de la Fase 1 sobre `1857431`.
+  QA, seguridad, release y UX r2 ya emitieron informes; la propuesta de
+  aceptación está en
+  [`docs/revisiones/fase-1-product-owner-2026-10-22.md`](docs/revisiones/fase-1-product-owner-2026-10-22.md).
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
   Bloque 2.2 congelado en `76b139f`; Fase 1 r1 en `744aaa5` y r2 en `1857431`
   con tags `fase-1-congelado` y `fase-1-congelado-r2` (sin remoto).

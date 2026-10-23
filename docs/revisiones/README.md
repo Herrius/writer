@@ -111,3 +111,5 @@ congelación es `fase-2-00-congelado.md`.
 | **Fase 1 — release** | [`fase-1-release-2026-10-22.md`](fase-1-release-2026-10-22.md) | aprobado con observaciones |
 | **Fase 1 — UX** | [`fase-1-ux-2026-10-22.md`](fase-1-ux-2026-10-22.md) | bloqueado por UX-F1-01 |
 | **Fase 1 — congelación r2** | [`fase-1-00-congelado-r2.md`](fase-1-00-congelado-r2.md) | — |
+| **Fase 1 — UX r2** | [`fase-1-ux-2026-10-22-r2.md`](fase-1-ux-2026-10-22-r2.md) | aprobado con observaciones |
+| **Fase 1 — product owner** | [`fase-1-product-owner-2026-10-22.md`](fase-1-product-owner-2026-10-22.md) | pendiente de firma |
