@@ -66,6 +66,11 @@ describe('marcas propias', () => {
     expect(serializar(markdown)).toBe(markdown.trimEnd());
   });
 
+  it('conserva comentarios v2 con ULID', () => {
+    const markdown = `[[comentario:${ID}|revisar el ritmo|Marta]]\n`;
+    expect(serializar(markdown)).toBe(markdown.trimEnd());
+  });
+
   it('conserva como literal un comentario con delimitador de cierre en el atributo', () => {
     const markdown = '[[comentario:Nota ]] privada|Marta]]';
     const editor = new Editor({

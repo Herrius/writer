@@ -73,7 +73,9 @@
 - [`iteraciones/19-fase-2-4-metas.md`](iteraciones/19-fase-2-4-metas.md) —
   Fase 2.4: núcleo local de metas y sesiones.
 - [`iteraciones/20-fase-2-1-manuscrito.md`](iteraciones/20-fase-2-1-manuscrito.md)
-  — Fase 2.1: renombrar y duplicar documentos.
+  — Fase 2.1: renombrar, duplicar, mover, archivo, metadatos y copia.
+- [`iteraciones/21-fase-2-2-comentarios.md`](iteraciones/21-fase-2-2-comentarios.md)
+  — Fase 2.2: comentarios anclados, sticky notes, respuestas y resolución.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

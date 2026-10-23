@@ -179,11 +179,12 @@ writer/
 - `goals`: metas y sesiones locales en `.escritor/metas/` y
   `.escritor/sesiones/`, con validación y escritura atómica. **Implementado en
   núcleo, Tauri y UI; pendientes rachas, gráfico y backup.**
-- **Manuscrito:** `renombrar` y `duplicar` escenas/notas conservan ID, ruta e
-  historial del original; la copia recibe ID nuevo y título «Copia de …».
-  **Arrastrar y soltar** mueve escenas entre capítulos. **Archivo/papelera**
-  usa el campo lógico `archivo`, con filtros de activos/archivo/papelera.
-  **Implementado; faltan estados, etiquetas y filtros por etiqueta.**
+- **Manuscrito:** `renombrar`, `duplicar`, arrastrar/soltar, archivo/papelera,
+  estados, etiquetas, filtros por etiqueta y copiar/pegar documentos.
+  **Implementado; pendiente revisión y reordenar dentro del capítulo.**
+- **Comentarios v2:** sidecar `.escritor/comentarios/`, anclas con ULID,
+  sticky notes, respuestas y resolución. **Implementado; faltan huérfanos,
+  edición/borrado, copiar/pegar y previsualización.**
 
 ### Comandos Tauri
 
@@ -328,13 +329,16 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
    copiar/pegar) en
    [`docs/iteraciones/20-fase-2-1-manuscrito.md`](docs/iteraciones/20-fase-2-1-manuscrito.md);
    pendiente revisión formal de QA/UX y reordenar dentro del capítulo.
-4. **Fase 2.2 — comentarios v2**: siguiente bloque. Después 2.3 planificación,
-   2.5 importación/exportación y 2.6 plantillas.
-5. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
+4. **Fase 2.2 — comentarios v2**: implementados anclas, sticky, respuestas y
+   resolución. Faltan huérfanos, edición/borrado, copiar/pegar y
+   previsualización.
+5. **Fase 2.3 — planificación**: siguiente bloque. Después 2.5
+   importación/exportación y 2.6 plantillas.
+6. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
    original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
    checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,
    CI remoto) siguen registrados y no forman parte del alcance de Fase 1.
-6. **Fase 3 (IA/MCP) del plan anterior**: pospuesta. Sus condiciones del
+7. **Fase 3 (IA/MCP) del plan anterior**: pospuesta. Sus condiciones del
    product owner siguen vigentes para cuando se retome; no se implementa en la
    etapa local/offline.
 

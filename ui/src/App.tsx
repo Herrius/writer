@@ -9,10 +9,13 @@ import {
   abrirProyecto,
   actualizarEscena,
   actualizarNota,
+  agregarMensajeComentario,
   agregarSesion,
   buscar as buscarEnProyecto,
   cambiarArchivo as cambiarArchivoApi,
+  crearComentario,
   crearProyecto as crearProyectoApi,
+  crearSticky,
   cuarentena as pedirCuarentena,
   descartarCuarentena,
   duplicar as duplicarDocumento,
@@ -28,13 +31,16 @@ import {
   leerMetas,
   leerSesiones,
   listar,
+  listarComentarios,
   mostrar as pedirRevision,
   mover as moverDocumentoApi,
   proyectoE2e,
   renombrar as renombrarDocumento,
+  resolverComentario,
   revertir as revertirRevision,
 } from './api';
 import type { BusquedaDto } from './types/BusquedaDto';
+import type { ComentarioDto } from './types/ComentarioDto';
 import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { MetasDto } from './types/MetasDto';
@@ -233,7 +239,13 @@ export default function App() {
 
   const [consulta, setConsulta] = useState('');
   const [focoArbol, setFocoArbol] = useState<string | null>(null);
-  const [panelDerecho, setPanelDerecho] = useState<'metas' | 'notas'>('metas');
+  const [panelDerecho, setPanelDerecho] = useState<'metas' | 'notas' | 'comentarios'>(
+    'metas',
+  );
+  const [comentarios, setComentarios] = useState<ComentarioDto[]>([]);
+  const [errorComentarios, setErrorComentarios] = useState<string | null>(null);
+  const [textoSticky, setTextoSticky] = useState('');
+  const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [metas, setMetas] = useState<MetasDto | null>(null);
   const [sesiones, setSesiones] = useState<SesionDto[]>([]);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
@@ -925,6 +937,70 @@ export default function App() {
     }
   };
 
+  const crearStickyActivo = async () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    const texto = textoSticky.trim();
+    if (!actual || !documento || !texto) {
+      return;
+    }
+    try {
+      const nuevo = await crearSticky(
+        actual.raiz,
+        documento.ruta,
+        texto,
+        actual.autor?.trim() || 'local',
+      );
+      setComentarios((lista) => [...lista, nuevo]);
+      setTextoSticky('');
+      setErrorComentarios(null);
+    } catch (fallo) {
+      setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
+  const responderHilo = async (id: string) => {
+    const actual = proyectoRef.current;
+    const texto = (respuestas[id] ?? '').trim();
+    if (!actual || !texto) {
+      return;
+    }
+    try {
+      const actualizado = await agregarMensajeComentario(
+        actual.raiz,
+        id,
+        'respuesta',
+        actual.autor?.trim() || 'local',
+        texto,
+      );
+      setComentarios((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+      setRespuestas((valor) => ({ ...valor, [id]: '' }));
+    } catch (fallo) {
+      setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
+  const resolverHilo = async (id: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    try {
+      const actualizado = await resolverComentario(
+        actual.raiz,
+        id,
+        actual.autor?.trim() || 'local',
+      );
+      setComentarios((lista) =>
+        lista.map((comentario) => (comentario.id === id ? actualizado : comentario)),
+      );
+    } catch (fallo) {
+      setErrorComentarios(errorDe(fallo).mensaje);
+    }
+  };
+
   const cambiarArchivoActivo = async (archivo: 'archivado' | 'papelera' | null) => {
     const actual = proyectoRef.current;
     const documento = activoRef.current;
@@ -1463,6 +1539,31 @@ export default function App() {
     setEstadoEdicion(activo?.estado ?? 'borrador');
     setEtiquetasEdicion((activo?.etiquetas ?? []).join(', '));
   }, [activo?.id, activo?.titulo, activo?.estado, activo?.etiquetas]);
+
+  useEffect(() => {
+    const actual = proyectoRef.current;
+    if (!actual || !activo) {
+      setComentarios([]);
+      return;
+    }
+    let cancelado = false;
+    listarComentarios(actual.raiz, activo.ruta)
+      .then((lista) => {
+        if (!cancelado) {
+          setComentarios(lista);
+          setErrorComentarios(null);
+        }
+      })
+      .catch((fallo) => {
+        if (!cancelado) {
+          setComentarios([]);
+          setErrorComentarios(errorDe(fallo).mensaje);
+        }
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [activo?.id, activo?.ruta, proyecto?.raiz]);
 
   useEffect(() => {
     if (!temporizadorActivo || temporizadorPausado) {
@@ -2069,6 +2170,28 @@ export default function App() {
                     personajes={personajes}
                     tramas={tramas}
                     onCambio={alCambiar}
+                    onComentario={async (texto, textoMarcado) => {
+                      const actual = proyectoRef.current;
+                      const documento = activoRef.current;
+                      if (!actual || !documento) {
+                        return null;
+                      }
+                      try {
+                        const nuevo = await crearComentario(
+                          actual.raiz,
+                          documento.ruta,
+                          texto,
+                          textoMarcado,
+                          actual.autor?.trim() || 'local',
+                        );
+                        setComentarios((lista) => [...lista, nuevo]);
+                        setErrorComentarios(null);
+                        return nuevo.id;
+                      } catch (fallo) {
+                        setErrorComentarios(errorDe(fallo).mensaje);
+                        return null;
+                      }
+                    }}
                   />
                 ) : (
                   <pre className="fuente">{cuerpoVisible || '(cuerpo vacío)'}</pre>
@@ -2163,6 +2286,14 @@ export default function App() {
                 onClick={() => setPanelDerecho('notas')}
               >
                 Notas
+              </button>
+              <button
+                role="tab"
+                aria-selected={panelDerecho === 'comentarios'}
+                className={panelDerecho === 'comentarios' ? 'activo' : ''}
+                onClick={() => setPanelDerecho('comentarios')}
+              >
+                Comentarios
               </button>
             </div>
             {panelDerecho === 'metas' ? (
@@ -2277,7 +2408,7 @@ export default function App() {
                   </div>
                 </section>
               </>
-            ) : (
+            ) : panelDerecho === 'notas' ? (
               <section className="dabble-notas-panel">
                 <h3>Documento</h3>
                 {activo && (
@@ -2389,6 +2520,86 @@ export default function App() {
                   <dt>Notas</dt><dd>{proyecto?.notas ?? 0}</dd>
                   <dt>Ruta</dt><dd>{proyecto?.raiz ?? '—'}</dd>
                 </dl>
+              </section>
+            ) : (
+              <section className="dabble-comentarios-panel">
+                <h3>Comentarios</h3>
+                {activo ? (
+                  <>
+                    <label className="dabble-campo-meta">
+                      <span>Nota rápida</span>
+                      <input
+                        value={textoSticky}
+                        onChange={(evento) => setTextoSticky(evento.target.value)}
+                        placeholder="Escribe una nota"
+                        aria-label="Texto de la nota rápida"
+                      />
+                    </label>
+                    <button
+                      className="dabble-boton"
+                      onClick={() => void crearStickyActivo()}
+                    >
+                      Agregar nota
+                    </button>
+                    {errorComentarios && (
+                      <p className="dabble-error" role="alert">
+                        {errorComentarios}
+                      </p>
+                    )}
+                    {comentarios.length === 0 ? (
+                      <p className="dabble-vacio">Sin comentarios en este documento.</p>
+                    ) : (
+                      <ul className="dabble-hilos">
+                        {comentarios.map((comentario) => (
+                          <li key={comentario.id} className="dabble-hilo">
+                            <div className="dabble-hilo-cabecera">
+                              <strong>
+                                {comentario.tipo === 'sticky' ? 'Nota' : 'Comentario'}
+                              </strong>
+                              <span>{comentario.estado}</span>
+                            </div>
+                            {comentario.mensajes.map((mensaje) => (
+                              <p key={mensaje.id} className="dabble-mensaje">
+                                {mensaje.texto}
+                              </p>
+                            ))}
+                            {comentario.estado === 'abierto' && (
+                              <>
+                                <input
+                                  value={respuestas[comentario.id] ?? ''}
+                                  onChange={(evento) =>
+                                    setRespuestas((valor) => ({
+                                      ...valor,
+                                      [comentario.id]: evento.target.value,
+                                    }))
+                                  }
+                                  placeholder="Responder"
+                                  aria-label={`Responder a ${comentario.id}`}
+                                />
+                                <div className="dabble-acciones-documento">
+                                  <button
+                                    className="dabble-boton"
+                                    onClick={() => void responderHilo(comentario.id)}
+                                  >
+                                    Responder
+                                  </button>
+                                  <button
+                                    className="dabble-boton"
+                                    onClick={() => void resolverHilo(comentario.id)}
+                                  >
+                                    Resolver
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                ) : (
+                  <p className="dabble-vacio">Abre un documento para ver sus comentarios.</p>
+                )}
               </section>
             )}
           </aside>

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { BusquedaDto } from './types/BusquedaDto';
+import type { ComentarioDto } from './types/ComentarioDto';
 import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { ErrorDto } from './types/ErrorDto';
 import type { EscaneoDto } from './types/EscaneoDto';
@@ -47,6 +48,7 @@ const demoMetas: MetasDto = {
 
 let metasDemoActuales: MetasDto = demoMetas;
 const sesionesDemo: SesionDto[] = [];
+const comentariosDemo: ComentarioDto[] = [];
 
 const demoCuarentena: CuarentenaDto[] = [
   {
@@ -250,6 +252,151 @@ export async function leerSesiones(ruta: string, mes: string): Promise<SesionDto
     return sesionesDemo.filter((sesion) => sesion.inicio.startsWith(mes));
   }
   return invoke<SesionDto[]>('leer_sesiones', { ruta, mes });
+}
+
+export async function listarComentarios(
+  ruta: string,
+  documento?: string,
+): Promise<ComentarioDto[]> {
+  if (!esTauri) {
+    return documento
+      ? comentariosDemo.filter((comentario) => comentario.documento === documento)
+      : comentariosDemo;
+  }
+  return invoke<ComentarioDto[]>('listar_comentarios', { ruta, documento });
+}
+
+export async function crearComentario(
+  ruta: string,
+  documento: string,
+  texto: string,
+  textoMarcado: string,
+  autor: string,
+): Promise<ComentarioDto> {
+  if (!esTauri) {
+    const ahora = new Date().toISOString();
+    const comentario: ComentarioDto = {
+      version: 2,
+      id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      tipo: 'comentario',
+      documento,
+      ancla: {
+        texto: textoMarcado,
+        hash: `demo:${textoMarcado.length}`,
+        inicio: 0,
+        fin: 0,
+      },
+      estado: 'abierto',
+      creado: ahora,
+      actualizado: ahora,
+      autor,
+      huerfano: false,
+      mensajes: [
+        {
+          id: `demo-mensaje-${Date.now()}`,
+          tipo: 'comentario',
+          autor,
+          ts: ahora,
+          texto,
+          reemplaza: null,
+        },
+      ],
+    };
+    comentariosDemo.push(comentario);
+    return comentario;
+  }
+  return invoke<ComentarioDto>('crear_comentario', {
+    ruta,
+    documento,
+    texto,
+    textoMarcado,
+    autor,
+  });
+}
+
+export async function crearSticky(
+  ruta: string,
+  documento: string,
+  texto: string,
+  autor: string,
+): Promise<ComentarioDto> {
+  if (!esTauri) {
+    const ahora = new Date().toISOString();
+    const comentario: ComentarioDto = {
+      version: 2,
+      id: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+      tipo: 'sticky',
+      documento,
+      ancla: null,
+      estado: 'abierto',
+      creado: ahora,
+      actualizado: ahora,
+      autor,
+      huerfano: false,
+      mensajes: [
+        {
+          id: `demo-mensaje-${Date.now()}`,
+          tipo: 'comentario',
+          autor,
+          ts: ahora,
+          texto,
+          reemplaza: null,
+        },
+      ],
+    };
+    comentariosDemo.push(comentario);
+    return comentario;
+  }
+  return invoke<ComentarioDto>('crear_sticky', { ruta, documento, texto, autor });
+}
+
+export async function agregarMensajeComentario(
+  ruta: string,
+  id: string,
+  tipo: string,
+  autor: string,
+  texto: string,
+): Promise<ComentarioDto> {
+  if (!esTauri) {
+    const comentario = comentariosDemo.find((candidato) => candidato.id === id);
+    if (!comentario) {
+      throw { tipo: 'no-encontrado', mensaje: `comentario no encontrado: ${id}` } satisfies ErrorDto;
+    }
+    comentario.mensajes.push({
+      id: `demo-mensaje-${Date.now()}`,
+      tipo,
+      autor,
+      ts: new Date().toISOString(),
+      texto,
+      reemplaza: null,
+    });
+    comentario.actualizado = new Date().toISOString();
+    return comentario;
+  }
+  return invoke<ComentarioDto>('agregar_mensaje_comentario', {
+    ruta,
+    id,
+    tipo,
+    autor,
+    texto,
+  });
+}
+
+export async function resolverComentario(
+  ruta: string,
+  id: string,
+  autor: string,
+): Promise<ComentarioDto> {
+  if (!esTauri) {
+    const comentario = comentariosDemo.find((candidato) => candidato.id === id);
+    if (!comentario) {
+      throw { tipo: 'no-encontrado', mensaje: `comentario no encontrado: ${id}` } satisfies ErrorDto;
+    }
+    comentario.estado = 'resuelto';
+    comentario.actualizado = new Date().toISOString();
+    return comentario;
+  }
+  return invoke<ComentarioDto>('resolver_comentario', { ruta, id, autor });
 }
 
 export async function verificar(ruta: string): Promise<EscaneoDto> {

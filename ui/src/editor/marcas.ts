@@ -24,9 +24,13 @@ type ClaseMarca = 'personaje' | 'trama' | 'comentario';
 type TokenMarca = MarkdownToken & {
   clase: ClaseMarca;
   referencia: string;
+  id?: string;
+  texto?: string;
 };
 
 const PATRON_PERSONAJE = /^\[\[(personaje|trama):([0-7][0-9A-HJKMNP-TV-Z]{25})\|([\s\S]+?)\]\]/;
+const PATRON_COMENTARIO_V2 =
+  /^\[\[comentario:([0-7][0-9A-HJKMNP-TV-Z]{25})\|([^|]+?)\|([\s\S]+?)\]\]/;
 const PATRON_COMENTARIO = /^\[\[comentario:([^|]+?)\|([\s\S]+?)\]\]/;
 const ULID = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 
@@ -60,6 +64,22 @@ const tokenizer: MarkdownTokenizer = {
       };
       return token;
     }
+    const deComentarioV2 = PATRON_COMENTARIO_V2.exec(src);
+    if (deComentarioV2) {
+      const [raw, id, texto, contenido] = deComentarioV2;
+      if (!comentarioValido(texto)) {
+        return;
+      }
+      return {
+        type: 'marcaWriter',
+        raw,
+        clase: 'comentario',
+        referencia: id,
+        id,
+        texto,
+        tokens: lexer.inlineTokens(contenido),
+      } satisfies TokenMarca;
+    }
     const deComentario = PATRON_COMENTARIO.exec(src);
     if (!deComentario) {
       return;
@@ -73,6 +93,7 @@ const tokenizer: MarkdownTokenizer = {
       raw,
       clase: 'comentario',
       referencia,
+      texto: referencia,
       tokens: lexer.inlineTokens(contenido),
     };
     return token;
@@ -84,8 +105,11 @@ const MarcaWriter = Mark.create({
   markdownTokenName: 'marcaWriter',
   markdownTokenizer: tokenizer,
   parseMarkdown(token: MarkdownToken, helpers: MarkdownParseHelpers) {
-    const { clase, referencia } = token as TokenMarca;
-    const attrs = clase === 'comentario' ? { texto: referencia } : { id: referencia };
+    const { clase, referencia, id, texto } = token as TokenMarca;
+    const attrs =
+      clase === 'comentario'
+        ? { texto: texto ?? referencia, id: id ?? null }
+        : { id: referencia };
     return helpers.applyMark(clase, helpers.parseInline(token.tokens ?? []), attrs);
   },
 });
@@ -95,6 +119,20 @@ function crearMarca(clase: ClaseMarca, atributo: string) {
     name: clase,
     excludes: 'personaje trama comentario',
     addAttributes() {
+      if (clase === 'comentario') {
+        return {
+          texto: {
+            default: null,
+            parseHTML: (elemento) => elemento.getAttribute('data-referencia'),
+            renderHTML: (atributos) => ({ 'data-referencia': atributos.texto }),
+          },
+          id: {
+            default: null,
+            parseHTML: (elemento) => elemento.getAttribute('data-id'),
+            renderHTML: (atributos) => ({ 'data-id': atributos.id }),
+          },
+        };
+      }
       return {
         [atributo]: {
           default: null,
@@ -117,6 +155,13 @@ function crearMarca(clase: ClaseMarca, atributo: string) {
       ];
     },
     renderMarkdown(node, helpers) {
+      if (clase === 'comentario') {
+        const texto = node.attrs?.texto ?? '';
+        const id = node.attrs?.id;
+        return id
+          ? `[[comentario:${id}|${texto}|${helpers.renderChildren(node)}]]`
+          : `[[comentario:${texto}|${helpers.renderChildren(node)}]]`;
+      }
       const valor = node.attrs?.[atributo] ?? '';
       return `[[${clase}:${valor}|${helpers.renderChildren(node)}]]`;
     },

@@ -3,9 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import {
   abrirProyecto,
+  agregarMensajeComentario,
   agregarSesion,
   buscar,
+  crearComentario,
   crearProyecto,
+  crearSticky,
   cuarentena,
   descartarCuarentena,
   duplicar,
@@ -19,8 +22,10 @@ import {
   leerMetas,
   leerSesiones,
   listar,
+  listarComentarios,
   mostrar,
   renombrar,
+  resolverComentario,
   revertir,
 } from './api';
 import type { DocumentoDto } from './types/DocumentoDto';
@@ -68,6 +73,11 @@ vi.mock('./api', () => ({
   guardarMetas: vi.fn(),
   agregarSesion: vi.fn(),
   leerSesiones: vi.fn(),
+  listarComentarios: vi.fn(),
+  crearComentario: vi.fn(),
+  crearSticky: vi.fn(),
+  agregarMensajeComentario: vi.fn(),
+  resolverComentario: vi.fn(),
   renombrar: vi.fn(),
   duplicar: vi.fn(),
   proyectoE2e: vi.fn().mockResolvedValue(null),
@@ -99,6 +109,11 @@ const agregarSesionMock = vi.mocked(agregarSesion);
 const leerSesionesMock = vi.mocked(leerSesiones);
 const renombrarMock = vi.mocked(renombrar);
 const duplicarMock = vi.mocked(duplicar);
+const listarComentariosMock = vi.mocked(listarComentarios);
+const crearComentarioMock = vi.mocked(crearComentario);
+const crearStickyMock = vi.mocked(crearSticky);
+const agregarMensajeComentarioMock = vi.mocked(agregarMensajeComentario);
+const resolverComentarioMock = vi.mocked(resolverComentario);
 
 const proyecto: ProyectoDto = {
   raiz: '/tmp/novela',
@@ -229,6 +244,59 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
     id: '01DUPLICADO000000000000000',
     titulo: `Copia de ${documento.titulo}`,
     ruta: 'manuscrito/01-libro/01-capitulo/002-copia.md',
+  });
+  listarComentariosMock.mockResolvedValue([]);
+  crearComentarioMock.mockResolvedValue({
+    version: 2,
+    id: '01COMENTARIO00000000000000',
+    tipo: 'comentario',
+    documento: documento.ruta,
+    ancla: { texto: 'Marta', hash: 'demo', inicio: 0, fin: 0 },
+    estado: 'abierto',
+    creado: '2026-10-23T00:00:00Z',
+    actualizado: '2026-10-23T00:00:00Z',
+    autor: 'local',
+    huerfano: false,
+    mensajes: [],
+  });
+  crearStickyMock.mockResolvedValue({
+    version: 2,
+    id: '01COMENTARIO00000000000000',
+    tipo: 'sticky',
+    documento: documento.ruta,
+    ancla: null,
+    estado: 'abierto',
+    creado: '2026-10-23T00:00:00Z',
+    actualizado: '2026-10-23T00:00:00Z',
+    autor: 'local',
+    huerfano: false,
+    mensajes: [],
+  });
+  agregarMensajeComentarioMock.mockResolvedValue({
+    version: 2,
+    id: '01COMENTARIO00000000000000',
+    tipo: 'sticky',
+    documento: documento.ruta,
+    ancla: null,
+    estado: 'abierto',
+    creado: '2026-10-23T00:00:00Z',
+    actualizado: '2026-10-23T00:00:00Z',
+    autor: 'local',
+    huerfano: false,
+    mensajes: [],
+  });
+  resolverComentarioMock.mockResolvedValue({
+    version: 2,
+    id: '01COMENTARIO00000000000000',
+    tipo: 'sticky',
+    documento: documento.ruta,
+    ancla: null,
+    estado: 'resuelto',
+    creado: '2026-10-23T00:00:00Z',
+    actualizado: '2026-10-23T00:00:00Z',
+    autor: 'local',
+    huerfano: false,
+    mensajes: [],
   });
 }
 

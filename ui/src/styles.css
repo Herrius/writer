@@ -2763,6 +2763,58 @@ button.guardar:disabled {
   font-weight: 600;
 }
 
+.dabble-comentarios-panel {
+  padding: 1rem;
+}
+
+.dabble-comentarios-panel h3 {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.dabble-hilos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dabble-hilo {
+  padding: 0.5rem;
+  border: 1px solid #e2ddd4;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.dabble-hilo-cabecera {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #756c61;
+  font-size: 0.72rem;
+}
+
+.dabble-mensaje {
+  margin: 0.35rem 0;
+  color: #3f382f;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.dabble-hilo input {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--borde-control);
+  border-radius: 0.3rem;
+  background: #fff;
+  color: #2f2a24;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
 .dabble-notas-panel h3 {
   margin: 0.2rem 0 0.5rem;
   font-size: 0.85rem;

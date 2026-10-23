@@ -331,6 +331,111 @@ pub struct SesionDto {
     pub autor: String,
 }
 
+/// Ancla de un comentario.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct AnclaDto {
+    /// Texto marcado.
+    pub texto: String,
+    /// Hash del texto.
+    pub hash: String,
+    /// Inicio orientativo.
+    pub inicio: usize,
+    /// Fin orientativo.
+    pub fin: usize,
+}
+
+/// Mensaje de un hilo.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct MensajeDto {
+    /// ULID.
+    pub id: String,
+    /// Tipo.
+    pub tipo: String,
+    /// Autor.
+    pub autor: String,
+    /// Fecha.
+    pub ts: String,
+    /// Texto.
+    pub texto: String,
+    /// Mensaje reemplazado.
+    pub reemplaza: Option<String>,
+}
+
+/// Hilo de comentarios.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct ComentarioDto {
+    /// Versión.
+    pub version: u32,
+    /// ULID.
+    pub id: String,
+    /// `comentario` o `sticky`.
+    pub tipo: String,
+    /// Documento.
+    pub documento: String,
+    /// Ancla.
+    pub ancla: Option<AnclaDto>,
+    /// Estado.
+    pub estado: String,
+    /// Creación.
+    pub creado: String,
+    /// Actualización.
+    pub actualizado: String,
+    /// Autor.
+    pub autor: String,
+    /// Huérfano.
+    pub huerfano: bool,
+    /// Mensajes.
+    pub mensajes: Vec<MensajeDto>,
+}
+
+impl From<writer_core::comments::Ancla> for AnclaDto {
+    fn from(valor: writer_core::comments::Ancla) -> Self {
+        Self {
+            texto: valor.texto,
+            hash: valor.hash,
+            inicio: valor.inicio,
+            fin: valor.fin,
+        }
+    }
+}
+
+impl From<writer_core::comments::Mensaje> for MensajeDto {
+    fn from(valor: writer_core::comments::Mensaje) -> Self {
+        Self {
+            id: valor.id,
+            tipo: valor.tipo,
+            autor: valor.autor,
+            ts: valor.ts,
+            texto: valor.texto,
+            reemplaza: valor.reemplaza,
+        }
+    }
+}
+
+impl From<writer_core::comments::Comentario> for ComentarioDto {
+    fn from(valor: writer_core::comments::Comentario) -> Self {
+        Self {
+            version: valor.version,
+            id: valor.id,
+            tipo: valor.tipo,
+            documento: valor.documento,
+            ancla: valor.ancla.map(Into::into),
+            estado: valor.estado,
+            creado: valor.creado,
+            actualizado: valor.actualizado,
+            autor: valor.autor,
+            huerfano: valor.huerfano,
+            mensajes: valor.mensajes.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
 impl From<MetaDiariaDto> for MetaDiaria {
     fn from(valor: MetaDiariaDto) -> Self {
         Self {
@@ -506,6 +611,78 @@ fn agregar_sesion(ruta: String, sesion: SesionDto) -> Result<String, ErrorDto> {
 fn leer_sesiones(ruta: String, mes: String) -> Result<Vec<SesionDto>, ErrorDto> {
     writer_core::goals::leer_sesiones(std::path::Path::new(&ruta), &mes)
         .map(|sesiones| sesiones.into_iter().map(Into::into).collect())
+        .map_err(error)
+}
+
+#[tauri::command]
+fn listar_comentarios(
+    ruta: String,
+    documento: Option<String>,
+) -> Result<Vec<ComentarioDto>, ErrorDto> {
+    writer_core::comments::listar_comentarios(std::path::Path::new(&ruta), documento.as_deref())
+        .map(|comentarios| comentarios.into_iter().map(Into::into).collect())
+        .map_err(error)
+}
+
+#[tauri::command]
+fn crear_comentario(
+    ruta: String,
+    documento: String,
+    texto: String,
+    texto_marcado: String,
+    autor: String,
+) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::crear_comentario(
+        std::path::Path::new(&ruta),
+        &documento,
+        &texto,
+        &texto_marcado,
+        &autor,
+    )
+    .map(Into::into)
+    .map_err(error)
+}
+
+#[tauri::command]
+fn crear_sticky(
+    ruta: String,
+    documento: String,
+    texto: String,
+    autor: String,
+) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::crear_sticky(std::path::Path::new(&ruta), &documento, &texto, &autor)
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn agregar_mensaje_comentario(
+    ruta: String,
+    id: String,
+    tipo: String,
+    autor: String,
+    texto: String,
+) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::agregar_mensaje(std::path::Path::new(&ruta), &id, &tipo, &autor, &texto)
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn resolver_comentario(ruta: String, id: String, autor: String) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::resolver_comentario(std::path::Path::new(&ruta), &id, &autor)
+        .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn marcar_comentario_huerfano(
+    ruta: String,
+    id: String,
+    huerfano: bool,
+) -> Result<ComentarioDto, ErrorDto> {
+    writer_core::comments::marcar_huerfano(std::path::Path::new(&ruta), &id, huerfano)
+        .map(Into::into)
         .map_err(error)
 }
 
@@ -900,7 +1077,13 @@ pub fn run() {
             leer_metas,
             guardar_metas,
             agregar_sesion,
-            leer_sesiones
+            leer_sesiones,
+            listar_comentarios,
+            crear_comentario,
+            crear_sticky,
+            agregar_mensaje_comentario,
+            resolver_comentario,
+            marcar_comentario_huerfano
         ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar writer");
@@ -937,6 +1120,9 @@ mod tests {
         MetasDto::export_all(&config).expect("exportar MetasDto");
         PausaDto::export_all(&config).expect("exportar PausaDto");
         SesionDto::export_all(&config).expect("exportar SesionDto");
+        AnclaDto::export_all(&config).expect("exportar AnclaDto");
+        MensajeDto::export_all(&config).expect("exportar MensajeDto");
+        ComentarioDto::export_all(&config).expect("exportar ComentarioDto");
     }
 
     #[test]
@@ -1133,6 +1319,41 @@ mod tests {
         assert_eq!(archivada.archivo.as_deref(), Some("archivado"));
         let restaurada = cambiar_archivo(ruta, escena.id.clone(), None).expect("restaurar");
         assert!(restaurada.archivo.is_none());
+    }
+
+    #[test]
+    fn comentarios_sobre_un_proyecto_real() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let raiz = directorio.path().join("comentarios");
+        let ruta = raiz.display().to_string();
+        crear_proyecto(ruta.clone(), "Comentarios".to_string(), None, None, false)
+            .expect("crear proyecto");
+        let documentos = listar(ruta.clone(), true).expect("listar");
+        let escena = documentos
+            .iter()
+            .find(|documento| documento.tipo == "escena")
+            .expect("escena");
+        let comentario = crear_comentario(
+            ruta.clone(),
+            escena.ruta.clone(),
+            "revisar".to_string(),
+            "texto".to_string(),
+            "local".to_string(),
+        )
+        .expect("crear comentario");
+        assert_eq!(comentario.mensajes.len(), 1);
+        let respuesta = agregar_mensaje_comentario(
+            ruta.clone(),
+            comentario.id.clone(),
+            "respuesta".to_string(),
+            "local".to_string(),
+            "de acuerdo".to_string(),
+        )
+        .expect("responder");
+        assert_eq!(respuesta.mensajes.len(), 2);
+        let resuelto =
+            resolver_comentario(ruta, comentario.id, "local".to_string()).expect("resolver");
+        assert_eq!(resuelto.estado, "resuelto");
     }
 
     #[test]

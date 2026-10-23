@@ -18,6 +18,7 @@ type Props = {
   personajes: OpcionMarca[];
   tramas: OpcionMarca[];
   onCambio: (markdown: string) => void;
+  onComentario?: (texto: string, textoMarcado: string) => Promise<string | null>;
 };
 
 export function EditorMarkdown({
@@ -26,6 +27,7 @@ export function EditorMarkdown({
   personajes,
   tramas,
   onCambio,
+  onComentario,
 }: Props) {  const alCambiar = useRef(onCambio);
   alCambiar.current = onCambio;
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
@@ -138,13 +140,24 @@ export function EditorMarkdown({
     reemplazarMarca('trama', { id });
   };
 
-  const aplicarComentario = () => {
+  const aplicarComentario = async () => {
     const texto = comentarioTexto.trim();
     if (!comentarioValido(texto)) {
       setErrorComentario('El comentario no puede estar vacío ni contener «|» o «]]».');
       return;
     }
-    if (!reemplazarMarca('comentario', { texto })) {
+    const { from, to } = editor.state.selection;
+    const seleccion = editor.state.doc.textBetween(from, to, '\n');
+    if (!seleccion.trim()) {
+      setErrorComentario('Selecciona texto para crear el comentario.');
+      return;
+    }
+    const id = onComentario ? await onComentario(texto, seleccion) : null;
+    if (onComentario && !id) {
+      setErrorComentario('No se pudo crear el hilo del comentario.');
+      return;
+    }
+    if (!reemplazarMarca('comentario', id ? { texto, id } : { texto })) {
       return;
     }
     setComentarioTexto('');
@@ -299,7 +312,7 @@ export function EditorMarkdown({
                   }
                   if (evento.key === 'Enter') {
                     evento.preventDefault();
-                    aplicarComentario();
+                    void aplicarComentario();
                   } else if (evento.key === 'Escape') {
                     setComentarioAbierto(false);
                     setComentarioTexto('');
@@ -311,7 +324,7 @@ export function EditorMarkdown({
               <button
                 type="button"
                 className="secundario pequeno"
-                onClick={aplicarComentario}
+                onClick={() => void aplicarComentario()}
                 disabled={comentarioTexto.trim() === ''}
               >
                 Aplicar
