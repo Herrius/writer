@@ -337,6 +337,27 @@ pub fn marcar_huerfano(raiz: &Path, id: &str, huerfano: bool) -> Result<Comentar
     Ok(comentario)
 }
 
+/// Recalcula los huérfanos de un documento a partir de su texto actual.
+///
+/// Un ancla se considera presente si su texto marcado aparece en el documento.
+/// No se borra ningún hilo: solo se actualiza `huerfano`.
+pub fn sincronizar_huerfanos(raiz: &Path, documento: &str, texto: &str) -> Result<Vec<Comentario>> {
+    let mut comentarios = listar_comentarios(raiz, Some(documento))?;
+    for comentario in &mut comentarios {
+        let Some(ancla) = &comentario.ancla else {
+            continue;
+        };
+        let huerfano = !texto.contains(ancla.texto.as_str());
+        if huerfano != comentario.huerfano {
+            comentario.huerfano = huerfano;
+            comentario.actualizado = time::ahora();
+            comentario.validar()?;
+            guardar_comentario(raiz, comentario)?;
+        }
+    }
+    Ok(comentarios)
+}
+
 fn directorio_comentarios(raiz: &Path, crear: bool) -> Result<Option<PathBuf>> {
     let escritor = fsutil::validar_escritor(raiz)?
         .ok_or_else(|| Error::Project("el proyecto no tiene .escritor".to_string()))?;
@@ -436,6 +457,21 @@ mod tests {
         .expect("sticky");
         assert!(sticky.ancla.is_none());
         assert_eq!(sticky.tipo, "sticky");
+    }
+
+    #[test]
+    fn huerfano_se_marca_y_se_recupera() {
+        let temporal = raiz();
+        let documento = "manuscrito/01-libro/01-capitulo/001-escena.md";
+        let comentario = crear_comentario(temporal.path(), documento, "revisar", "texto", "local")
+            .expect("crear");
+        let huerfanos =
+            sincronizar_huerfanos(temporal.path(), documento, "otra cosa").expect("sync");
+        assert!(huerfanos[0].huerfano);
+        let recuperados =
+            sincronizar_huerfanos(temporal.path(), documento, "el texto vuelve").expect("sync");
+        assert!(!recuperados[0].huerfano);
+        assert_eq!(recuperados[0].id, comentario.id);
     }
 
     #[test]

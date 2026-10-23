@@ -15,5 +15,5 @@ test('crea una nota, responde y resuelve el hilo', async ({ page }) => {
   await expect(page.getByText('De acuerdo, lo reviso.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Resolver' }).click();
-  await expect(page.getByText('resuelto')).toBeVisible();
+  await expect(page.getByText('resuelto', { exact: true })).toBeVisible();
 });

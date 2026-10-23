@@ -1,8 +1,8 @@
 # Iteración 23 — Fase 2.5: importación y backup
 
 - **Fecha:** 2026-10-23
-- **Estado:** Markdown, DOCX básico y backup/restore implementados; PDF y
-  HTML/RTF pendientes.
+- **Estado:** Markdown, DOCX básico, HTML, RTF, backup/restore e impresión
+  implementados; PDF nativo y validación en Word/LibreOffice pendientes.
 - **Contrato:** [`../importacion-v1.md`](../importacion-v1.md) y
   [`../exportacion-v2.md`](../exportacion-v2.md).
 
@@ -29,10 +29,8 @@ pnpm ui:test                                              63/63
 
 ## 3. Pendiente
 
-- Importación HTML y RTF.
 - Previsualización y selección parcial antes de importar.
-- Restauración desde la UI con diálogo de archivo y carpeta.
-- PDF/impresión y formato de manuscrito.
+- PDF nativo con formato de manuscrito (hoy se usa el diálogo de impresión).
 - Validación de DOCX en Word/LibreOffice.
 - Pruebas con zip bombs y DOCX malformados reales.
 

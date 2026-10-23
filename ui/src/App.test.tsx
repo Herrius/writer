@@ -80,6 +80,7 @@ vi.mock('./api', () => ({
   crearDesdePlantilla: vi.fn(),
   agregarMensajeComentario: vi.fn(),
   resolverComentario: vi.fn(),
+  sincronizarComentariosHuerfanos: vi.fn().mockResolvedValue([]),
   renombrar: vi.fn(),
   duplicar: vi.fn(),
   proyectoE2e: vi.fn().mockResolvedValue(null),

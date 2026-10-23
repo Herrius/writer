@@ -58,7 +58,8 @@ Pruebas nuevas:
 
 ## 4. Pendiente
 
-- Rachas, gráfico de 30 días y estadísticas históricas.
+- Estadísticas históricas fuera del mes actual; la racha y el gráfico de 7 días
+  ya se calculan desde las sesiones.
 - Integración con backup/exportación.
 - Revisión de accesibilidad del panel y del temporizador.
 - Prueba de escritorio con Tauri (la UI se probó en demo y con el comando

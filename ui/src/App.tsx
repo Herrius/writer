@@ -25,6 +25,8 @@ import {
   descartarCuarentena,
   duplicar as duplicarDocumento,
   elegirArchivoImportacion,
+  elegirArchivoBackup,
+  elegirCarpetaRestauracion,
   elegirDestinoBackup,
   elegirDestinoDocx,
   elegirProyecto,
@@ -36,19 +38,22 @@ import {
   guardarPlotGrid,
   historial as pedirHistorial,
   importarDocx,
+  importarHtml,
   importarMarkdown,
+  importarRtf,
   leer,
   leerMetas,
   leerPlotGrid,
   leerSesiones,
   listar,
-  listarComentarios,
   mostrar as pedirRevision,
   mover as moverDocumentoApi,
   proyectoE2e,
   renombrar as renombrarDocumento,
   resolverComentario,
+  restaurarBackup as restaurarBackupApi,
   revertir as revertirRevision,
+  sincronizarComentariosHuerfanos,
 } from './api';
 import type { BusquedaDto } from './types/BusquedaDto';
 import type { ComentarioDto } from './types/ComentarioDto';
@@ -258,6 +263,9 @@ export default function App() {
   const [errorComentarios, setErrorComentarios] = useState<string | null>(null);
   const [textoSticky, setTextoSticky] = useState('');
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
+  const [filtroComentarios, setFiltroComentarios] = useState<'todos' | 'abiertos' | 'resueltos' | 'huerfanos'>(
+    'todos',
+  );
   const [metas, setMetas] = useState<MetasDto | null>(null);
   const [sesiones, setSesiones] = useState<SesionDto[]>([]);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
@@ -1202,7 +1210,11 @@ export default function App() {
     try {
       const documento = /\.docx$/i.test(archivo)
         ? await importarDocx(actual.raiz, archivo, titulo, null)
-        : await importarMarkdown(actual.raiz, archivo, titulo, null);
+        : /\.html?$/i.test(archivo)
+          ? await importarHtml(actual.raiz, archivo, titulo, null)
+          : /\.rtf$/i.test(archivo)
+            ? await importarRtf(actual.raiz, archivo, titulo, null)
+            : await importarMarkdown(actual.raiz, archivo, titulo, null);
       setDocumentos(await listar(actual.raiz, true));
       await seleccionar(documento);
       setMensaje(`Documento importado: ${documento.titulo}.`);
@@ -1225,6 +1237,23 @@ export default function App() {
       setMensaje(`Backup creado: ${ruta}.`);
     } catch (fallo) {
       setMensaje(`No se pudo crear el backup: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const restaurarProyectoDesdeBackup = async () => {
+    const archivo = await elegirArchivoBackup();
+    if (!archivo) {
+      return;
+    }
+    const destino = await elegirCarpetaRestauracion();
+    if (!destino) {
+      return;
+    }
+    try {
+      await restaurarBackupApi(archivo, destino);
+      setMensaje(`Backup restaurado en ${destino}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo restaurar: ${errorDe(fallo).mensaje}`);
     }
   };
 
@@ -1743,7 +1772,7 @@ export default function App() {
       return;
     }
     let cancelado = false;
-    listarComentarios(actual.raiz, activo.ruta)
+    sincronizarComentariosHuerfanos(actual.raiz, activo.ruta, activo.cuerpo)
       .then((lista) => {
         if (!cancelado) {
           setComentarios(lista);
@@ -1794,9 +1823,54 @@ export default function App() {
       ? pendienteRef.current.cuerpo
       : (activo?.cuerpo ?? '');
   const palabrasDocumento = contarPalabras(textoSinMarcas(cuerpoVisible));
+  const comentariosVisibles = comentarios.filter((comentario) => {
+    if (filtroComentarios === 'abiertos') {
+      return comentario.estado === 'abierto' && !comentario.huerfano;
+    }
+    if (filtroComentarios === 'resueltos') {
+      return comentario.estado === 'resuelto';
+    }
+    if (filtroComentarios === 'huerfanos') {
+      return comentario.huerfano;
+    }
+    return true;
+  });
   const palabrasHoy = sesiones
     .filter((sesion) => sesion.inicio.startsWith(fechaHoy()))
     .reduce((total, sesion) => total + sesion.palabras, 0);
+  const ultimosDias = useMemo(() => {
+    const dias: Array<{ fecha: string; palabras: number }> = [];
+    for (let atras = 6; atras >= 0; atras -= 1) {
+      const fecha = new Date();
+      fecha.setDate(fecha.getDate() - atras);
+      const clave = fecha.toISOString().slice(0, 10);
+      dias.push({
+        fecha: clave,
+        palabras: sesiones
+          .filter((sesion) => sesion.inicio.startsWith(clave))
+          .reduce((total, sesion) => total + sesion.palabras, 0),
+      });
+    }
+    return dias;
+  }, [sesiones]);
+  const maximoDia = Math.max(1, ...ultimosDias.map((dia) => dia.palabras));
+  const racha = useMemo(() => {
+    let total = 0;
+    for (let atras = 0; atras < 365; atras += 1) {
+      const fecha = new Date();
+      fecha.setDate(fecha.getDate() - atras);
+      const clave = fecha.toISOString().slice(0, 10);
+      const palabras = sesiones
+        .filter((sesion) => sesion.inicio.startsWith(clave))
+        .reduce((suma, sesion) => suma + sesion.palabras, 0);
+      if (palabras > 0) {
+        total += 1;
+      } else {
+        break;
+      }
+    }
+    return total;
+  }, [sesiones]);
   const modoBusqueda = consulta.trim().length >= 2;
 
   const botonDocumento = (documento: DocumentoDto, icono: string) => (
@@ -2566,8 +2640,19 @@ export default function App() {
                   )}
                   <p className="dabble-resumen">
                     {palabrasHoy.toLocaleString('es')} palabras hoy · {sesiones.length} sesiones
-                    este mes
+                    este mes · racha {racha} día{racha === 1 ? '' : 's'}
                   </p>
+                  <div className="dabble-grafico" aria-hidden="true">
+                    {ultimosDias.map((dia) => (
+                      <span
+                        key={dia.fecha}
+                        style={{
+                          height: `${Math.max(6, Math.round((dia.palabras / maximoDia) * 100))}%`,
+                        }}
+                        title={`${dia.fecha}: ${dia.palabras} palabras`}
+                      />
+                    ))}
+                  </div>
                 </section>
                 <section className="dabble-timer">
                   <div className="dabble-timer-cabecera">
@@ -2720,6 +2805,11 @@ export default function App() {
                         </button>
                       )}
                     </div>
+                    <div className="dabble-acciones-documento">
+                      <button className="dabble-boton" onClick={() => window.print()}>
+                        Imprimir / PDF
+                      </button>
+                    </div>
                     <div className="dabble-acciones-documento secundarias">
                       {activo.archivo ? (
                         <button
@@ -2768,6 +2858,27 @@ export default function App() {
                 {activo ? (
                   <>
                     <label className="dabble-campo-meta">
+                      <span>Filtro</span>
+                      <select
+                        value={filtroComentarios}
+                        onChange={(evento) =>
+                          setFiltroComentarios(
+                            evento.target.value as
+                              | 'todos'
+                              | 'abiertos'
+                              | 'resueltos'
+                              | 'huerfanos',
+                          )
+                        }
+                        aria-label="Filtrar comentarios"
+                      >
+                        <option value="todos">Todos</option>
+                        <option value="abiertos">Abiertos</option>
+                        <option value="resueltos">Resueltos</option>
+                        <option value="huerfanos">Huérfanos</option>
+                      </select>
+                    </label>
+                    <label className="dabble-campo-meta">
                       <span>Nota rápida</span>
                       <input
                         value={textoSticky}
@@ -2787,11 +2898,11 @@ export default function App() {
                         {errorComentarios}
                       </p>
                     )}
-                    {comentarios.length === 0 ? (
+                    {comentariosVisibles.length === 0 ? (
                       <p className="dabble-vacio">Sin comentarios en este documento.</p>
                     ) : (
                       <ul className="dabble-hilos">
-                        {comentarios.map((comentario) => (
+                        {comentariosVisibles.map((comentario) => (
                           <li key={comentario.id} className="dabble-hilo">
                             <div className="dabble-hilo-cabecera">
                               <strong>
@@ -2949,6 +3060,12 @@ export default function App() {
                 </button>
                 <button className="dabble-boton" onClick={() => void hacerBackup()}>
                   Crear backup ZIP
+                </button>
+                <button
+                  className="dabble-boton"
+                  onClick={() => void restaurarProyectoDesdeBackup()}
+                >
+                  Restaurar backup
                 </button>
               </section>
             )}

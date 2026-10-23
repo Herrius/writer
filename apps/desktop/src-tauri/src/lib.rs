@@ -817,6 +817,40 @@ fn importar_docx(
 }
 
 #[tauri::command]
+fn importar_html(
+    ruta: String,
+    archivo: String,
+    titulo: String,
+    tipo_nota: Option<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = writer_core::import::importar_html(
+        &Project::new(&ruta),
+        std::path::Path::new(&archivo),
+        &titulo,
+        tipo_nota.as_deref(),
+    )
+    .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
+fn importar_rtf(
+    ruta: String,
+    archivo: String,
+    titulo: String,
+    tipo_nota: Option<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = writer_core::import::importar_rtf(
+        &Project::new(&ruta),
+        std::path::Path::new(&archivo),
+        &titulo,
+        tipo_nota.as_deref(),
+    )
+    .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
 fn crear_backup(ruta: String, destino: String) -> Result<String, ErrorDto> {
     writer_core::import::crear_backup(std::path::Path::new(&ruta), std::path::Path::new(&destino))
         .map(|ruta| ruta.display().to_string())
@@ -934,6 +968,17 @@ fn agregar_mensaje_comentario(
 fn resolver_comentario(ruta: String, id: String, autor: String) -> Result<ComentarioDto, ErrorDto> {
     writer_core::comments::resolver_comentario(std::path::Path::new(&ruta), &id, &autor)
         .map(Into::into)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn sincronizar_comentarios_huerfanos(
+    ruta: String,
+    documento: String,
+    texto: String,
+) -> Result<Vec<ComentarioDto>, ErrorDto> {
+    writer_core::comments::sincronizar_huerfanos(std::path::Path::new(&ruta), &documento, &texto)
+        .map(|comentarios| comentarios.into_iter().map(Into::into).collect())
         .map_err(error)
 }
 
@@ -1390,6 +1435,8 @@ pub fn run() {
             crear_desde_plantilla,
             importar_markdown,
             importar_docx,
+            importar_html,
+            importar_rtf,
             crear_backup,
             restaurar_backup,
             listar_comentarios,
@@ -1397,6 +1444,7 @@ pub fn run() {
             crear_sticky,
             agregar_mensaje_comentario,
             resolver_comentario,
+            sincronizar_comentarios_huerfanos,
             marcar_comentario_huerfano
         ])
         .run(tauri::generate_context!())

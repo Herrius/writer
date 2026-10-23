@@ -397,6 +397,26 @@ export async function agregarMensajeComentario(
   });
 }
 
+export async function sincronizarComentariosHuerfanos(
+  ruta: string,
+  documento: string,
+  texto: string,
+): Promise<ComentarioDto[]> {
+  if (!esTauri) {
+    return comentariosDemo
+      .filter((comentario) => comentario.documento === documento)
+      .map((comentario) => ({
+        ...comentario,
+        huerfano: comentario.ancla ? !texto.includes(comentario.ancla.texto) : false,
+      }));
+  }
+  return invoke<ComentarioDto[]>('sincronizar_comentarios_huerfanos', {
+    ruta,
+    documento,
+    texto,
+  });
+}
+
 export async function resolverComentario(
   ruta: string,
   id: string,
@@ -667,9 +687,11 @@ export async function elegirArchivoImportacion(): Promise<string | null> {
     multiple: false,
     title: 'Importar documento',
     filters: [
-      { name: 'Documentos', extensions: ['md', 'markdown', 'docx'] },
+      { name: 'Documentos', extensions: ['md', 'markdown', 'docx', 'html', 'htm', 'rtf'] },
       { name: 'Markdown', extensions: ['md', 'markdown'] },
       { name: 'Word', extensions: ['docx'] },
+      { name: 'HTML', extensions: ['html', 'htm'] },
+      { name: 'RTF', extensions: ['rtf'] },
     ],
   });
   return typeof seleccion === 'string' ? seleccion : null;
@@ -684,6 +706,30 @@ export async function elegirDestinoBackup(titulo: string): Promise<string | null
     title: 'Guardar backup del proyecto',
     defaultPath: nombre,
     filters: [{ name: 'Backup writer', extensions: ['zip'] }],
+  });
+  return typeof seleccion === 'string' ? seleccion : null;
+}
+
+export async function elegirArchivoBackup(): Promise<string | null> {
+  if (!esTauri) {
+    return window.prompt('Ruta del backup ZIP');
+  }
+  const seleccion = await open({
+    multiple: false,
+    title: 'Restaurar backup',
+    filters: [{ name: 'Backup writer', extensions: ['zip'] }],
+  });
+  return typeof seleccion === 'string' ? seleccion : null;
+}
+
+export async function elegirCarpetaRestauracion(): Promise<string | null> {
+  if (!esTauri) {
+    return window.prompt('Carpeta de destino para restaurar');
+  }
+  const seleccion = await open({
+    directory: true,
+    multiple: false,
+    title: 'Carpeta de destino de la restauración',
   });
   return typeof seleccion === 'string' ? seleccion : null;
 }
@@ -710,6 +756,30 @@ export async function importarDocx(
     throw { tipo: 'formato', mensaje: 'Importar requiere la app de escritorio.' } satisfies ErrorDto;
   }
   return invoke<DocumentoDto>('importar_docx', { ruta, archivo, titulo, tipoNota });
+}
+
+export async function importarHtml(
+  ruta: string,
+  archivo: string,
+  titulo: string,
+  tipoNota: string | null,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    throw { tipo: 'formato', mensaje: 'Importar requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  return invoke<DocumentoDto>('importar_html', { ruta, archivo, titulo, tipoNota });
+}
+
+export async function importarRtf(
+  ruta: string,
+  archivo: string,
+  titulo: string,
+  tipoNota: string | null,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    throw { tipo: 'formato', mensaje: 'Importar requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  return invoke<DocumentoDto>('importar_rtf', { ruta, archivo, titulo, tipoNota });
 }
 
 export async function crearBackup(ruta: string, destino: string): Promise<string> {

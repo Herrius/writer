@@ -85,6 +85,43 @@ pub fn importar_docx(
     Ok((id, ruta))
 }
 
+/// Importa un HTML básico como escena o nota nueva.
+pub fn importar_html(
+    proyecto: &Project,
+    archivo: &Path,
+    titulo: &str,
+    tipo_nota: Option<&str>,
+) -> Result<(String, String)> {
+    let bytes = leer_limitado(archivo)?;
+    let texto = String::from_utf8(bytes)
+        .map_err(|error| Error::Format(format!("HTML no es UTF-8: {error}")))?;
+    let cuerpo = texto_html(&texto);
+    let (id, ruta) = match tipo_nota {
+        Some(tipo) => proyecto.crear_nota(tipo, titulo)?,
+        None => proyecto.crear_escena(titulo, None, None, None)?,
+    };
+    proyecto.escribir_cuerpo(&id, &cuerpo)?;
+    Ok((id, ruta))
+}
+
+/// Importa un RTF básico como escena o nota nueva.
+pub fn importar_rtf(
+    proyecto: &Project,
+    archivo: &Path,
+    titulo: &str,
+    tipo_nota: Option<&str>,
+) -> Result<(String, String)> {
+    let bytes = leer_limitado(archivo)?;
+    let texto = String::from_utf8_lossy(&bytes).to_string();
+    let cuerpo = texto_rtf(&texto);
+    let (id, ruta) = match tipo_nota {
+        Some(tipo) => proyecto.crear_nota(tipo, titulo)?,
+        None => proyecto.crear_escena(titulo, None, None, None)?,
+    };
+    proyecto.escribir_cuerpo(&id, &cuerpo)?;
+    Ok((id, ruta))
+}
+
 /// Crea un backup ZIP del proyecto.
 pub fn crear_backup(raiz: &Path, destino: &Path) -> Result<PathBuf> {
     let raiz = std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
@@ -266,6 +303,105 @@ fn desescapar_xml(texto: &str) -> String {
         .replace("&amp;", "&")
 }
 
+fn texto_html(html: &str) -> String {
+    let mut sin_scripts = String::with_capacity(html.len());
+    let mut resto = html;
+    while let Some(inicio) = resto.find("<script") {
+        sin_scripts.push_str(&resto[..inicio]);
+        let tras = &resto[inicio..];
+        let Some(fin) = tras.find("</script>") else {
+            resto = "";
+            break;
+        };
+        resto = &tras[fin + 9..];
+    }
+    sin_scripts.push_str(resto);
+    let mut sin_estilos = String::with_capacity(sin_scripts.len());
+    let mut resto = sin_scripts.as_str();
+    while let Some(inicio) = resto.find("<style") {
+        sin_estilos.push_str(&resto[..inicio]);
+        let tras = &resto[inicio..];
+        let Some(fin) = tras.find("</style>") else {
+            resto = "";
+            break;
+        };
+        resto = &tras[fin + 8..];
+    }
+    sin_estilos.push_str(resto);
+
+    let mut salida = String::with_capacity(sin_estilos.len());
+    let mut dentro = false;
+    for caracter in sin_estilos.chars() {
+        match caracter {
+            '<' => {
+                dentro = true;
+                salida.push(' ');
+            }
+            '>' => {
+                dentro = false;
+                salida.push(' ');
+            }
+            _ if !dentro => salida.push(caracter),
+            _ => {}
+        }
+    }
+    let texto = desescapar_xml(&salida)
+        .replace('\u{a0}', " ")
+        .lines()
+        .map(str::trim)
+        .filter(|linea| !linea.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("{}\n", texto)
+}
+
+fn texto_rtf(rtf: &str) -> String {
+    let mut salida = String::with_capacity(rtf.len());
+    let mut profundidad = 0_i32;
+    let mut iter = rtf.chars().peekable();
+    while let Some(caracter) = iter.next() {
+        match caracter {
+            '{' => profundidad += 1,
+            '}' => profundidad -= 1,
+            '\\' => {
+                let mut control = String::new();
+                while let Some(siguiente) = iter.peek().copied() {
+                    if siguiente.is_ascii_alphabetic() {
+                        control.push(siguiente);
+                        iter.next();
+                    } else {
+                        break;
+                    }
+                }
+                match control.as_str() {
+                    "par" | "line" => {
+                        if profundidad > 0 {
+                            salida.push('\n');
+                        }
+                    }
+                    "tab" => salida.push('\t'),
+                    "emdash" => salida.push('—'),
+                    "endash" => salida.push('–'),
+                    "lquote" => salida.push('‘'),
+                    "rquote" => salida.push('’'),
+                    "ldquo" => salida.push('“'),
+                    "rdquo" => salida.push('”'),
+                    _ => {}
+                }
+            }
+            _ if profundidad > 0 => salida.push(caracter),
+            _ => {}
+        }
+    }
+    let limpio = salida
+        .lines()
+        .map(str::trim)
+        .filter(|linea| !linea.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("{}\n", limpio)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -311,6 +447,34 @@ mod tests {
         restaurar_backup(&archivo, &destino).expect("restaurar");
         let escaneo = Project::new(&destino).verificar().expect("verificar");
         assert!(escaneo.errores.is_empty(), "errores: {:?}", escaneo.errores);
+    }
+
+    #[test]
+    fn importa_html_sin_scripts() {
+        let (temporal, proyecto) = proyecto();
+        let archivo = temporal.path().join("entrada.html");
+        std::fs::write(
+            &archivo,
+            "<html><body><script>alert(1)</script><p>Hola <b>mundo</b></p></body></html>",
+        )
+        .expect("escribir");
+        let (id, _) = importar_html(&proyecto, &archivo, "HTML", None).expect("importar");
+        let documento = proyecto.leer(&id).expect("leer");
+        let cuerpo = documento.cuerpo();
+        assert!(cuerpo.contains("Hola"));
+        assert!(!cuerpo.contains("alert"));
+    }
+
+    #[test]
+    fn importa_rtf_basico() {
+        let (temporal, proyecto) = proyecto();
+        let archivo = temporal.path().join("entrada.rtf");
+        std::fs::write(&archivo, "{\\rtf1\\ansi Hola\\par mundo}").expect("escribir");
+        let (id, _) = importar_rtf(&proyecto, &archivo, "RTF", None).expect("importar");
+        let documento = proyecto.leer(&id).expect("leer");
+        let cuerpo = documento.cuerpo();
+        assert!(cuerpo.contains("Hola"));
+        assert!(cuerpo.contains("mundo"));
     }
 
     #[test]

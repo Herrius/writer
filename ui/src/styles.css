@@ -3306,6 +3306,39 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   border: 0;
 }
 
+@media print {
+  .dabble-topbar,
+  .dabble-sidebar,
+  .dabble-derecha,
+  .dabble-statusbar,
+  .dabble-doc-pie,
+  .editor-toolbar,
+  .banner-error,
+  .banner-info {
+    display: none !important;
+  }
+
+  .dabble-app,
+  .dabble-workspace,
+  .dabble-centro {
+    display: block;
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+
+  .dabble-documento {
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+  }
+
+  .dabble-hoja {
+    min-height: 0;
+    padding: 0;
+  }
+}
+
 /* A 200 % de texto la cabecera puede ocupar dos filas; el panel derecho se
    retira antes para no comprimir la página de escritura. */
 .dabble-topbar {
