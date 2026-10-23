@@ -42,13 +42,13 @@ python scripts/ci.py seguridad         OK
 python scripts/ci.py calidad           OK (94/94)
 ```
 
-## 4. Deuda aceptada
+## 4. Deuda y correcciones
 
 ### P3
 
-- **UX-F1-13:** los campos del modal conservan bordes `#d8d0c4` (1,53:1). Es
-  deuda previa al rediseño; se propone corregirla en la fase de accesibilidad o
-  en un pase breve antes de publicar.
+- **UX-F1-13:** corregido en `5403149`. Los campos del modal usan
+  `--borde-control` (#94897a, 3,43:1) y el E2E comprueba el borde del campo
+  «Nombre del proyecto». Ya no es deuda.
 
 ### P4
 
@@ -79,7 +79,7 @@ python scripts/ci.py calidad           OK (94/94)
 **Aprobado con observaciones.** Se cierra la Fase 1 en Linux x86_64 y se
 autoriza el arranque de la Fase 2.0 (contratos y modularización).
 
-UX-F1-13 se corrige en el primer pase de accesibilidad de la Fase 2.0; el resto
-de la deuda queda registrada para las fases siguientes.
+UX-F1-13 se corrigió en el primer pase de accesibilidad de la Fase 2.0
+(`5403149`); el resto de la deuda queda registrada para las fases siguientes.
 
 **Firma del product owner:** registrada el 2026-10-22.

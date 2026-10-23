@@ -308,7 +308,8 @@ repite la revisión UX sobre el nuevo commit.
 ### Cierre de Fase 1
 
 - UX r2 revisó `1857431` y aprobó con observaciones: P1 0, P2 0, P3 1 (bordes
-  de campos del modal, deuda previa) y P4 5.
+  de campos del modal, deuda previa) y P4 5. El P3 se corrigió en `5403149`
+  durante el primer pase de Fase 2.0; queda en P3 0.
 - Informe: [`../revisiones/fase-1-ux-2026-10-22-r2.md`](../revisiones/fase-1-ux-2026-10-22-r2.md).
 - Propuesta de aceptación: [`../revisiones/fase-1-product-owner-2026-10-22.md`](../revisiones/fase-1-product-owner-2026-10-22.md).
 - **Estado:** **aprobada con observaciones** por el product owner el
