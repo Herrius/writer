@@ -288,10 +288,19 @@ Verificación:
 ```text
 pnpm typecheck                         OK
 pnpm ui:test                           60/60
-pnpm exec playwright test e2e/fase-1-panel.spec.ts   11/11
+pnpm e2e                               25/25
+pnpm exec playwright test e2e/fase-1-panel.spec.ts   13/13
+python scripts/ci.py interfaz          OK
+python scripts/ci.py e2e               OK
+python scripts/ci.py e2e-tauri         OK
+python scripts/ci.py empaquetado       OK
+python scripts/ci.py producto          OK
+python scripts/ci.py seguridad         OK
+python scripts/ci.py calidad           OK (94/94)
 ```
 
+Commit de corrección: `1857431`; tag `fase-1-congelado-r2`; acta
+[`../revisiones/fase-1-00-congelado-r2.md`](../revisiones/fase-1-00-congelado-r2.md).
 Quedan como deuda P4 aceptada: `tablist` sin `tabpanel`/flechas, recorte de la
 portada del modal a 200 % y la cobertura de release sobre reproducibilidad. Se
-repite la revisión UX sobre el nuevo commit y se recongela con
-`fase-1-congelado-r2`.
+repite la revisión UX sobre el nuevo commit.

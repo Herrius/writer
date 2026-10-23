@@ -3,8 +3,9 @@
 - **Fecha:** 2026-10-22
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** **Fase 1 del rediseño del panel completada por el builder y
-  congelada para revisión** en `744aaa5` (tag `fase-1-congelado`, Linux x86_64).
-  Las fases 2, 2.1 y el Bloque 2.2 siguen aprobadas con observaciones.
+  recongelada tras las correcciones UX** en `1857431` (tag
+  `fase-1-congelado-r2`, Linux x86_64). Las fases 2, 2.1 y el Bloque 2.2 siguen
+  aprobadas con observaciones.
 - **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado
   y validado en Linux x86_64; Windows pendiente de build y pruebas.
 - **Plan general anterior:** **pospuesto de forma permanente hasta nuevo aviso**
@@ -15,11 +16,12 @@
 - **Plan de ejecución:**
   [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md) — features,
   commits, agentes, paralelismo, gates y estimaciones.
-- **Siguiente tarea:** pipeline de revisión de Fase 1: QA → seguridad → release
-  → UX/accesibilidad/rendimiento → product owner.
+- **Siguiente tarea:** repetir UX/accesibilidad/rendimiento sobre `1857431` y
+  pasar al product owner. QA, seguridad y release ya emitieron informes y los
+  gates se repitieron en r2.
 - **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
-  Bloque 2.2 congelado en `76b139f`; Fase 1 congelada en `744aaa5` con tag
-  `fase-1-congelado` (sin remoto).
+  Bloque 2.2 congelado en `76b139f`; Fase 1 r1 en `744aaa5` y r2 en `1857431`
+  con tags `fase-1-congelado` y `fase-1-congelado-r2` (sin remoto).
 
 ## 1. Resumen
 
@@ -278,7 +280,7 @@ pnpm --version                    12.14.0
 
 ```text
 python scripts/ci.py interfaz       OK
-python scripts/ci.py e2e            OK (19/19, Chromium)
+python scripts/ci.py e2e            OK (25/25, Chromium)
 python scripts/ci.py e2e-tauri      OK (Linux, WebDriver)
 python scripts/ci.py empaquetado    OK (deb/rpm)
 python scripts/ci.py producto       OK
@@ -288,6 +290,9 @@ pnpm typecheck                       OK
 pnpm ui:test                        60/60
 pnpm ui:build                       OK
 ```
+
+La r2 (`1857431`) corrige el foco del buscador y los estados vacíos/contraste
+detectados por UX; repite estos gates y añade 13 pruebas E2E del panel.
 
 `cargo-deny` del desktop tiene una excepción documentada en `deny.toml`:
 `RUSTSEC-2024-0370` (`proc-macro-error`, unmaintained) llega por gtk-rs/Tauri en
@@ -386,7 +391,10 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
   abre en solo lectura. Para probar edición usa la demo o un proyecto real.
 - El panel de Proyectos usa 155,27 px de ancho por tarjeta a 1440; 160 px es la
   referencia aproximada. La tarjeta de creación iguala la altura de la tarjeta
-  completa y conserva 297 px en estado vacío.
+  completa y conserva 297 px en estado vacío a 1440. A 960/200 % el mensaje de
+  vacío pasa a una fila completa y la tarjeta mantiene su medida.
+- La vista de lista vacía es compacta y el buscador muestra un anillo de foco
+  visible.
 - La reserva lateral del panel es un bloque vacío sin controles; a 960 sigue la
   altura del listado y en ≤900 px se oculta al apilarse la barra.
 - El botón «Ayuda» se retiró solo del panel de Proyectos; el botón del editor
