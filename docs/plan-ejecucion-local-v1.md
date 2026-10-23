@@ -415,6 +415,10 @@ importación.
 
 ## 11. Decisiones abiertas para Fase 2.0
 
+Las decisiones iniciales ya están registradas en
+[`iteraciones/18-fase-2-0.md`](iteraciones/18-fase-2-0.md). Este apartado queda
+como checklist hasta que los contratos de 2.0.2 estén aprobados.
+
 1. **«Partes» del manuscrito:** ¿cuarto nivel `libro → parte → capítulo →
    escena`, o agrupación de libros? Cambia el esquema v2 y la migración.
 2. **Almacenamiento de comentarios:** ¿ancla con ID en Markdown y metadatos de
