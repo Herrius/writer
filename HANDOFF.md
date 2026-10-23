@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-23
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** **Fase 2 funcional completa y verificada en Linux x86_64**,
-  pendiente de la revisión formal de QA/UX. La Fase 1 del panel sigue aprobada
+- **Fase actual:** **Fase 2 con la funcionalidad principal implementada y los P2
+  de QA corregidos**, pendiente de la re-revisión formal de QA/UX. La Fase 1 del panel sigue aprobada
   con observaciones en `1857431` (tag `fase-1-congelado-r2`). Las fases 2, 2.1
   y el Bloque 2.2 anteriores siguen aprobadas con observaciones.
 - **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado

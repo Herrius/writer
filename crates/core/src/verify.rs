@@ -394,6 +394,7 @@ pub fn escanear(raiz: &Path) -> Result<Escaneo> {
 
     verificar_ids_y_referencias(&mut escaneo);
     verificar_orden(&mut escaneo);
+    verificar_sidecars(raiz, &mut escaneo);
     if escaneo.escenas.is_empty() {
         escaneo
             .errores
@@ -404,6 +405,112 @@ pub fn escanear(raiz: &Path) -> Result<Escaneo> {
     escaneo.avisos.sort();
     escaneo.avisos.dedup();
     Ok(escaneo)
+}
+
+fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
+    let escritor = raiz.join(".escritor");
+    let revisar = |ruta: &Path| -> Option<String> {
+        match std::fs::symlink_metadata(ruta) {
+            Ok(meta) if meta.file_type().is_symlink() => {
+                Some(format!("{}: sidecar enlazado", ruta.display()))
+            }
+            Ok(_) => None,
+            Err(_) => None,
+        }
+    };
+    let metas = escritor.join("metas/metas.json");
+    if metas.exists() {
+        if let Some(error) = revisar(&metas) {
+            escaneo.errores.push(error);
+        } else {
+            match std::fs::read(&metas)
+                .map_err(|error| Error::Io(error).with_path(&metas))
+                .and_then(|bytes| {
+                    serde_json::from_slice::<crate::goals::Metas>(&bytes).map_err(Error::Json)
+                })
+                .and_then(|metas| metas.validar())
+            {
+                Ok(()) => {}
+                Err(error) => escaneo
+                    .errores
+                    .push(format!("{}: {error}", metas.display())),
+            }
+        }
+    }
+    let grid = escritor.join("planificacion/plot-grid.json");
+    if grid.exists() {
+        if let Some(error) = revisar(&grid) {
+            escaneo.errores.push(error);
+        } else {
+            match std::fs::read(&grid)
+                .map_err(|error| Error::Io(error).with_path(&grid))
+                .and_then(|bytes| {
+                    serde_json::from_slice::<crate::planning::PlotGrid>(&bytes).map_err(Error::Json)
+                })
+                .and_then(|grid| grid.validar())
+            {
+                Ok(()) => {}
+                Err(error) => escaneo.errores.push(format!("{}: {error}", grid.display())),
+            }
+        }
+    }
+    let sesiones = escritor.join("sesiones");
+    if let Ok(entradas) = std::fs::read_dir(&sesiones) {
+        for entrada in entradas.flatten() {
+            let ruta = entrada.path();
+            if ruta.extension().and_then(|valor| valor.to_str()) != Some("jsonl") {
+                continue;
+            }
+            if let Some(error) = revisar(&ruta) {
+                escaneo.errores.push(error);
+                continue;
+            }
+            let Ok(texto) = std::fs::read_to_string(&ruta) else {
+                escaneo
+                    .errores
+                    .push(format!("{}: no se puede leer", ruta.display()));
+                continue;
+            };
+            for (numero, linea) in texto.lines().enumerate() {
+                if linea.trim().is_empty() {
+                    continue;
+                }
+                let resultado = serde_json::from_str::<crate::goals::Sesion>(linea)
+                    .map_err(Error::Json)
+                    .and_then(|sesion| sesion.validar());
+                if let Err(error) = resultado {
+                    escaneo.errores.push(format!(
+                        "{}: línea {}: {error}",
+                        ruta.display(),
+                        numero + 1
+                    ));
+                }
+            }
+        }
+    }
+    let comentarios = escritor.join("comentarios");
+    if let Ok(entradas) = std::fs::read_dir(&comentarios) {
+        for entrada in entradas.flatten() {
+            let ruta = entrada.path();
+            if ruta.extension().and_then(|valor| valor.to_str()) != Some("json") {
+                continue;
+            }
+            if let Some(error) = revisar(&ruta) {
+                escaneo.errores.push(error);
+                continue;
+            }
+            let resultado = std::fs::read(&ruta)
+                .map_err(|error| Error::Io(error).with_path(&ruta))
+                .and_then(|bytes| {
+                    serde_json::from_slice::<crate::comments::Comentario>(&bytes)
+                        .map_err(Error::Json)
+                })
+                .and_then(|comentario| comentario.validar());
+            if let Err(error) = resultado {
+                escaneo.errores.push(format!("{}: {error}", ruta.display()));
+            }
+        }
+    }
 }
 
 fn leer_proyecto(raiz: &Path) -> Result<(Proyecto, Vec<String>)> {

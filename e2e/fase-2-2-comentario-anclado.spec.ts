@@ -14,6 +14,6 @@ test('crea un comentario anclado con ULID v2', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Ver Markdown' }).click();
   await expect(page.locator('pre.fuente')).toContainText(
-    '[[comentario:01ARZ3NDEKTSV4RRFFQ69G5FAV|revisar el ritmo|',
+    /\[\[comentario:[0-9A-HJKMNP-TV-Z]{26}\|revisar el ritmo\|/,
   );
 });

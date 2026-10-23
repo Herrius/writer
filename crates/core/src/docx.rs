@@ -578,16 +578,38 @@ fn parsear_marca(texto: &str) -> Option<(&str, usize)> {
     let fin = resto.find("]]")?;
     let interior = &resto[..fin];
     let (clase, resto_marca) = interior.split_once(':')?;
-    let (referencia, contenido) = resto_marca.split_once('|')?;
-    let valida = match clase {
-        "personaje" | "trama" => crate::ulid::es_valido(referencia),
-        "comentario" => interior.split('|').count() == 2 && comentario_valido(referencia),
-        _ => false,
+    let partes: Vec<&str> = resto_marca.split('|').collect();
+    let visible = match clase {
+        "personaje" | "trama" => {
+            if !crate::ulid::es_valido(partes.first()?) {
+                return None;
+            }
+            *partes.get(1)?
+        }
+        "nota" => {
+            if !crate::ulid::es_valido(partes.first()?) {
+                return None;
+            }
+            *partes.get(1)?
+        }
+        "comentario" => match partes.as_slice() {
+            [texto, marcado] => {
+                if !comentario_valido(texto) {
+                    return None;
+                }
+                *marcado
+            }
+            [id, mensaje, marcado] => {
+                if !crate::ulid::es_valido(id) || !comentario_valido(mensaje) {
+                    return None;
+                }
+                *marcado
+            }
+            _ => return None,
+        },
+        _ => return None,
     };
-    if !valida {
-        return None;
-    }
-    Some((contenido, 2 + fin + 2))
+    Some((visible, 2 + fin + 2))
 }
 
 fn comentario_valido(texto: &str) -> bool {
@@ -668,6 +690,14 @@ mod tests {
     fn un_backtick_sin_pareja_no_oculta_las_marcas_siguientes() {
         let entrada = "Un ` literal.\n\n[[comentario:solo revisión|Marta]]\n";
         assert_eq!(quitar_marcas(entrada), "Un ` literal.\n\nMarta\n");
+    }
+
+    #[test]
+    fn quitar_marcas_v2_y_menciones() {
+        let comentario = format!("[[comentario:{ID}|revisar|Marta]]");
+        assert_eq!(quitar_marcas(&comentario), "Marta");
+        let mencion = format!("[[nota:{ID}|ficha de Marta]]");
+        assert_eq!(quitar_marcas(&mencion), "ficha de Marta");
     }
 
     #[test]

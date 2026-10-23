@@ -102,6 +102,13 @@ function mesActual(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
+function mesAnterior(): string {
+  const fecha = new Date();
+  fecha.setDate(1);
+  fecha.setMonth(fecha.getMonth() - 1);
+  return fecha.toISOString().slice(0, 7);
+}
+
 function fechaHoy(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -333,6 +340,7 @@ export default function App() {
   const drenajeRef = useRef<Promise<boolean> | null>(null);
   const temporizadorRef = useRef<number | null>(null);
   const inicioSesionRef = useRef<string | null>(null);
+  const documentoInicioRef = useRef<{ id: string; ruta: string; palabras: number } | null>(null);
   const palabrasInicioRef = useRef(0);
   const pausasRef = useRef<PausaDto[]>([]);
   const pausaInicioRef = useRef<string | null>(null);
@@ -522,28 +530,53 @@ export default function App() {
 
   const cargarMetas = async (ruta: string) => {
     setErrorMetas(null);
-    try {
-      const [metasProyecto, sesionesProyecto, grid] = await Promise.all([
+    const [metasResultado, sesionesResultado, sesionesAnteriores, gridResultado] =
+      await Promise.allSettled([
         leerMetas(ruta),
         leerSesiones(ruta, mesActual()),
+        leerSesiones(ruta, mesAnterior()),
         leerPlotGrid(ruta),
       ]);
-      setMetas(metasProyecto);
-      setSesiones(sesionesProyecto);
-      setPlotGrid(grid);
-      setTramaSeleccionada((actual) =>
-        grid.tramas.some((trama) => trama.id === actual)
-          ? actual
-          : (grid.tramas[0]?.id ?? ''),
-      );
-      setMetaDiaria(metasProyecto.diaria?.objetivo.toString() ?? '');
-      setMetaLibro(metasProyecto.libro?.objetivo.toString() ?? '');
-      setDesafioObjetivo(metasProyecto.desafio?.objetivo.toString() ?? '');
-      setDesafioLimite(metasProyecto.desafio?.limite ?? '');
-    } catch (fallo) {
+    const errores: string[] = [];
+    if (metasResultado.status === 'fulfilled') {
+      setMetas(metasResultado.value);
+      setMetaDiaria(metasResultado.value.diaria?.objetivo.toString() ?? '');
+      setMetaLibro(metasResultado.value.libro?.objetivo.toString() ?? '');
+      setDesafioObjetivo(metasResultado.value.desafio?.objetivo.toString() ?? '');
+      setDesafioLimite(metasResultado.value.desafio?.limite ?? '');
+    } else {
       setMetas(null);
+      setMetaDiaria('');
+      setMetaLibro('');
+      setDesafioObjetivo('');
+      setDesafioLimite('');
+      errores.push(`Metas: ${errorDe(metasResultado.reason).mensaje}`);
+    }
+    if (sesionesResultado.status === 'fulfilled') {
+      const anteriores =
+        sesionesAnteriores.status === 'fulfilled' ? sesionesAnteriores.value : [];
+      setSesiones([...anteriores, ...sesionesResultado.value]);
+      if (sesionesAnteriores.status === 'rejected') {
+        errores.push(`Sesiones anteriores: ${errorDe(sesionesAnteriores.reason).mensaje}`);
+      }
+    } else {
       setSesiones([]);
-      setErrorMetas(errorDe(fallo).mensaje);
+      errores.push(`Sesiones: ${errorDe(sesionesResultado.reason).mensaje}`);
+    }
+    if (gridResultado.status === 'fulfilled') {
+      setPlotGrid(gridResultado.value);
+      setTramaSeleccionada((actual) =>
+        gridResultado.value.tramas.some((trama) => trama.id === actual)
+          ? actual
+          : (gridResultado.value.tramas[0]?.id ?? ''),
+      );
+    } else {
+      setPlotGrid({ version: 1, tramas: [] });
+      setTramaSeleccionada('');
+      errores.push(`Planificación: ${errorDe(gridResultado.reason).mensaje}`);
+    }
+    if (errores.length > 0) {
+      setErrorMetas(errores.join(' · '));
     }
   };
 
@@ -555,7 +588,13 @@ export default function App() {
     setEstado('cargando');
     setTemporizadorActivo(false);
     setTemporizadorPausado(false);
+    setMetas(null);
+    setSesiones([]);
+    setPlotGrid({ version: 1, tramas: [] });
+    setTramaSeleccionada('');
+    setErrorMetas(null);
     inicioSesionRef.current = null;
+    documentoInicioRef.current = null;
     pausaInicioRef.current = null;
     pausasRef.current = [];
     setError(null);
@@ -711,6 +750,10 @@ export default function App() {
     if (!actual) {
       return;
     }
+    if (errorMetas) {
+      setMensaje('No se guardan metas mientras haya un sidecar ilegible.');
+      return;
+    }
     const numero = (texto: string) => {
       const limpio = texto.trim();
       if (!limpio) {
@@ -750,6 +793,11 @@ export default function App() {
       return;
     }
     inicioSesionRef.current = new Date().toISOString();
+    documentoInicioRef.current = {
+      id: documento.id,
+      ruta: documento.ruta,
+      palabras: palabrasDocumento,
+    };
     palabrasInicioRef.current = palabrasDocumento;
     pausasRef.current = [];
     pausaInicioRef.current = null;
@@ -781,9 +829,9 @@ export default function App() {
 
   const finalizarTemporizador = async () => {
     const actual = proyectoRef.current;
-    const documento = activoRef.current;
     const inicio = inicioSesionRef.current;
-    if (!actual || !documento || !inicio) {
+    const documentoInicio = documentoInicioRef.current;
+    if (!actual || !inicio || !documentoInicio) {
       return;
     }
     if (temporizadorPausado && pausaInicioRef.current) {
@@ -792,14 +840,18 @@ export default function App() {
         { inicio: pausaInicioRef.current, fin: new Date().toISOString() },
       ];
     }
+    const actualEnLista = documentos.find((candidato) => candidato.id === documentoInicio.id);
+    const palabrasFinales = actualEnLista
+      ? contarPalabras(textoSinMarcas(actualEnLista.cuerpo))
+      : palabrasDocumento;
     const sesion: SesionDto = {
       id: '',
       inicio,
       fin: new Date().toISOString(),
       preset,
       pausas: pausasRef.current,
-      palabras: Math.max(0, palabrasDocumento - palabrasInicioRef.current),
-      documento: documento.ruta,
+      palabras: Math.max(0, palabrasFinales - documentoInicio.palabras),
+      documento: documentoInicio.ruta,
       autor: actual.autor?.trim() || 'local',
     };
     try {
@@ -1139,6 +1191,10 @@ export default function App() {
     if (!actual || !nombre) {
       return;
     }
+    if (errorMetas) {
+      setMensaje('No se modifica el Plot Grid mientras haya un sidecar ilegible.');
+      return;
+    }
     try {
       const nota = await crearNotaApi(actual.raiz, 'tramas', nombre);
       const grid: PlotGridDto = {
@@ -1162,7 +1218,14 @@ export default function App() {
   const anadirPuntoGrid = async () => {
     const actual = proyectoRef.current;
     const documento = activoRef.current;
-    if (!actual || !documento || !tramaSeleccionada) {
+    if (!actual || !documento || !tramaSeleccionada || documento.tipo !== 'escena') {
+      if (documento && documento.tipo !== 'escena') {
+        setMensaje('Solo se pueden añadir escenas al Plot Grid.');
+      }
+      return;
+    }
+    if (errorMetas) {
+      setMensaje('No se modifica el Plot Grid mientras haya un sidecar ilegible.');
       return;
     }
     const trama = plotGrid.tramas.find((candidata) => candidata.id === tramaSeleccionada);
@@ -1226,6 +1289,11 @@ export default function App() {
   const hacerBackup = async () => {
     const actual = proyectoRef.current;
     if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se creó el backup: primero resuelve el guardado pendiente.');
       return;
     }
     const destino = await elegirDestinoBackup(actual.titulo);
@@ -1840,7 +1908,7 @@ export default function App() {
     .reduce((total, sesion) => total + sesion.palabras, 0);
   const ultimosDias = useMemo(() => {
     const dias: Array<{ fecha: string; palabras: number }> = [];
-    for (let atras = 6; atras >= 0; atras -= 1) {
+    for (let atras = 29; atras >= 0; atras -= 1) {
       const fecha = new Date();
       fecha.setDate(fecha.getDate() - atras);
       const clave = fecha.toISOString().slice(0, 10);
@@ -1852,7 +1920,7 @@ export default function App() {
       });
     }
     return dias;
-  }, [sesiones]);
+  }, [sesiones, metas?.diaria?.objetivo]);
   const maximoDia = Math.max(1, ...ultimosDias.map((dia) => dia.palabras));
   const racha = useMemo(() => {
     let total = 0;
@@ -1863,7 +1931,9 @@ export default function App() {
       const palabras = sesiones
         .filter((sesion) => sesion.inicio.startsWith(clave))
         .reduce((suma, sesion) => suma + sesion.palabras, 0);
-      if (palabras > 0) {
+      const objetivo = metas?.diaria?.objetivo ?? 0;
+      const cumple = objetivo > 0 ? palabras >= objetivo : palabras > 0;
+      if (cumple) {
         total += 1;
       } else {
         break;
@@ -2481,7 +2551,7 @@ export default function App() {
               </div>
               <footer className="dabble-doc-pie">
                 <span>{palabrasDocumento} Palabra{palabrasDocumento === 1 ? '' : 's'}</span>
-                <span>0 Hoy día</span>
+                <span>{palabrasHoy} hoy</span>
                 <span className={`estado-guardado estado-${estadoVisible}`}>
                   {etiquetaGuardado(estadoVisible)}
                 </span>
@@ -2890,6 +2960,7 @@ export default function App() {
                     <button
                       className="dabble-boton"
                       onClick={() => void crearStickyActivo()}
+                      disabled={textoSticky.trim() === ''}
                     >
                       Agregar nota
                     </button>
@@ -2932,6 +3003,7 @@ export default function App() {
                                   <button
                                     className="dabble-boton"
                                     onClick={() => void responderHilo(comentario.id)}
+                                    disabled={(respuestas[comentario.id] ?? '').trim() === ''}
                                   >
                                     Responder
                                   </button>
@@ -2956,6 +3028,11 @@ export default function App() {
             ) : (
               <section className="dabble-plan-panel">
                 <h3>Plot Grid</h3>
+                {errorMetas && (
+                  <p className="dabble-error" role="alert">
+                    {errorMetas}
+                  </p>
+                )}
                 <label className="dabble-campo-meta">
                   <span>Nueva trama</span>
                   <input
@@ -2974,7 +3051,11 @@ export default function App() {
                     aria-label="Color de la trama"
                   />
                 </label>
-                <button className="dabble-boton" onClick={() => void crearTramaGrid()}>
+                <button
+                  className="dabble-boton"
+                  onClick={() => void crearTramaGrid()}
+                  disabled={nuevaTrama.trim() === ''}
+                >
                   Crear trama
                 </button>
 
@@ -2992,7 +3073,11 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                <button className="dabble-boton" onClick={() => void anadirPuntoGrid()}>
+                <button
+                  className="dabble-boton"
+                  onClick={() => void anadirPuntoGrid()}
+                  disabled={!tramaSeleccionada || activo?.tipo !== 'escena'}
+                >
                   Añadir escena activa
                 </button>
 
@@ -3056,7 +3141,7 @@ export default function App() {
 
                 <h3>Importar y respaldar</h3>
                 <button className="dabble-boton" onClick={() => void importarArchivo()}>
-                  Importar Markdown o DOCX
+                  Importar documento
                 </button>
                 <button className="dabble-boton" onClick={() => void hacerBackup()}>
                   Crear backup ZIP
@@ -3076,7 +3161,7 @@ export default function App() {
       <footer className="dabble-statusbar">
         <span>revisión {proyecto?.revision ?? 0}</span>
         <span>{proyecto?.escenas ?? 0} escenas · {proyecto?.notas ?? 0} notas</span>
-        <span>{palabrasDocumento} palabras · 0 hoy</span>
+        <span>{palabrasDocumento} palabras · {palabrasHoy} hoy</span>
         <span className={proyecto && proyecto.errores.length > 0 ? 'estado-error' : 'estado-ok'}>
           {proyecto && proyecto.errores.length > 0
             ? `${proyecto.errores.length} error(es)`

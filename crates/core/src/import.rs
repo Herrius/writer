@@ -31,6 +31,9 @@ pub fn importar_markdown(
     let texto = String::from_utf8(bytes)
         .map_err(|error| Error::Format(format!("Markdown no es UTF-8: {error}")))?;
     let cuerpo = sin_frontmatter(&texto);
+    if cuerpo.trim().is_empty() {
+        return Err(Error::Format("el Markdown está vacío".to_string()));
+    }
     let (id, ruta) = match tipo_nota {
         Some(tipo) => proyecto.crear_nota(tipo, titulo)?,
         None => proyecto.crear_escena(titulo, None, None, None)?,
@@ -77,6 +80,9 @@ pub fn importar_docx(
     }
     let xml = documento.ok_or_else(|| Error::Format("DOCX sin word/document.xml".to_string()))?;
     let cuerpo = texto_docx(&xml)?;
+    if cuerpo.trim().is_empty() {
+        return Err(Error::Format("el DOCX no contiene texto".to_string()));
+    }
     let (id, ruta) = match tipo_nota {
         Some(tipo) => proyecto.crear_nota(tipo, titulo)?,
         None => proyecto.crear_escena(titulo, None, None, None)?,
@@ -96,6 +102,9 @@ pub fn importar_html(
     let texto = String::from_utf8(bytes)
         .map_err(|error| Error::Format(format!("HTML no es UTF-8: {error}")))?;
     let cuerpo = texto_html(&texto);
+    if cuerpo.trim().is_empty() {
+        return Err(Error::Format("el HTML no contiene texto".to_string()));
+    }
     let (id, ruta) = match tipo_nota {
         Some(tipo) => proyecto.crear_nota(tipo, titulo)?,
         None => proyecto.crear_escena(titulo, None, None, None)?,
@@ -114,6 +123,9 @@ pub fn importar_rtf(
     let bytes = leer_limitado(archivo)?;
     let texto = String::from_utf8_lossy(&bytes).to_string();
     let cuerpo = texto_rtf(&texto);
+    if cuerpo.trim().is_empty() {
+        return Err(Error::Format("el RTF no contiene texto".to_string()));
+    }
     let (id, ruta) = match tipo_nota {
         Some(tipo) => proyecto.crear_nota(tipo, titulo)?,
         None => proyecto.crear_escena(titulo, None, None, None)?,
@@ -125,13 +137,26 @@ pub fn importar_rtf(
 /// Crea un backup ZIP del proyecto.
 pub fn crear_backup(raiz: &Path, destino: &Path) -> Result<PathBuf> {
     let raiz = std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
+    if !destino.is_absolute() {
+        return Err(Error::Input(
+            "el destino del backup debe ser una ruta absoluta".to_string(),
+        ));
+    }
+    let destino = destino.to_path_buf();
+    let padre = destino
+        .parent()
+        .ok_or_else(|| Error::Input("el destino del backup no tiene padre".to_string()))?;
+    std::fs::create_dir_all(padre).map_err(|error| Error::Io(error).with_path(padre))?;
+    let padre = std::fs::canonicalize(padre).map_err(|error| Error::Io(error).with_path(padre))?;
+    let destino = padre.join(
+        destino
+            .file_name()
+            .ok_or_else(|| Error::Input("el destino del backup no tiene nombre".to_string()))?,
+    );
     if destino.starts_with(&raiz) {
         return Err(Error::Input(
             "el backup no puede escribirse dentro del proyecto".to_string(),
         ));
-    }
-    if let Some(padre) = destino.parent() {
-        std::fs::create_dir_all(padre).map_err(|error| Error::Io(error).with_path(padre))?;
     }
     let temporal = destino.with_extension("zip.tmp");
     let archivo =
@@ -151,12 +176,7 @@ pub fn crear_backup(raiz: &Path, destino: &Path) -> Result<PathBuf> {
                 .strip_prefix(&raiz)
                 .map_err(|error| Error::Other(error.to_string()))?;
             let texto = relativa.to_string_lossy().replace('\\', "/");
-            if texto == "bloqueo"
-                || texto == "indice.sqlite"
-                || texto == "indice.sqlite-wal"
-                || texto == "indice.sqlite-shm"
-                || texto.starts_with("cuarentena/")
-            {
+            if es_excluido(&texto) {
                 continue;
             }
             let metadatos = std::fs::symlink_metadata(&ruta)
@@ -181,7 +201,8 @@ pub fn crear_backup(raiz: &Path, destino: &Path) -> Result<PathBuf> {
     }
     zip.finish()
         .map_err(|error| Error::Format(error.to_string()))?;
-    std::fs::rename(&temporal, destino).map_err(|error| Error::Io(error).with_path(destino))?;
+    std::fs::rename(&temporal, &destino)
+        .map_err(|error| Error::Io(error).with_path(destino.as_path()))?;
     Ok(destino.to_path_buf())
 }
 
@@ -198,7 +219,12 @@ pub fn restaurar_backup(archivo: &Path, destino: &Path) -> Result<PathBuf> {
             )));
         }
     }
-    std::fs::create_dir_all(destino).map_err(|error| Error::Io(error).with_path(destino))?;
+    let temporal = destino.with_extension("restaurando");
+    if temporal.exists() {
+        std::fs::remove_dir_all(&temporal)
+            .map_err(|error| Error::Io(error).with_path(&temporal))?;
+    }
+    std::fs::create_dir_all(&temporal).map_err(|error| Error::Io(error).with_path(&temporal))?;
     let archivo_abierto =
         std::fs::File::open(archivo).map_err(|error| Error::Io(error).with_path(archivo))?;
     let mut zip = zip::ZipArchive::new(archivo_abierto)
@@ -216,7 +242,7 @@ pub fn restaurar_backup(archivo: &Path, destino: &Path) -> Result<PathBuf> {
             .map_err(|error| Error::Format(error.to_string()))?
             .to_string();
         crate::fsutil::validar_ruta_relativa(&nombre)?;
-        if nombre.starts_with("cuarentena/") || nombre == "bloqueo" {
+        if es_excluido(&nombre) {
             continue;
         }
         total = total.saturating_add(entrada.size());
@@ -225,7 +251,7 @@ pub fn restaurar_backup(archivo: &Path, destino: &Path) -> Result<PathBuf> {
                 "backup supera el tamaño descomprimido permitido".to_string(),
             ));
         }
-        let salida = destino.join(&nombre);
+        let salida = temporal.join(&nombre);
         if let Some(padre) = salida.parent() {
             std::fs::create_dir_all(padre).map_err(|error| Error::Io(error).with_path(padre))?;
         }
@@ -234,8 +260,22 @@ pub fn restaurar_backup(archivo: &Path, destino: &Path) -> Result<PathBuf> {
         std::io::copy(&mut entrada, &mut archivo_salida)
             .map_err(|error| Error::Io(error).with_path(&salida))?;
     }
-    Project::new(destino).verificar()?;
+    Project::new(&temporal).verificar()?;
+    if destino.exists() {
+        std::fs::remove_dir(destino).map_err(|error| Error::Io(error).with_path(destino))?;
+    }
+    std::fs::rename(&temporal, destino).map_err(|error| Error::Io(error).with_path(destino))?;
     Ok(destino.to_path_buf())
+}
+
+fn es_excluido(texto: &str) -> bool {
+    matches!(
+        texto,
+        ".escritor/bloqueo"
+            | ".escritor/indice.sqlite"
+            | ".escritor/indice.sqlite-wal"
+            | ".escritor/indice.sqlite-shm"
+    ) || texto.starts_with(".escritor/cuarentena/")
 }
 
 fn leer_limitado(archivo: &Path) -> Result<Vec<u8>> {
@@ -259,7 +299,7 @@ fn leer_limitado(archivo: &Path) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-fn sin_frontmatter(texto: &str) -> &str {
+pub(crate) fn sin_frontmatter(texto: &str) -> &str {
     if let Some(resto) = texto.strip_prefix("---\n") {
         if let Some(fin) = resto.find("\n---\n") {
             return texto[3 + fin + 5..].trim_start_matches('\n');
@@ -271,24 +311,37 @@ fn sin_frontmatter(texto: &str) -> &str {
 fn texto_docx(xml: &str) -> Result<String> {
     let mut salida = String::new();
     let mut resto = xml;
-    while let Some(inicio) = resto.find("<w:t") {
-        let tras = &resto[inicio..];
-        let Some(cierre_inicio) = tras.find('>') else {
-            break;
-        };
-        let contenido = &tras[cierre_inicio + 1..];
-        let Some(fin) = contenido.find("</w:t>") else {
-            break;
-        };
-        salida.push_str(&desescapar_xml(&contenido[..fin]));
-        resto = &contenido[fin + 6..];
-        if resto.contains("<w:p") {
+    while let Some(inicio) = resto.find('<') {
+        resto = &resto[inicio..];
+        if resto.starts_with("</w:p>") {
             salida.push('\n');
+            resto = &resto[6..];
+            continue;
+        }
+        // Solo el elemento de texto exacto `<w:t>` o `<w:t ...>`; así no se
+        // confunden `<w:tbl>`, `<w:tr>`, `<w:tc>` ni `<w:tab/>`.
+        if resto.starts_with("<w:t>") || resto.starts_with("<w:t ") {
+            let Some(cierre) = resto.find('>') else {
+                break;
+            };
+            let contenido = &resto[cierre + 1..];
+            let Some(fin) = contenido.find("</w:t>") else {
+                break;
+            };
+            salida.push_str(&desescapar_xml(&contenido[..fin]));
+            resto = &contenido[fin + 6..];
+            continue;
+        }
+        if let Some(fin) = resto.find('>') {
+            resto = &resto[fin + 1..];
+        } else {
+            break;
         }
     }
     let limpio = salida
         .lines()
-        .map(str::trim_end)
+        .map(str::trim)
+        .filter(|linea| !linea.is_empty() || !salida.is_empty())
         .collect::<Vec<_>>()
         .join("\n");
     Ok(format!("{}\n", limpio.trim()))
@@ -304,31 +357,8 @@ fn desescapar_xml(texto: &str) -> String {
 }
 
 fn texto_html(html: &str) -> String {
-    let mut sin_scripts = String::with_capacity(html.len());
-    let mut resto = html;
-    while let Some(inicio) = resto.find("<script") {
-        sin_scripts.push_str(&resto[..inicio]);
-        let tras = &resto[inicio..];
-        let Some(fin) = tras.find("</script>") else {
-            resto = "";
-            break;
-        };
-        resto = &tras[fin + 9..];
-    }
-    sin_scripts.push_str(resto);
-    let mut sin_estilos = String::with_capacity(sin_scripts.len());
-    let mut resto = sin_scripts.as_str();
-    while let Some(inicio) = resto.find("<style") {
-        sin_estilos.push_str(&resto[..inicio]);
-        let tras = &resto[inicio..];
-        let Some(fin) = tras.find("</style>") else {
-            resto = "";
-            break;
-        };
-        resto = &tras[fin + 8..];
-    }
-    sin_estilos.push_str(resto);
-
+    let sin_scripts = quitar_bloque(html, "script");
+    let sin_estilos = quitar_bloque(&sin_scripts, "style");
     let mut salida = String::with_capacity(sin_estilos.len());
     let mut dentro = false;
     for caracter in sin_estilos.chars() {
@@ -355,6 +385,25 @@ fn texto_html(html: &str) -> String {
     format!("{}\n", texto)
 }
 
+fn quitar_bloque(html: &str, etiqueta: &str) -> String {
+    let minusculas = html.to_ascii_lowercase();
+    let apertura = format!("<{etiqueta}");
+    let cierre = format!("</{etiqueta}>");
+    let mut salida = String::with_capacity(html.len());
+    let mut cursor = 0;
+    while let Some(relativo) = minusculas[cursor..].find(&apertura) {
+        let inicio = cursor + relativo;
+        salida.push_str(&html[cursor..inicio]);
+        let Some(rel_cierre) = minusculas[inicio..].find(&cierre) else {
+            cursor = html.len();
+            break;
+        };
+        cursor = inicio + rel_cierre + cierre.len();
+    }
+    salida.push_str(&html[cursor..]);
+    salida
+}
+
 fn texto_rtf(rtf: &str) -> String {
     let mut salida = String::with_capacity(rtf.len());
     let mut profundidad = 0_i32;
@@ -364,29 +413,84 @@ fn texto_rtf(rtf: &str) -> String {
             '{' => profundidad += 1,
             '}' => profundidad -= 1,
             '\\' => {
-                let mut control = String::new();
-                while let Some(siguiente) = iter.peek().copied() {
-                    if siguiente.is_ascii_alphabetic() {
-                        control.push(siguiente);
-                        iter.next();
-                    } else {
-                        break;
-                    }
-                }
-                match control.as_str() {
-                    "par" | "line" => {
+                let Some(siguiente) = iter.next() else { break };
+                match siguiente {
+                    '\\' | '{' | '}' => {
                         if profundidad > 0 {
-                            salida.push('\n');
+                            salida.push(siguiente);
                         }
                     }
-                    "tab" => salida.push('\t'),
-                    "emdash" => salida.push('—'),
-                    "endash" => salida.push('–'),
-                    "lquote" => salida.push('‘'),
-                    "rquote" => salida.push('’'),
-                    "ldquo" => salida.push('“'),
-                    "rdquo" => salida.push('”'),
-                    _ => {}
+                    '\'' => {
+                        let mut hex = String::new();
+                        for _ in 0..2 {
+                            if let Some(digito) = iter.next() {
+                                hex.push(digito);
+                            }
+                        }
+                        if profundidad > 0 {
+                            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                                salida.push(byte as char);
+                            }
+                        }
+                    }
+                    'u' => {
+                        let mut digitos = String::new();
+                        while let Some(digito) = iter.peek().copied() {
+                            if digito.is_ascii_digit() || digito == '-' {
+                                digitos.push(digito);
+                                iter.next();
+                            } else {
+                                break;
+                            }
+                        }
+                        if let Some(reemplazo) = iter.peek().copied() {
+                            if reemplazo == '?' {
+                                iter.next();
+                            }
+                        }
+                        if profundidad > 0 {
+                            if let Ok(codigo) = digitos.parse::<i64>() {
+                                if let Some(caracter) = char::from_u32(codigo.max(0) as u32) {
+                                    salida.push(caracter);
+                                }
+                            }
+                        }
+                    }
+                    _ if siguiente.is_ascii_alphabetic() => {
+                        let mut control = String::from(siguiente);
+                        while let Some(digito) = iter.peek().copied() {
+                            if digito.is_ascii_alphabetic() {
+                                control.push(digito);
+                                iter.next();
+                            } else {
+                                break;
+                            }
+                        }
+                        match control.as_str() {
+                            "par" | "line" => {
+                                if profundidad > 0 {
+                                    salida.push('\n');
+                                }
+                            }
+                            "tab" => {
+                                if profundidad > 0 {
+                                    salida.push('\t');
+                                }
+                            }
+                            "emdash" => salida.push('—'),
+                            "endash" => salida.push('–'),
+                            "lquote" => salida.push('‘'),
+                            "rquote" => salida.push('’'),
+                            "ldquo" => salida.push('“'),
+                            "rdquo" => salida.push('”'),
+                            _ => {}
+                        }
+                    }
+                    _ => {
+                        if profundidad > 0 {
+                            salida.push(siguiente);
+                        }
+                    }
                 }
             }
             _ if profundidad > 0 => salida.push(caracter),
@@ -475,6 +579,93 @@ mod tests {
         let cuerpo = documento.cuerpo();
         assert!(cuerpo.contains("Hola"));
         assert!(cuerpo.contains("mundo"));
+    }
+
+    #[test]
+    fn docx_con_tabla_y_runs_no_inyecta_xml() {
+        let (temporal, proyecto) = proyecto();
+        let archivo = temporal.path().join("tabla.docx");
+        let cursor = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(cursor);
+        let opciones = zip::write::SimpleFileOptions::default();
+        zip.start_file("word/document.xml", opciones)
+            .expect("entrada");
+        zip.write_all(b"<w:document><w:body><w:p><w:r><w:t>Hola</w:t></w:r><w:r><w:t> mundo</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Celda</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>").expect("xml");
+        let cursor = zip.finish().expect("zip");
+        std::fs::write(&archivo, cursor.into_inner()).expect("escribir");
+        let (id, _) = importar_docx(&proyecto, &archivo, "DOCX", None).expect("importar");
+        let documento = proyecto.leer(&id).expect("leer");
+        let cuerpo = documento.cuerpo();
+        assert!(cuerpo.contains("Hola mundo"), "cuerpo: {cuerpo}");
+        assert!(cuerpo.contains("Celda"));
+        assert!(!cuerpo.contains("<w:"));
+    }
+
+    #[test]
+    fn rtf_con_acentos_y_unicode() {
+        let (temporal, proyecto) = proyecto();
+        let archivo = temporal.path().join("acentos.rtf");
+        std::fs::write(
+            &archivo,
+            "{\\rtf1\\ansi Caf\\'e9 y ni\\'f1o. \\u233?xito\\par}",
+        )
+        .expect("escribir");
+        let (id, _) = importar_rtf(&proyecto, &archivo, "RTF", None).expect("importar");
+        let documento = proyecto.leer(&id).expect("leer");
+        let cuerpo = documento.cuerpo();
+        assert!(cuerpo.contains("Café y niño"), "cuerpo: {cuerpo}");
+        assert!(cuerpo.contains("éxito"), "cuerpo: {cuerpo}");
+    }
+
+    #[test]
+    fn html_con_script_mayusculas() {
+        let (temporal, proyecto) = proyecto();
+        let archivo = temporal.path().join("mayusculas.html");
+        std::fs::write(&archivo, "<SCRIPT>alert('x')</SCRIPT><p>Texto</p>").expect("escribir");
+        let (id, _) = importar_html(&proyecto, &archivo, "HTML", None).expect("importar");
+        let documento = proyecto.leer(&id).expect("leer");
+        let cuerpo = documento.cuerpo();
+        assert!(cuerpo.contains("Texto"));
+        assert!(!cuerpo.contains("alert"));
+    }
+
+    #[test]
+    fn backup_excluye_lock_indice_y_cuarentena() {
+        let (temporal, proyecto) = proyecto();
+        let escritor = proyecto.raiz().join(".escritor");
+        std::fs::write(escritor.join("bloqueo"), b"x").expect("lock");
+        std::fs::write(escritor.join("indice.sqlite"), b"x").expect("indice");
+        std::fs::create_dir_all(escritor.join("cuarentena")).expect("cuarentena");
+        std::fs::write(escritor.join("cuarentena/copia.md"), b"x").expect("copia");
+        let archivo = temporal.path().join("backup.zip");
+        crear_backup(proyecto.raiz(), &archivo).expect("backup");
+        let mut zip =
+            zip::ZipArchive::new(std::fs::File::open(&archivo).expect("abrir")).expect("zip");
+        let nombres: Vec<String> = (0..zip.len())
+            .map(|indice| {
+                zip.by_index(indice)
+                    .expect("entrada")
+                    .name()
+                    .expect("nombre")
+                    .to_string()
+            })
+            .collect();
+        assert!(!nombres.iter().any(|n| n == ".escritor/bloqueo"));
+        assert!(!nombres.iter().any(|n| n == ".escritor/indice.sqlite"));
+        assert!(!nombres
+            .iter()
+            .any(|n| n.starts_with(".escritor/cuarentena/")));
+        assert!(nombres.iter().any(|n| n == "proyecto.yml"));
+    }
+
+    #[test]
+    fn backup_relativo_dentro_del_proyecto_se_rechaza() {
+        let (_temporal, proyecto) = proyecto();
+        let resultado = crear_backup(proyecto.raiz(), Path::new("proyecto.yml"));
+        assert!(resultado.is_err());
+        assert!(std::fs::read(proyecto.raiz().join("proyecto.yml"))
+            .expect("manifiesto")
+            .starts_with(b"esquema:"));
     }
 
     #[test]

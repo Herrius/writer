@@ -213,6 +213,9 @@ impl Sesion {
 /// defecto.
 pub fn leer_metas(raiz: &Path) -> Result<Metas> {
     let ruta = ruta_metas(raiz)?;
+    if ruta.exists() {
+        fsutil::archivo_real(&ruta)?;
+    }
     let Some(bytes) = fsutil::leer_opcional(&ruta)? else {
         return Ok(Metas::default());
     };

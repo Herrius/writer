@@ -1,8 +1,9 @@
 # Iteración 25 — Fase 2.7: integración y cierre funcional
 
 - **Fecha:** 2026-10-23
-- **Estado:** **funcionalidad de la Fase 2 implementada y verificada**; deuda
-  técnica y de revisión registrada.
+- **Estado:** funcionalidad principal implementada y gates en verde; los P2 de
+  la QA independiente se corrigieron y queda pendiente la re-revisión formal y
+  la deuda registrada.
 - **Plan de producto:** `../../Plan - Rediseño del panel de Proyectos.md`.
 - **Plan de ejecución:** [`../plan-ejecucion-local-v1.md`](../plan-ejecucion-local-v1.md).
 
@@ -17,14 +18,14 @@
 | 2.4 metas | Metas, sesiones, temporizador, racha y gráfico de 7 días | 19 |
 | 2.5 importación/backup | Markdown, DOCX, HTML, RTF, backup/restore e impresión | 23 |
 | 2.6 plantillas | Plantillas locales y creación desde plantilla | 24 |
-| 2.7 integración | Gates completos y este cierre | 25 |
+| 2.7 integración | Gates completos, correcciones QA y este cierre | 25 |
 
 ## 2. Verificación global
 
 ```text
 cargo fmt --all --check                                   OK
 cargo clippy --workspace --all-targets --all-features     OK
-cargo test --workspace --all-targets --locked             61 + 36 + 25
+cargo test --workspace --all-targets --locked             67 + 36 + 25
 cargo test desktop                                        7/7
 pnpm typecheck                                            OK
 pnpm ui:test                                              63/63
@@ -74,8 +75,10 @@ python scripts/ci.py empaquetado                          OK
 
 ## 5. Decisión
 
-La **funcionalidad de la Fase 2 está implementada y los gates están en verde**
-en Linux x86_64. No se declara “cerrada con firma” hasta pasar la revisión
-formal de QA/UX sobre este commit y aceptar la deuda de §4.
+La funcionalidad principal de la Fase 2 está implementada y los gates están en
+verde en Linux x86_64. La QA independiente detectó ocho P2; todos se corrigieron
+con pruebas (backup, sidecars, DOCX/RTF, exportación v2, temporizador y
+plantillas). No se declara “cerrada con firma” hasta repetir la revisión formal
+y aceptar la deuda de §4.
 
 Próximo paso: pipeline de revisión de Fase 2 y, después, Fase 3.

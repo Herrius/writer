@@ -51,6 +51,7 @@ const demoMetas: MetasDto = {
 let metasDemoActuales: MetasDto = demoMetas;
 const sesionesDemo: SesionDto[] = [];
 const comentariosDemo: ComentarioDto[] = [];
+let comentarioDemoSeq = 0;
 let plotGridDemo: PlotGridDto = { version: 1, tramas: [] };
 
 const demoCuarentena: CuarentenaDto[] = [
@@ -292,7 +293,7 @@ export async function crearComentario(
     const ahora = new Date().toISOString();
     const comentario: ComentarioDto = {
       version: 2,
-      id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      id: `01ARZ3NDEKTSV4RRFFQ69G5FA${(comentarioDemoSeq += 1) % 10}`,
       tipo: 'comentario',
       documento,
       ancla: {
@@ -339,7 +340,7 @@ export async function crearSticky(
     const ahora = new Date().toISOString();
     const comentario: ComentarioDto = {
       version: 2,
-      id: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+      id: `01ARZ3NDEKTSV4RRFFQ69G5FB${(comentarioDemoSeq += 1) % 10}`,
       tipo: 'sticky',
       documento,
       ancla: null,

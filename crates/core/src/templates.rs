@@ -95,7 +95,9 @@ pub fn listar_plantillas(directorio: &Path) -> Result<Vec<(String, Plantilla)>> 
     {
         let entrada = entrada.map_err(|error| Error::Io(error).with_path(&directorio))?;
         let ruta = entrada.path();
-        if !ruta.is_dir() {
+        let metadatos =
+            std::fs::symlink_metadata(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+        if metadatos.file_type().is_symlink() || !metadatos.is_dir() {
             continue;
         }
         let manifiesto = ruta.join("plantilla.json");
@@ -138,11 +140,37 @@ pub fn crear_desde_plantilla(
     if !ulid::es_valido(&ulid::nuevo()?) {
         return Err(Error::Other("ULID no válido".to_string()));
     }
-    if slug.is_empty() || slug.contains(['/', '\\', '.']) {
+    if slug.is_empty()
+        || slug.contains(['/', '\\', '.', ':', '*', '?', '"', '<', '>', '|'])
+        || slug.starts_with(' ')
+        || slug.ends_with(' ')
+    {
         return Err(Error::Input(format!("slug de plantilla no válido: {slug}")));
     }
+    const RESERVADOS: [&str; 9] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "LPT1", "LPT2", "LPT3",
+    ];
+    if RESERVADOS
+        .iter()
+        .any(|reservado| slug.eq_ignore_ascii_case(reservado))
+    {
+        return Err(Error::Input(format!(
+            "slug de plantilla reservado en Windows: {slug}"
+        )));
+    }
     let ruta_plantilla = directorio_plantillas.join(slug);
+    let metadatos = std::fs::symlink_metadata(&ruta_plantilla)
+        .map_err(|error| Error::Io(error).with_path(&ruta_plantilla))?;
+    if metadatos.file_type().is_symlink() {
+        return Err(Error::Integrity(format!(
+            "se rechaza una plantilla enlazada: {}",
+            ruta_plantilla.display()
+        )));
+    }
     let manifiesto = ruta_plantilla.join("plantilla.json");
+    if manifiesto.exists() {
+        crate::fsutil::archivo_real(&manifiesto)?;
+    }
     let bytes =
         std::fs::read(&manifiesto).map_err(|error| Error::Io(error).with_path(&manifiesto))?;
     let plantilla: Plantilla = serde_json::from_slice(&bytes)
@@ -152,34 +180,37 @@ pub fn crear_desde_plantilla(
     let proyecto = Project::new(destino);
     proyecto.init(titulo, autor, idioma)?;
     let resultado = (|| -> Result<()> {
+        // La escena que crea `init` no forma parte de la plantilla.
+        if let Some(primera) = proyecto.listar(false)?.into_iter().next() {
+            proyecto.eliminar(primera.id())?;
+        }
+        let mut escenas_creadas = Vec::new();
         for libro in 1..=plantilla.estructura.libros {
             let nombre_libro = format!("{libro:02}-libro");
             for capitulo in 1..=plantilla.estructura.capitulos_por_libro {
                 let nombre_capitulo = format!("{capitulo:02}-capitulo");
                 for escena in 1..=plantilla.estructura.escenas_por_capitulo {
                     let titulo_escena = format!("Escena {escena}");
-                    proyecto.crear_escena(
+                    let (id, _) = proyecto.crear_escena(
                         &titulo_escena,
                         Some(&nombre_libro),
                         Some(&nombre_capitulo),
                         None,
                     )?;
+                    escenas_creadas.push(id);
                 }
             }
         }
-        for tipo in &plantilla.notas_iniciales {
-            let etiqueta = match tipo.as_str() {
-                "personajes" => "Personajes",
-                "tramas" => "Tramas",
-                "lugares" => "Lugares",
-                "cronologia" => "Cronología",
-                "objetos" => "Objetos",
-                "cuaderno" => "Cuaderno",
-                "ideas" => "Ideas",
-                _ => "Nota",
-            };
-            proyecto.crear_nota(tipo, etiqueta)?;
+        let notas_plantilla = ruta_plantilla.join("notas");
+        if !notas_plantilla.is_dir() {
+            crear_notas_iniciales(&proyecto, &plantilla.notas_iniciales)?;
         }
+        copiar_manuscrito(
+            &proyecto,
+            &ruta_plantilla.join("manuscrito"),
+            &mut escenas_creadas,
+        )?;
+        copiar_notas(&proyecto, &notas_plantilla)?;
         Ok(())
     })();
     if let Err(error) = resultado {
@@ -187,6 +218,109 @@ pub fn crear_desde_plantilla(
         return Err(error);
     }
     Ok(destino.to_path_buf())
+}
+
+fn crear_notas_iniciales(proyecto: &Project, tipos: &[String]) -> Result<()> {
+    for tipo in tipos {
+        let etiqueta = match tipo.as_str() {
+            "personajes" => "Personajes",
+            "tramas" => "Tramas",
+            "lugares" => "Lugares",
+            "cronologia" => "Cronología",
+            "objetos" => "Objetos",
+            "cuaderno" => "Cuaderno",
+            "ideas" => "Ideas",
+            _ => "Nota",
+        };
+        proyecto.crear_nota(tipo, etiqueta)?;
+    }
+    Ok(())
+}
+
+fn copiar_manuscrito(
+    proyecto: &Project,
+    directorio: &Path,
+    escenas: &mut Vec<String>,
+) -> Result<()> {
+    if !directorio.is_dir() {
+        return Ok(());
+    }
+    let mut archivos = Vec::new();
+    recorrer_md(directorio, &mut archivos)?;
+    archivos.sort();
+    for (indice, archivo) in archivos.iter().enumerate() {
+        let texto = std::fs::read_to_string(archivo)
+            .map_err(|error| Error::Io(error).with_path(archivo))?;
+        let cuerpo = crate::import::sin_frontmatter(&texto);
+        if let Some(id) = escenas.get(indice) {
+            proyecto.escribir_cuerpo(id, cuerpo)?;
+        } else {
+            let titulo = titulo_desde_archivo(archivo);
+            let (id, _) = proyecto.crear_escena(&titulo, None, None, None)?;
+            proyecto.escribir_cuerpo(&id, cuerpo)?;
+            escenas.push(id);
+        }
+    }
+    Ok(())
+}
+
+fn copiar_notas(proyecto: &Project, directorio: &Path) -> Result<()> {
+    if !directorio.is_dir() {
+        return Ok(());
+    }
+    let mut archivos = Vec::new();
+    recorrer_md(directorio, &mut archivos)?;
+    archivos.sort();
+    for archivo in archivos {
+        let Some(tipo) = archivo
+            .parent()
+            .and_then(|padre| padre.file_name())
+            .and_then(|nombre| nombre.to_str())
+        else {
+            continue;
+        };
+        if !crate::model::TIPOS_NOTA.contains(&tipo) {
+            continue;
+        }
+        let texto = std::fs::read_to_string(&archivo)
+            .map_err(|error| Error::Io(error).with_path(&archivo))?;
+        let cuerpo = crate::import::sin_frontmatter(&texto);
+        let titulo = titulo_desde_archivo(&archivo);
+        let (id, _) = proyecto.crear_nota(tipo, &titulo)?;
+        proyecto.escribir_cuerpo(&id, cuerpo)?;
+    }
+    Ok(())
+}
+
+fn recorrer_md(directorio: &Path, archivos: &mut Vec<PathBuf>) -> Result<()> {
+    for entrada in
+        std::fs::read_dir(directorio).map_err(|error| Error::Io(error).with_path(directorio))?
+    {
+        let entrada = entrada.map_err(|error| Error::Io(error).with_path(directorio))?;
+        let ruta = entrada.path();
+        let metadatos =
+            std::fs::symlink_metadata(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+        if metadatos.file_type().is_symlink() {
+            return Err(Error::Integrity(format!(
+                "se rechaza un enlace simbólico en la plantilla: {}",
+                ruta.display()
+            )));
+        }
+        if metadatos.is_dir() {
+            recorrer_md(&ruta, archivos)?;
+        } else if ruta.extension().and_then(|valor| valor.to_str()) == Some("md") {
+            archivos.push(ruta);
+        }
+    }
+    Ok(())
+}
+
+fn titulo_desde_archivo(archivo: &Path) -> String {
+    let stem = archivo
+        .file_stem()
+        .and_then(|valor| valor.to_str())
+        .unwrap_or("Nota");
+    crate::model::titulo_humano(stem)
 }
 
 #[cfg(test)]
@@ -257,8 +391,28 @@ mod tests {
         .expect("crear");
         let escaneo = Project::new(&destino).verificar().expect("verificar");
         assert!(escaneo.errores.is_empty(), "errores: {:?}", escaneo.errores);
-        assert_eq!(escaneo.escenas.len(), 3, "1 inicial + 2 de la plantilla");
+        assert_eq!(escaneo.escenas.len(), 2, "sin la escena inicial de init");
         assert_eq!(escaneo.notas.len(), 1);
+
+        let contenido = temporal
+            .path()
+            .join("plantillas/tres-actos/manuscrito/01-libro/01-capitulo/001.md");
+        std::fs::create_dir_all(contenido.parent().expect("padre")).expect("carpeta");
+        std::fs::write(&contenido, "Contenido personalizado").expect("contenido");
+        let segundo = temporal.path().join("novela2");
+        crear_desde_plantilla(
+            &plantillas,
+            "tres-actos",
+            &segundo,
+            "Novela 2",
+            None,
+            Some("es"),
+        )
+        .expect("crear con contenido");
+        let documentos = Project::new(&segundo).listar(false).expect("listar");
+        assert!(documentos
+            .iter()
+            .any(|documento| documento.cuerpo().contains("Contenido personalizado")));
     }
 
     #[test]

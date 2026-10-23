@@ -143,6 +143,11 @@ impl Comentario {
                     "mensaje de comentario vacío o sin autor".to_string(),
                 ));
             }
+            if mensaje.texto.contains('|') || mensaje.texto.contains("]]") {
+                return Err(Error::Schema(
+                    "el mensaje de comentario contiene delimitadores reservados".to_string(),
+                ));
+            }
             time::parse_rfc3339(&mensaje.ts)?;
         }
         Ok(())
@@ -191,6 +196,13 @@ pub fn crear_comentario(
     let autor = autor.trim();
     if autor.is_empty() {
         return Err(Error::Input("el autor no puede estar vacío".to_string()));
+    }
+    fsutil::validar_ruta_documento(documento)?;
+    let ruta_documento = raiz.join(documento);
+    if !ruta_documento.is_file() {
+        return Err(Error::NotFound(format!(
+            "documento del comentario no encontrado: {documento}"
+        )));
     }
     let ahora = time::ahora();
     let id = ulid::nuevo()?;
@@ -251,6 +263,9 @@ pub fn leer_comentario(raiz: &Path, id: &str) -> Result<Comentario> {
         return Err(Error::Input(format!("ULID de comentario no válido: {id}")));
     }
     let ruta = ruta_comentario(raiz, id)?;
+    if ruta.exists() {
+        fsutil::archivo_real(&ruta)?;
+    }
     let bytes = fsutil::leer_opcional(&ruta)?
         .ok_or_else(|| Error::NotFound(format!("comentario no encontrado: {id}")))?;
     let comentario: Comentario =
@@ -283,9 +298,12 @@ pub fn listar_comentarios(raiz: &Path, documento: Option<&str>) -> Result<Vec<Co
             continue;
         }
         let bytes = std::fs::read(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
-        let comentario: Comentario =
-            serde_json::from_slice(&bytes).map_err(|error| Error::Json(error).with_path(&ruta))?;
-        comentario.validar()?;
+        let Ok(comentario) = serde_json::from_slice::<Comentario>(&bytes) else {
+            continue;
+        };
+        if comentario.validar().is_err() {
+            continue;
+        }
         if documento.is_none_or(|valor| valor == comentario.documento) {
             comentarios.push(comentario);
         }
@@ -347,8 +365,17 @@ pub fn sincronizar_huerfanos(raiz: &Path, documento: &str, texto: &str) -> Resul
         let Some(ancla) = &comentario.ancla else {
             continue;
         };
-        let huerfano = !texto.contains(ancla.texto.as_str());
-        if huerfano != comentario.huerfano {
+        let encontrado = buscar_ancla(texto, &ancla.texto);
+        let huerfano = encontrado.is_none();
+        if let Some((inicio, fin)) = encontrado {
+            comentario.ancla = Some(Ancla {
+                texto: ancla.texto.clone(),
+                hash: hash::hash(ancla.texto.as_bytes()),
+                inicio,
+                fin,
+            });
+        }
+        if huerfano != comentario.huerfano || encontrado.is_some() {
             comentario.huerfano = huerfano;
             comentario.actualizado = time::ahora();
             comentario.validar()?;
@@ -356,6 +383,34 @@ pub fn sincronizar_huerfanos(raiz: &Path, documento: &str, texto: &str) -> Resul
         }
     }
     Ok(comentarios)
+}
+
+fn buscar_ancla(texto: &str, ancla: &str) -> Option<(usize, usize)> {
+    let empieza_alfanumerico = ancla
+        .chars()
+        .next()
+        .is_some_and(|caracter| caracter.is_alphanumeric());
+    let termina_alfanumerico = ancla
+        .chars()
+        .last()
+        .is_some_and(|caracter| caracter.is_alphanumeric());
+    for (inicio, _) in texto.match_indices(ancla) {
+        let antes_ok = !empieza_alfanumerico
+            || texto[..inicio]
+                .chars()
+                .next_back()
+                .is_none_or(|caracter| !caracter.is_alphanumeric());
+        let fin = inicio + ancla.len();
+        let despues_ok = !termina_alfanumerico
+            || texto[fin..]
+                .chars()
+                .next()
+                .is_none_or(|caracter| !caracter.is_alphanumeric());
+        if antes_ok && despues_ok {
+            return Some((inicio, fin));
+        }
+    }
+    None
 }
 
 fn directorio_comentarios(raiz: &Path, crear: bool) -> Result<Option<PathBuf>> {

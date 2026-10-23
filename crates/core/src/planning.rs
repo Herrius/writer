@@ -125,6 +125,9 @@ pub fn leer_plot_grid(raiz: &Path) -> Result<PlotGrid> {
     let Some(ruta) = ruta_plot_grid(raiz, false)? else {
         return Ok(PlotGrid::default());
     };
+    if ruta.exists() {
+        fsutil::archivo_real(&ruta)?;
+    }
     let Some(bytes) = fsutil::leer_opcional(&ruta)? else {
         return Ok(PlotGrid::default());
     };
