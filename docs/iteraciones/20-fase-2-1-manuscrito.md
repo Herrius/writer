@@ -1,8 +1,9 @@
 # Iteración 20 — Fase 2.1: renombrar y duplicar documentos
 
 - **Fecha:** 2026-10-23
-- **Estado:** renombrar y duplicar implementados; resto de 2.1 pendiente.
-- **Commit:** `2a8dd8c`.
+- **Estado:** renombrar, duplicar y arrastrar/soltar implementados; resto de
+  2.1 pendiente.
+- **Commits:** `2a8dd8c` (renombrar/duplicar) y el commit de arrastrar/soltar.
 - **Contrato:** [`../esquema-v1.md`](../esquema-v1.md) (escenas y notas) y
   [`../esquema-v2.md`](../esquema-v2.md) (extensiones).
 
@@ -13,6 +14,8 @@
 - Conservar metadatos y cuerpo en la copia.
 - Asignar el siguiente `orden` libre en escenas.
 - Validar títulos vacíos o con caracteres de control.
+- Mover una escena entre capítulos con arrastrar y soltar, con resaltado del
+  destino y refresco del árbol.
 
 ## 2. Archivos
 
@@ -21,12 +24,13 @@
 | `crates/core/src/project.rs` | `renombrar` y `duplicar` con transacción y CAS |
 | `crates/core/src/model.rs` | `validar_texto` pasa a `pub(crate)` |
 | `crates/core/tests/proyecto.rs` | Prueba de renombrar/duplicar escena y nota |
-| `apps/desktop/src-tauri/src/lib.rs` | Comandos `renombrar` y `duplicar` + prueba |
+| `apps/desktop/src-tauri/src/lib.rs` | Comandos `renombrar`, `duplicar` y `mover` + pruebas |
 | `ui/src/api.ts` | Puente Tauri y demo |
 | `ui/src/App.tsx` | Formulario de título y botones Renombrar/Duplicar en Notas |
 | `ui/src/styles.css` | Estilos del editor de título y acciones |
 | `ui/src/App.test.tsx` | Prueba de UI de renombrar/duplicar |
-| `e2e/fase-2-1-manuscrito.spec.ts` | Flujo E2E en la demo |
+| `e2e/fase-2-1-manuscrito.spec.ts` | Flujo E2E de renombrar/duplicar |
+| `e2e/fase-2-1-arrastrar.spec.ts` | Flujo E2E de arrastrar/soltar entre capítulos |
 
 ## 3. Decisiones
 
@@ -46,16 +50,20 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 pnpm typecheck                                                             OK
 pnpm ui:test                                                               61/61
 pnpm exec playwright test e2e/fase-2-1-manuscrito.spec.ts                  1/1
+pnpm exec playwright test e2e/fase-2-1-arrastrar.spec.ts                  1/1
+pnpm e2e                                                                   28/28
 ```
 
 ## 5. Pendiente de 2.1
 
 - Archivar y papelera con restauración.
-- Mover por drag & drop en el árbol.
 - Estados, etiquetas y filtros.
 - Copiar/pegar documentos completos.
 - Navegación y filtro de archivos.
 - Revisión de accesibilidad y E2E de las operaciones nuevas.
+
+El drag & drop mueve escenas entre capítulos; no reordena dentro del capítulo
+todavía.
 
 ## 6. Límites
 

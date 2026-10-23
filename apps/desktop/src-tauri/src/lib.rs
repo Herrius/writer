@@ -720,6 +720,25 @@ fn proyecto_e2e() -> Option<String> {
 }
 
 #[tauri::command]
+fn mover(
+    ruta: String,
+    objetivo: String,
+    libro: Option<String>,
+    capitulo: Option<String>,
+    tipo: Option<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    let destino = Project::new(&ruta)
+        .mover(
+            &objetivo,
+            libro.as_deref(),
+            capitulo.as_deref(),
+            tipo.as_deref(),
+        )
+        .map_err(error)?;
+    leer(ruta, destino)
+}
+
+#[tauri::command]
 fn renombrar(ruta: String, objetivo: String, titulo: String) -> Result<DocumentoDto, ErrorDto> {
     Project::new(&ruta)
         .renombrar(&objetivo, &titulo)
@@ -827,6 +846,7 @@ pub fn run() {
             descartar_cuarentena,
             proyecto_e2e,
             escribir,
+            mover,
             renombrar,
             duplicar,
             leer_metas,
@@ -1032,9 +1052,19 @@ mod tests {
         )
         .expect("renombrar");
         assert_eq!(renombrada.titulo, "Escena renombrada");
-        let copia = duplicar(ruta, escena.id.clone()).expect("duplicar");
+        let copia = duplicar(ruta.clone(), escena.id.clone()).expect("duplicar");
         assert_ne!(copia.id, escena.id);
         assert_eq!(copia.titulo, "Copia de Escena renombrada");
+
+        let movida = mover(
+            ruta,
+            escena.id.clone(),
+            Some("02-libro".to_string()),
+            Some("01-capitulo".to_string()),
+            None,
+        )
+        .expect("mover");
+        assert!(movida.ruta.starts_with("manuscrito/02-libro/01-capitulo/"));
     }
 
     #[test]

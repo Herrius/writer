@@ -2371,6 +2371,13 @@ button.guardar:disabled {
 
 .dabble-capitulo {
   margin-left: 0.4rem;
+  border-radius: 0.3rem;
+}
+
+.dabble-capitulo.arrastre-activo {
+  outline: 2px dashed var(--acento);
+  outline-offset: 2px;
+  background: var(--acento-suave);
 }
 
 .dabble-capitulo-titulo {

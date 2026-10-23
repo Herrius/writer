@@ -181,7 +181,8 @@ writer/
   núcleo, Tauri y UI; pendientes rachas, gráfico y backup.**
 - **Manuscrito:** `renombrar` y `duplicar` escenas/notas conservan ID, ruta e
   historial del original; la copia recibe ID nuevo y título «Copia de …».
-  **Implementado; faltan archivar, papelera, drag & drop, estados y filtros.**
+  **Arrastrar y soltar** mueve escenas entre capítulos. **Implementado; faltan
+  archivar, papelera, estados, etiquetas y filtros.**
 
 ### Comandos Tauri
 
@@ -321,9 +322,10 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 2. **Fase 2.4 — metas**: implementada de extremo a extremo en
    [`docs/iteraciones/19-fase-2-4-metas.md`](docs/iteraciones/19-fase-2-4-metas.md);
    faltan rachas, gráfico histórico, backup y revisión.
-3. **Fase 2.1 — manuscrito**: renombrar y duplicar implementados en
+3. **Fase 2.1 — manuscrito**: renombrar, duplicar y arrastrar/soltar
+   implementados en
    [`docs/iteraciones/20-fase-2-1-manuscrito.md`](docs/iteraciones/20-fase-2-1-manuscrito.md);
-   faltan archivar, papelera, drag & drop, estados, etiquetas y filtros.
+   faltan archivar, papelera, estados, etiquetas y filtros.
 4. **Fase 2.2–2.6 — resto del núcleo local**: comentarios, planificación,
    importación/exportación y plantillas. Se abre por bloques, con los módulos ya
    separados.

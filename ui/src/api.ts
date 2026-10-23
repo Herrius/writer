@@ -74,7 +74,7 @@ const demoDocumentos: DocumentoDto[] = [
   {
     tipo: 'escena',
     id: '01KDVDNCXRH4QX4FR84G98PBSK',
-    ruta: 'manuscrito/01-libro/01-capitulo/002-la-llave.md',
+    ruta: 'manuscrito/01-libro/02-capitulo/002-la-llave.md',
     titulo: 'La llave',
     cuerpo:
       'En el cajón de la cocina encontró una llave de bronce. No abría ninguna puerta de la casa; lo supo antes de probarla.\n\nEl cuaderno azul estaba debajo, con la primera página arrancada.',
@@ -254,6 +254,36 @@ export async function verificar(ruta: string): Promise<EscaneoDto> {
     };
   }
   return invoke<EscaneoDto>('verificar', { ruta });
+}
+
+export async function mover(
+  ruta: string,
+  objetivo: string,
+  libro: string | null,
+  capitulo: string | null,
+  tipo: string | null,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw {
+        tipo: 'no-encontrado',
+        mensaje: `documento no encontrado en la demo: ${objetivo}`,
+      } satisfies ErrorDto;
+    }
+    if (documento.tipo === 'escena' && libro && capitulo) {
+      const nombre = documento.ruta.split('/').at(-1) ?? '001-escena.md';
+      documento.ruta = `manuscrito/${libro}/${capitulo}/${nombre}`;
+    } else if (documento.tipo === 'nota' && tipo) {
+      const nombre = documento.ruta.split('/').at(-1) ?? 'nota.md';
+      documento.ruta = `notas/${tipo}/${nombre}`;
+      documento.clase = tipo;
+    }
+    return { ...documento };
+  }
+  return invoke<DocumentoDto>('mover', { ruta, objetivo, libro, capitulo, tipo });
 }
 
 export async function renombrar(

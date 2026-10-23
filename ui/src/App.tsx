@@ -26,6 +26,7 @@ import {
   leerSesiones,
   listar,
   mostrar as pedirRevision,
+  mover as moverDocumentoApi,
   proyectoE2e,
   renombrar as renombrarDocumento,
   revertir as revertirRevision,
@@ -234,6 +235,7 @@ export default function App() {
   const [sesiones, setSesiones] = useState<SesionDto[]>([]);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
   const [tituloEdicion, setTituloEdicion] = useState('');
+  const [destinoArrastre, setDestinoArrastre] = useState<string | null>(null);
   const [metaDiaria, setMetaDiaria] = useState('');
   const [metaLibro, setMetaLibro] = useState('');
   const [desafioObjetivo, setDesafioObjetivo] = useState('');
@@ -832,6 +834,32 @@ export default function App() {
     }
   };
 
+  const moverDocumento = async (id: string, libro: string, capitulo: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se movió: primero resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const movido = await moverDocumentoApi(actual.raiz, id, libro, capitulo, null);
+      setDocumentos(await listar(actual.raiz, true));
+      if (activoRef.current?.id === id) {
+        fijarActivo(movido);
+        cuerpoEditorRef.current = movido.cuerpo;
+        setRevisionEditor((valor) => valor + 1);
+      }
+      setMensaje(`Documento movido a ${libro}/${capitulo}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo mover: ${errorDe(fallo).mensaje}`);
+    } finally {
+      setDestinoArrastre(null);
+    }
+  };
+
   const duplicarActivo = async () => {
     const actual = proyectoRef.current;
     const documento = activoRef.current;
@@ -1364,6 +1392,15 @@ export default function App() {
       onFocus={() => setFocoArbol(documento.id)}
       onKeyDown={(evento) => manejarTeclaArbol(evento, documento)}
       onClick={() => void seleccionar(documento)}
+      draggable={documento.tipo === 'escena'}
+      onDragStart={(evento) => {
+        if (documento.tipo !== 'escena') {
+          return;
+        }
+        evento.dataTransfer.setData('text/plain', documento.id);
+        evento.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragEnd={() => setDestinoArrastre(null)}
     >
       <span className="dabble-doc-icono" aria-hidden="true">
         {icono}
@@ -1572,7 +1609,26 @@ export default function App() {
                 <div className="dabble-libro" key={libro.etiqueta}>
                   <div className="dabble-libro-titulo">{libro.etiqueta}</div>
                   {libro.capitulos.map((capitulo) => (
-                    <div className="dabble-capitulo" key={capitulo.clave}>
+                    <div
+                      className={`dabble-capitulo ${
+                        destinoArrastre === capitulo.clave ? 'arrastre-activo' : ''
+                      }`}
+                      key={capitulo.clave}
+                      onDragOver={(evento) => {
+                        evento.preventDefault();
+                        evento.dataTransfer.dropEffect = 'move';
+                        setDestinoArrastre(capitulo.clave);
+                      }}
+                      onDragLeave={() => setDestinoArrastre(null)}
+                      onDrop={(evento) => {
+                        evento.preventDefault();
+                        const id = evento.dataTransfer.getData('text/plain');
+                        const [libro, capituloDestino] = capitulo.clave.split('/');
+                        if (id && libro && capituloDestino) {
+                          void moverDocumento(id, libro, capituloDestino);
+                        }
+                      }}
+                    >
                       <div className="dabble-capitulo-titulo">{capitulo.etiqueta}</div>
                       {capitulo.documentos.map((documento) => botonDocumento(documento, '▤'))}
                     </div>
