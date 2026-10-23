@@ -57,6 +57,7 @@ import {
   listar,
   listarComentarios,
   mostrar as pedirRevision,
+  previsualizarImportacion,
   mover as moverDocumentoApi,
   proyectoE2e,
   renombrar as renombrarDocumento,
@@ -285,6 +286,11 @@ export default function App() {
   const [mensajeEditando, setMensajeEditando] = useState<string | null>(null);
   const [textoEdicionMensaje, setTextoEdicionMensaje] = useState('');
   const [anclaComentario, setAnclaComentario] = useState<string | null>(null);
+  const [vistaPreviaImportacion, setVistaPreviaImportacion] = useState<{
+    archivos: string[];
+    formato: string;
+    texto: string;
+  } | null>(null);
   const [metas, setMetas] = useState<MetasDto | null>(null);
   const [sesiones, setSesiones] = useState<SesionDto[]>([]);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
@@ -1528,13 +1534,25 @@ export default function App() {
     if (archivos.length === 0) {
       return;
     }
-    if (!window.confirm(`Se importarán ${archivos.length} archivo(s):\n${archivos.join('\n')}`)) {
+    try {
+      const previa = await previsualizarImportacion(archivos[0]);
+      setVistaPreviaImportacion({ archivos, ...previa });
+    } catch (fallo) {
+      setMensaje(`No se pudo previsualizar: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const confirmarImportacion = async () => {
+    const actual = proyectoRef.current;
+    const pendiente = vistaPreviaImportacion;
+    if (!actual || !pendiente) {
       return;
     }
+    setVistaPreviaImportacion(null);
     try {
       const tipoNota = tipoImportacion || null;
       let ultimo = null;
-      for (const archivo of archivos) {
+      for (const archivo of pendiente.archivos) {
         const nombre = archivo.split(/[\\/]/).at(-1) ?? 'importado';
         const titulo = nombre.replace(/\.(md|markdown|docx|html?|rtf)$/i, '');
         ultimo = /\.docx$/i.test(archivo)
@@ -1549,7 +1567,7 @@ export default function App() {
       if (ultimo) {
         await seleccionar(ultimo);
       }
-      setMensaje(`${archivos.length} documento(s) importado(s).`);
+      setMensaje(`${pendiente.archivos.length} documento(s) importado(s).`);
     } catch (fallo) {
       setMensaje(`No se pudo importar: ${errorDe(fallo).mensaje}`);
     }
@@ -3775,6 +3793,53 @@ export default function App() {
         <span className="crece" />
         <span>{esTauri ? 'escritorio' : 'demo en navegador'}</span>
       </footer>
+
+      {vistaPreviaImportacion && (
+        <div className="modal-fondo">
+          <div
+            className="modal-proyecto"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Previsualizar importación"
+          >
+            <header className="modal-proyecto-cabecera">
+              <h2>Previsualizar importación</h2>
+              <button
+                className="cerrar-modal"
+                aria-label="Cerrar previsualización"
+                onClick={() => setVistaPreviaImportacion(null)}
+              >
+                ×
+              </button>
+            </header>
+            <div className="modal-proyecto-cuerpo">
+              <div className="modal-formulario">
+                <p>
+                  {vistaPreviaImportacion.archivos.length} archivo(s) ·{' '}
+                  {vistaPreviaImportacion.formato}
+                </p>
+                <ul>
+                  {vistaPreviaImportacion.archivos.map((archivo) => (
+                    <li key={archivo}>{archivo.split(/[\\/]/).at(-1)}</li>
+                  ))}
+                </ul>
+                <pre className="fuente">{vistaPreviaImportacion.texto}</pre>
+              </div>
+            </div>
+            <footer className="modal-proyecto-pie">
+              <button
+                className="boton-inicio"
+                onClick={() => setVistaPreviaImportacion(null)}
+              >
+                Cancelar
+              </button>
+              <button className="boton-primario" onClick={() => void confirmarImportacion()}>
+                Importar
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

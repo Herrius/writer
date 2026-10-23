@@ -52,34 +52,7 @@ pub fn importar_docx(
     titulo: &str,
     tipo_nota: Option<&str>,
 ) -> Result<(String, String)> {
-    let bytes = leer_limitado(archivo)?;
-    let cursor = std::io::Cursor::new(bytes);
-    let mut zip = zip::ZipArchive::new(cursor)
-        .map_err(|error| Error::Format(format!("DOCX no es un ZIP válido: {error}")))?;
-    let mut total = 0_u64;
-    let mut documento = None;
-    for indice in 0..zip.len() {
-        let mut entrada = zip
-            .by_index(indice)
-            .map_err(|error| Error::Format(format!("DOCX dañado: {error}")))?;
-        total = total.saturating_add(entrada.size());
-        if total > MAX_TOTAL {
-            return Err(Error::Format(
-                "DOCX supera el tamaño descomprimido permitido".to_string(),
-            ));
-        }
-        if entrada
-            .name()
-            .map_err(|error| Error::Format(error.to_string()))?
-            == "word/document.xml"
-        {
-            let mut xml = String::new();
-            entrada.read_to_string(&mut xml).map_err(Error::Io)?;
-            documento = Some(xml);
-        }
-    }
-    let xml = documento.ok_or_else(|| Error::Format("DOCX sin word/document.xml".to_string()))?;
-    let cuerpo = texto_docx(&xml)?;
+    let cuerpo = cuerpo_docx(archivo)?;
     if cuerpo.trim().is_empty() {
         return Err(Error::Format("el DOCX no contiene texto".to_string()));
     }
@@ -132,6 +105,69 @@ pub fn importar_rtf(
     };
     proyecto.escribir_cuerpo(&id, &cuerpo)?;
     Ok((id, ruta))
+}
+
+/// Previsualiza un archivo de importación sin escribir en el proyecto.
+///
+/// Devuelve el formato detectado y el texto convertido (limitado para la UI).
+pub fn previsualizar(archivo: &Path) -> Result<(String, String)> {
+    let extension = archivo
+        .extension()
+        .and_then(|valor| valor.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let (formato, cuerpo) = match extension.as_str() {
+        "docx" => ("DOCX", cuerpo_docx(archivo)?),
+        "html" | "htm" => {
+            let bytes = leer_limitado(archivo)?;
+            let texto = String::from_utf8(bytes)
+                .map_err(|error| Error::Format(format!("HTML no es UTF-8: {error}")))?;
+            ("HTML", texto_html(&texto))
+        }
+        "rtf" => {
+            let bytes = leer_limitado(archivo)?;
+            ("RTF", texto_rtf(&String::from_utf8_lossy(&bytes)))
+        }
+        _ => {
+            let bytes = leer_limitado(archivo)?;
+            let texto = String::from_utf8(bytes)
+                .map_err(|error| Error::Format(format!("Markdown no es UTF-8: {error}")))?;
+            ("Markdown", sin_frontmatter(&texto).to_string())
+        }
+    };
+    let recortado: String = cuerpo.chars().take(2000).collect();
+    Ok((formato.to_string(), recortado))
+}
+
+fn cuerpo_docx(archivo: &Path) -> Result<String> {
+    let bytes = leer_limitado(archivo)?;
+    let cursor = std::io::Cursor::new(bytes);
+    let mut zip = zip::ZipArchive::new(cursor)
+        .map_err(|error| Error::Format(format!("DOCX no es un ZIP válido: {error}")))?;
+    let mut total = 0_u64;
+    let mut documento = None;
+    for indice in 0..zip.len() {
+        let mut entrada = zip
+            .by_index(indice)
+            .map_err(|error| Error::Format(format!("DOCX dañado: {error}")))?;
+        total = total.saturating_add(entrada.size());
+        if total > MAX_TOTAL {
+            return Err(Error::Format(
+                "DOCX supera el tamaño descomprimido permitido".to_string(),
+            ));
+        }
+        if entrada
+            .name()
+            .map_err(|error| Error::Format(error.to_string()))?
+            == "word/document.xml"
+        {
+            let mut xml = String::new();
+            entrada.read_to_string(&mut xml).map_err(Error::Io)?;
+            documento = Some(xml);
+        }
+    }
+    let xml = documento.ok_or_else(|| Error::Format("DOCX sin word/document.xml".to_string()))?;
+    texto_docx(&xml)
 }
 
 /// Crea un backup ZIP del proyecto.

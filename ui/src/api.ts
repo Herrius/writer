@@ -898,6 +898,18 @@ export async function elegirCarpetaRestauracion(): Promise<string | null> {
   return typeof seleccion === 'string' ? seleccion : null;
 }
 
+export async function previsualizarImportacion(
+  archivo: string,
+): Promise<{ formato: string; texto: string }> {
+  if (!esTauri) {
+    throw { tipo: 'formato', mensaje: 'La previsualización requiere la app de escritorio.' } satisfies ErrorDto;
+  }
+  const [formato, texto] = await invoke<[string, string]>('previsualizar_importacion', {
+    archivo,
+  });
+  return { formato, texto };
+}
+
 export async function importarMarkdown(
   ruta: string,
   archivo: string,

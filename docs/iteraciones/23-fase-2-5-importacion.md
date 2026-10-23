@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-23
 - **Estado:** Markdown, DOCX, HTML, RTF, backup/restore, impresión, PDF nativo
-  con formato configurable, importación como escena o nota y selección múltiple
-  de archivos; falta la validación en Word/LibreOffice.
+  con formato configurable, importación como escena o nota, selección múltiple
+  y previsualización antes de importar; falta la validación en Word/LibreOffice.
 - **Contrato:** [`../importacion-v1.md`](../importacion-v1.md) y
   [`../exportacion-v2.md`](../exportacion-v2.md).
 
@@ -30,7 +30,6 @@ pnpm ui:test                                              63/63
 
 ## 3. Pendiente
 
-- Previsualización del contenido antes de importar (hoy se confirma la lista de archivos).
 - Validación de DOCX en Word/LibreOffice.
 - Pruebas con zip bombs y DOCX malformados reales.
 

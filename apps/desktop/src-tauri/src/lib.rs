@@ -790,6 +790,11 @@ fn directorio_plantillas(app: &tauri::AppHandle) -> Result<std::path::PathBuf, E
 }
 
 #[tauri::command]
+fn previsualizar_importacion(archivo: String) -> Result<(String, String), ErrorDto> {
+    writer_core::import::previsualizar(std::path::Path::new(&archivo)).map_err(error)
+}
+
+#[tauri::command]
 fn importar_markdown(
     ruta: String,
     archivo: String,
@@ -1563,6 +1568,7 @@ pub fn run() {
             guardar_plot_grid,
             listar_plantillas,
             crear_desde_plantilla,
+            previsualizar_importacion,
             importar_markdown,
             importar_docx,
             importar_html,

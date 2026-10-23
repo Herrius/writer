@@ -52,12 +52,10 @@ python scripts/ci.py empaquetado                          OK
 
 ### Funcional
 
-- Planificación: edición de nombre/color de trama y puntos implementados; la
-  vista es una línea de puntos, no un lienzo con arrastre.
-- Importación: selección múltiple y confirmación implementadas; falta la
-  previsualización del contenido.
-- Plantillas: gestión desde la UI (importar, borrar, duplicar) fuera del
-  contrato mínimo.
+- Planificación: la vista es una línea de puntos, no un lienzo con arrastre;
+  la edición de nombre/color y de puntos está implementada.
+- Plantillas: la gestión desde la UI (importar, borrar, duplicar) queda fuera
+  del contrato mínimo.
 - Comentarios: salto al ancla implementado; queda pulir el resaltado visual.
 
 ### Técnica
