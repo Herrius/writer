@@ -431,9 +431,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
                 .and_then(|metas| metas.validar())
             {
                 Ok(()) => {}
-                Err(error) => escaneo
-                    .errores
-                    .push(format!("{}: {error}", metas.display())),
+                Err(error) => escaneo.avisos.push(format!("{}: {error}", metas.display())),
             }
         }
     }
@@ -462,7 +460,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
                 continue;
             }
             if let Some(error) = revisar(&ruta) {
-                escaneo.errores.push(error);
+                escaneo.avisos.push(error);
                 continue;
             }
             let Ok(texto) = std::fs::read_to_string(&ruta) else {
@@ -479,7 +477,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
                     .map_err(Error::Json)
                     .and_then(|sesion| sesion.validar());
                 if let Err(error) = resultado {
-                    escaneo.errores.push(format!(
+                    escaneo.avisos.push(format!(
                         "{}: línea {}: {error}",
                         ruta.display(),
                         numero + 1
@@ -496,7 +494,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
                 continue;
             }
             if let Some(error) = revisar(&ruta) {
-                escaneo.errores.push(error);
+                escaneo.avisos.push(error);
                 continue;
             }
             let resultado = std::fs::read(&ruta)

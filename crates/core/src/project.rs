@@ -719,6 +719,52 @@ impl Project {
         Ok(relativa)
     }
 
+    /// Intercambia el orden de dos escenas del mismo capítulo en una sola
+    /// transacción.
+    pub fn intercambiar_orden(&self, id_a: &str, id_b: &str) -> Result<()> {
+        let mut sesion = self.escritura()?;
+        let buscar = |id: &str| -> Result<(String, i64, String)> {
+            let documento = sesion
+                .escaneo
+                .por_id(id)
+                .or_else(|| sesion.escaneo.por_ruta(id))
+                .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id}")))?;
+            let Documento::Escena(encontrada) = documento else {
+                return Err(Error::Input("solo se pueden reordenar escenas".to_string()));
+            };
+            Ok((
+                encontrada.relativa.clone(),
+                encontrada.escena.orden,
+                encontrada
+                    .relativa
+                    .rsplit_once('/')
+                    .map(|(p, _)| p.to_string())
+                    .unwrap_or_default(),
+            ))
+        };
+        let (ruta_a, orden_a, padre_a) = buscar(id_a)?;
+        let (ruta_b, orden_b, padre_b) = buscar(id_b)?;
+        if padre_a != padre_b {
+            return Err(Error::Input(
+                "las escenas deben estar en el mismo capítulo".to_string(),
+            ));
+        }
+        let mut cambios = Vec::new();
+        for (ruta, nuevo) in [(ruta_a.clone(), orden_b), (ruta_b.clone(), orden_a)] {
+            let documento = sesion
+                .escaneo
+                .por_ruta(&ruta)
+                .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {ruta}")))?;
+            let Documento::Escena(mut encontrada) = documento else {
+                continue;
+            };
+            encontrada.escena.orden = nuevo;
+            cambios.push(Cambio::existente(ruta, encontrada.escena.a_bytes()));
+        }
+        self.commit_efectos(&mut sesion, cambios, "humano", "estructura", None, None)?;
+        Ok(())
+    }
+
     /// Convierte una nota de Ideas en un proyecto nuevo.
     pub fn convertir_idea_en_proyecto(
         &self,

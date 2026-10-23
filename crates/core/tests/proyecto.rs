@@ -133,6 +133,37 @@ fn renombrar_y_duplicar_documentos() {
 }
 
 #[test]
+fn intercambiar_orden_de_escenas() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    let (a, _) = proyecto
+        .crear_escena("A", None, None, Some(20))
+        .expect("crear A");
+    let (b, _) = proyecto
+        .crear_escena("B", None, None, Some(30))
+        .expect("crear B");
+    proyecto.intercambiar_orden(&a, &b).expect("intercambiar");
+    let documentos = proyecto.listar(false).expect("listar");
+    let orden_a = documentos
+        .iter()
+        .find(|documento| documento.id() == a)
+        .and_then(|documento| match documento {
+            verify::Documento::Escena(escena) => Some(escena.escena.orden),
+            _ => None,
+        });
+    let orden_b = documentos
+        .iter()
+        .find(|documento| documento.id() == b)
+        .and_then(|documento| match documento {
+            verify::Documento::Escena(escena) => Some(escena.escena.orden),
+            _ => None,
+        });
+    assert_eq!(orden_a, Some(30));
+    assert_eq!(orden_b, Some(20));
+}
+
+#[test]
 fn exportar_pdf_genera_documento_local() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));

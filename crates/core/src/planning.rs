@@ -131,9 +131,14 @@ pub fn leer_plot_grid(raiz: &Path) -> Result<PlotGrid> {
     let Some(bytes) = fsutil::leer_opcional(&ruta)? else {
         return Ok(PlotGrid::default());
     };
-    let grid: PlotGrid =
-        serde_json::from_slice(&bytes).map_err(|error| Error::Json(error).with_path(&ruta))?;
-    grid.validar()?;
+    let Ok(grid) = serde_json::from_slice::<PlotGrid>(&bytes) else {
+        fsutil::apartar_sidecar(raiz, &ruta)?;
+        return Ok(PlotGrid::default());
+    };
+    if grid.validar().is_err() {
+        fsutil::apartar_sidecar(raiz, &ruta)?;
+        return Ok(PlotGrid::default());
+    }
     Ok(grid)
 }
 

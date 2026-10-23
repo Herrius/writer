@@ -219,9 +219,14 @@ pub fn leer_metas(raiz: &Path) -> Result<Metas> {
     let Some(bytes) = fsutil::leer_opcional(&ruta)? else {
         return Ok(Metas::default());
     };
-    let metas: Metas =
-        serde_json::from_slice(&bytes).map_err(|error| Error::Json(error).with_path(&ruta))?;
-    metas.validar()?;
+    let Ok(metas) = serde_json::from_slice::<Metas>(&bytes) else {
+        fsutil::apartar_sidecar(raiz, &ruta)?;
+        return Ok(Metas::default());
+    };
+    if metas.validar().is_err() {
+        fsutil::apartar_sidecar(raiz, &ruta)?;
+        return Ok(Metas::default());
+    }
     Ok(metas)
 }
 
@@ -287,7 +292,12 @@ pub fn listar_sesiones(raiz: &Path) -> Result<Vec<Sesion>> {
         let Some(mes) = ruta.file_stem().and_then(|valor| valor.to_str()) else {
             continue;
         };
-        sesiones.extend(leer_sesiones(raiz, mes)?);
+        match leer_sesiones(raiz, mes) {
+            Ok(leidas) => sesiones.extend(leidas),
+            Err(_) => {
+                let _ = fsutil::apartar_sidecar(raiz, &ruta);
+            }
+        }
     }
     sesiones.sort_by(|a, b| a.inicio.cmp(&b.inicio));
     Ok(sesiones)
@@ -471,11 +481,18 @@ mod tests {
     }
 
     #[test]
-    fn sidecar_corrupto_es_error() {
+    fn sidecar_corrupto_se_aparta_y_devuelve_defecto() {
         let temporal = raiz();
         let ruta = ruta_metas(temporal.path()).expect("ruta");
         std::fs::write(&ruta, b"{no es json").expect("escribir");
-        assert!(leer_metas(temporal.path()).is_err());
+        let metas = leer_metas(temporal.path()).expect("leer");
+        assert_eq!(metas, Metas::default());
+        assert!(!ruta.exists());
+        let cuarentena = temporal.path().join(".escritor/cuarentena");
+        assert!(std::fs::read_dir(cuarentena)
+            .expect("cuarentena")
+            .next()
+            .is_some());
     }
 
     #[cfg(unix)]

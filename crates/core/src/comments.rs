@@ -299,9 +299,11 @@ pub fn listar_comentarios(raiz: &Path, documento: Option<&str>) -> Result<Vec<Co
         }
         let bytes = std::fs::read(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
         let Ok(comentario) = serde_json::from_slice::<Comentario>(&bytes) else {
+            let _ = fsutil::apartar_sidecar(raiz, &ruta);
             continue;
         };
         if comentario.validar().is_err() {
+            let _ = fsutil::apartar_sidecar(raiz, &ruta);
             continue;
         }
         if documento.is_none_or(|valor| valor == comentario.documento) {

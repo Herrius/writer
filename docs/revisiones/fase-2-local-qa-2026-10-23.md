@@ -297,5 +297,8 @@ comentarios, reapertura/archivo de hilos, copia con/sin comentarios, salto al
 ancla, PDF nativo con formato configurable, racha contra la meta, 30 días,
 selección múltiple de importación y edición de tramas/puntos.
 
-Commit de corrección: `9a7469b`. Pendiente de re-revisión: repetir esta QA
-sobre ese commit. La deuda P3/P4 restante sigue en el cierre de la Fase 2.
+Commit de corrección posterior: `5b6486d` y siguientes. La re-revisión r2
+encontró un P1 (sidecar corrupto bloqueaba el proyecto) y dos P2 (reordenar
+escenas y PDF con tipografía degradada); se corrigieron con cuarentena de
+sidecars, intercambio de orden en una transacción y mapeo WinAnsi/limpieza de
+Markdown. Pendiente: repetir los gates y esta QA sobre el commit final. La deuda P3/P4 restante sigue en el cierre de la Fase 2.

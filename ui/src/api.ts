@@ -101,6 +101,22 @@ const demoDocumentos: DocumentoDto[] = [
     clase: null,
   },
   {
+    tipo: 'escena',
+    id: '01KDVDNBYG1HEAD8X4A1JH69RF',
+    ruta: 'manuscrito/01-libro/02-capitulo/001-la-carta.md',
+    titulo: 'La carta',
+    cuerpo: 'La carta llegó sin remitente.\n\nDentro solo había una frase.',
+    hashArchivo: 'demo:carta',
+    orden: 10,
+    estado: 'borrador',
+    archivo: null,
+    etiquetas: [],
+    rol: null,
+    cast: [],
+    alias: [],
+    clase: null,
+  },
+  {
     tipo: 'nota',
     id: '01KDVDNBYG20KW71NVRK6P2FHG',
     ruta: 'notas/personajes/marta.md',
@@ -723,6 +739,18 @@ export async function reordenarEscena(
     return { ...documento };
   }
   return invoke<DocumentoDto>('reordenar_escena', { ruta, objetivo, orden });
+}
+
+export async function intercambiarOrden(ruta: string, a: string, b: string): Promise<void> {
+  if (!esTauri) {
+    const uno = demoDocumentos.find((documento) => documento.id === a);
+    const otro = demoDocumentos.find((documento) => documento.id === b);
+    if (uno && otro) {
+      [uno.orden, otro.orden] = [otro.orden, uno.orden];
+    }
+    return;
+  }
+  await invoke('intercambiar_orden', { ruta, a, b });
 }
 
 export async function convertirIdeaEnProyecto(

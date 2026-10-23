@@ -25,11 +25,11 @@
 ```text
 cargo fmt --all --check                                   OK
 cargo clippy --workspace --all-targets --all-features     OK
-cargo test --workspace --all-targets --locked             69 + 37 + 25
+cargo test --workspace --all-targets --locked             69 + 38 + 25
 cargo test desktop                                        7/7
 pnpm typecheck                                            OK
 pnpm ui:test                                              63/63
-pnpm e2e                                                  36/36
+pnpm e2e                                                  37/37
 python scripts/ci.py interfaz                             OK
 python scripts/ci.py producto                             OK
 python scripts/ci.py seguridad                            OK

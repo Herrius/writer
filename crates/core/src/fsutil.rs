@@ -412,6 +412,21 @@ pub(crate) fn directorio_cuarentena(raiz: &Path, crear: bool) -> Result<Option<P
     Ok(Some(ruta))
 }
 
+/// Aparta un sidecar inválido a la cuarentena del proyecto.
+pub(crate) fn apartar_sidecar(raiz: &Path, ruta: &Path) -> Result<PathBuf> {
+    let directorio = directorio_cuarentena(raiz, true)?
+        .ok_or_else(|| Error::Project("no se pudo abrir la cuarentena".to_string()))?;
+    let nombre = ruta
+        .file_name()
+        .and_then(|valor| valor.to_str())
+        .unwrap_or("sidecar.json");
+    let marca = crate::time::timestamp_slug(crate::time::now_ms());
+    let destino = directorio.join(format!("{marca}-{nombre}"));
+    std::fs::rename(ruta, &destino).map_err(|error| Error::Io(error).with_path(ruta))?;
+    fsync_dir(&directorio)?;
+    Ok(destino)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

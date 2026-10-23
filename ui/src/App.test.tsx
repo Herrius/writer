@@ -69,6 +69,8 @@ vi.mock('./api', () => ({
   elegirDestinoPdf: vi.fn(),
   exportarPdf: vi.fn(),
   previsualizarImportacion: vi.fn(),
+  elegirArchivosImportacion: vi.fn(),
+  intercambiarOrden: vi.fn(),
   leerFormatoPdf: vi.fn().mockResolvedValue({ fuente: 12, interlineado: 18, margen: 72 }),
   guardarFormatoPdf: vi.fn(),
   exportarDocx: vi.fn(),

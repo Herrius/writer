@@ -46,6 +46,7 @@ import {
   guardarPlotGrid,
   historial as pedirHistorial,
   importarDocx,
+  intercambiarOrden,
   importarHtml,
   importarMarkdown,
   importarRtf,
@@ -61,7 +62,6 @@ import {
   mover as moverDocumentoApi,
   proyectoE2e,
   renombrar as renombrarDocumento,
-  reordenarEscena,
   reabrirComentario,
   resolverComentario,
   restaurarBackup as restaurarBackupApi,
@@ -1038,8 +1038,7 @@ export default function App() {
       return;
     }
     try {
-      await reordenarEscena(actual.raiz, documento.id, vecina.orden);
-      await reordenarEscena(actual.raiz, vecina.id, documento.orden);
+      await intercambiarOrden(actual.raiz, documento.id, vecina.id);
       setDocumentos(await listar(actual.raiz, true));
       setMensaje('Orden de escenas actualizado.');
     } catch (fallo) {

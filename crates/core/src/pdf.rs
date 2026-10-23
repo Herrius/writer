@@ -86,6 +86,26 @@ pub fn guardar_formato(raiz: &Path, formato: &Formato) -> Result<()> {
     fsutil::escribir_atomico(&ruta, &bytes)
 }
 
+fn limpiar_markdown(texto: &str) -> String {
+    texto
+        .lines()
+        .map(|linea| {
+            let mut limpia = linea.trim_start();
+            while let Some(resto) = limpia.strip_prefix('#') {
+                limpia = resto.trim_start();
+            }
+            limpia = limpia.strip_prefix("> ").unwrap_or(limpia);
+            let limpia = limpia
+                .replace("**", "")
+                .replace("__", "")
+                .replace("`", "")
+                .replace("~~", "");
+            limpia.trim().to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn comparar(a: &str, b: &str) -> std::cmp::Ordering {
     a.split('/').cmp(b.split('/'))
 }
@@ -109,7 +129,7 @@ fn maquetar(
     for escena in escenas {
         lineas.push(escena.escena.titulo.clone());
         lineas.push(String::new());
-        let texto = crate::docx::quitar_marcas(&escena.escena.cuerpo);
+        let texto = limpiar_markdown(&crate::docx::quitar_marcas(&escena.escena.cuerpo));
         for parrafo in texto.split('\n') {
             let limpio = parrafo.trim();
             if limpio.is_empty() {
@@ -225,6 +245,15 @@ fn escapar_pdf(texto: &str) -> String {
             '\\' => salida.push_str("\\\\"),
             '\n' | '\r' => salida.push(' '),
             caracter if caracter.is_ascii() => salida.push(caracter),
+            '—' => salida.push_str("\\227"),
+            '–' => salida.push_str("\\226"),
+            '“' => salida.push_str("\\223"),
+            '”' => salida.push_str("\\224"),
+            '‘' => salida.push_str("\\221"),
+            '’' => salida.push_str("\\222"),
+            '…' => salida.push_str("\\205"),
+            '€' => salida.push_str("\\200"),
+            '\u{a0}' => salida.push_str("\\240"),
             caracter => {
                 let codigo = caracter as u32;
                 if codigo <= 255 {

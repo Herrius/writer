@@ -1415,6 +1415,13 @@ fn reordenar_escena(ruta: String, objetivo: String, orden: i64) -> Result<Docume
 }
 
 #[tauri::command]
+fn intercambiar_orden(ruta: String, a: String, b: String) -> Result<(), ErrorDto> {
+    Project::new(&ruta)
+        .intercambiar_orden(&a, &b)
+        .map_err(error)
+}
+
+#[tauri::command]
 fn convertir_idea_en_proyecto(
     ruta: String,
     objetivo: String,
@@ -1556,6 +1563,7 @@ pub fn run() {
             actualizar_personaje,
             cambiar_archivo,
             reordenar_escena,
+            intercambiar_orden,
             convertir_idea_en_proyecto,
             renombrar,
             duplicar,
