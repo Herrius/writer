@@ -194,6 +194,13 @@ test('los controles usan bordes con contraste y la tarjeta un nombre único', as
   const nombre = await page.locator('.tarjeta-proyecto').first().ariaSnapshot();
   expect(nombre).toContain('button "El umbral Marta Ruiz 12.345 palabras"');
 
+  await page.getByRole('button', { name: /Crear nuevo proyecto/ }).click();
+  const bordeCampo = await page
+    .locator('#campo-nombre-proyecto')
+    .evaluate((elemento) => getComputedStyle(elemento).borderTopColor);
+  expect(bordeCampo).toBe('rgb(148, 137, 122)');
+  await page.keyboard.press('Escape');
+
   await page.getByRole('button', { name: 'Vista de lista' }).click();
   const colorLista = await page
     .locator('.proyectos-lista .tarjeta-datos small')

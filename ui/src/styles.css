@@ -1343,7 +1343,7 @@ button.guardar:disabled {
 .modal select {
   width: 100%;
   padding: 0.55rem 0.65rem;
-  border: 1px solid #cfc0ad;
+  border: 1px solid var(--borde-control);
   border-radius: 0.4rem;
   background: #fffdf8;
   color: var(--tinta);
@@ -2012,7 +2012,7 @@ button.guardar:disabled {
 .modal-formulario select {
   width: 100%;
   padding: 0.5rem 0.6rem;
-  border: 1px solid #d8d0c4;
+  border: 1px solid var(--borde-control);
   border-radius: 0.35rem;
   background: #fff;
   color: #2f2a24;
