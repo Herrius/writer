@@ -720,6 +720,73 @@ impl Project {
         Ok(relativa)
     }
 
+    /// Actualiza estado y etiquetas de una escena.
+    pub fn actualizar_escena(
+        &self,
+        id_o_ruta: &str,
+        estado: Option<&str>,
+        etiquetas: &[String],
+    ) -> Result<String> {
+        if let Some(valor) = estado {
+            if !model::ESTADOS_ESCENA.contains(&valor) {
+                return Err(Error::Input(format!("estado de escena no válido: {valor}")));
+            }
+        }
+        let etiquetas = normalizar_etiquetas(etiquetas)?;
+        let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let Documento::Escena(mut encontrada) = documento else {
+            return Err(Error::Input(
+                "solo las escenas tienen estado de escena".to_string(),
+            ));
+        };
+        encontrada.escena.estado = estado.map(str::to_string);
+        encontrada.escena.etiquetas = etiquetas;
+        let relativa = encontrada.relativa.clone();
+        let bytes = encontrada.escena.a_bytes();
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::existente(relativa.clone(), bytes)],
+            "humano",
+            "estructura",
+            None,
+            None,
+        )?;
+        Ok(relativa)
+    }
+
+    /// Actualiza las etiquetas de una nota.
+    pub fn actualizar_nota(&self, id_o_ruta: &str, etiquetas: &[String]) -> Result<String> {
+        let etiquetas = normalizar_etiquetas(etiquetas)?;
+        let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let Documento::Nota(mut encontrada) = documento else {
+            return Err(Error::Input(
+                "actualizar_nota solo acepta notas".to_string(),
+            ));
+        };
+        encontrada.nota.etiquetas = etiquetas;
+        let relativa = encontrada.relativa.clone();
+        let bytes = encontrada.nota.a_bytes();
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::existente(relativa.clone(), bytes)],
+            "humano",
+            "notas",
+            None,
+            None,
+        )?;
+        Ok(relativa)
+    }
+
     /// Cambia la ubicación lógica de una escena o nota.
     ///
     /// `None` la devuelve a la vista activa; `archivado` la oculta del árbol
@@ -1492,6 +1559,30 @@ fn consulta_fts(terminos: &[String]) -> String {
         .map(|termino| format!("\"{}\"", termino.replace('"', "\"\"")))
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn normalizar_etiquetas(etiquetas: &[String]) -> Result<Option<Vec<String>>> {
+    let mut salida: Vec<String> = Vec::new();
+    for etiqueta in etiquetas {
+        let valor = etiqueta.trim();
+        if valor.is_empty() {
+            continue;
+        }
+        if valor.chars().count() > 100 {
+            return Err(Error::Input(
+                "una etiqueta no puede superar 100 caracteres".to_string(),
+            ));
+        }
+        model::validar_texto(valor, "etiqueta", "documento")?;
+        if !salida.iter().any(|existente| existente == valor) {
+            salida.push(valor.to_string());
+        }
+    }
+    if salida.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(salida))
+    }
 }
 
 fn normalizar_cuerpo(cuerpo: &str) -> String {

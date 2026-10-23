@@ -41,6 +41,10 @@ estado: string | null,
  */
 archivo: string | null, 
 /**
+ * Etiquetas.
+ */
+etiquetas: Array<string>, 
+/**
  * Tipo de nota.
  */
 clase: string | null, };

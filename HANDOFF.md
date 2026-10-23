@@ -323,13 +323,13 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 2. **Fase 2.4 — metas**: implementada de extremo a extremo en
    [`docs/iteraciones/19-fase-2-4-metas.md`](docs/iteraciones/19-fase-2-4-metas.md);
    faltan rachas, gráfico histórico, backup y revisión.
-3. **Fase 2.1 — manuscrito**: renombrar, duplicar y arrastrar/soltar
-   implementados en
+3. **Fase 2.1 — manuscrito**: funcionalidad completa (renombrar, duplicar,
+   arrastrar/soltar, archivo/papelera, estados, etiquetas, filtros y
+   copiar/pegar) en
    [`docs/iteraciones/20-fase-2-1-manuscrito.md`](docs/iteraciones/20-fase-2-1-manuscrito.md);
-   faltan archivar, papelera, estados, etiquetas y filtros.
-4. **Fase 2.2–2.6 — resto del núcleo local**: comentarios, planificación,
-   importación/exportación y plantillas. Se abre por bloques, con los módulos ya
-   separados.
+   pendiente revisión formal de QA/UX y reordenar dentro del capítulo.
+4. **Fase 2.2 — comentarios v2**: siguiente bloque. Después 2.3 planificación,
+   2.5 importación/exportación y 2.6 plantillas.
 5. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
    original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
    checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,

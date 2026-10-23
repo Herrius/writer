@@ -7,6 +7,8 @@ import {
 } from 'react';
 import {
   abrirProyecto,
+  actualizarEscena,
+  actualizarNota,
   agregarSesion,
   buscar as buscarEnProyecto,
   cambiarArchivo as cambiarArchivoApi,
@@ -240,6 +242,10 @@ export default function App() {
   const [filtroArchivo, setFiltroArchivo] = useState<'activo' | 'archivado' | 'papelera'>(
     'activo',
   );
+  const [filtroEtiqueta, setFiltroEtiqueta] = useState('');
+  const [estadoEdicion, setEstadoEdicion] = useState('borrador');
+  const [etiquetasEdicion, setEtiquetasEdicion] = useState('');
+  const [documentoCopiado, setDocumentoCopiado] = useState<string | null>(null);
   const [metaDiaria, setMetaDiaria] = useState('');
   const [metaLibro, setMetaLibro] = useState('');
   const [desafioObjetivo, setDesafioObjetivo] = useState('');
@@ -323,14 +329,28 @@ export default function App() {
     () => documentos.filter((documento) => documento.tipo === 'nota'),
     [documentos],
   );
-  const escenasVisibles = useMemo(
-    () => escenas.filter((documento) => (documento.archivo ?? 'activo') === filtroArchivo),
-    [escenas, filtroArchivo],
-  );
-  const notasVisibles = useMemo(
-    () => notas.filter((documento) => (documento.archivo ?? 'activo') === filtroArchivo),
-    [notas, filtroArchivo],
-  );
+  const escenasVisibles = useMemo(() => {
+    const termino = filtroEtiqueta.trim().toLocaleLowerCase();
+    return escenas.filter(
+      (documento) =>
+        (documento.archivo ?? 'activo') === filtroArchivo &&
+        (!termino ||
+          documento.etiquetas.some((etiqueta) =>
+            etiqueta.toLocaleLowerCase().includes(termino),
+          )),
+    );
+  }, [escenas, filtroArchivo, filtroEtiqueta]);
+  const notasVisibles = useMemo(() => {
+    const termino = filtroEtiqueta.trim().toLocaleLowerCase();
+    return notas.filter(
+      (documento) =>
+        (documento.archivo ?? 'activo') === filtroArchivo &&
+        (!termino ||
+          documento.etiquetas.some((etiqueta) =>
+            etiqueta.toLocaleLowerCase().includes(termino),
+          )),
+    );
+  }, [notas, filtroArchivo, filtroEtiqueta]);
   const idArbolTabbable = focoArbol ?? activo?.id ?? documentos[0]?.id ?? null;
 
   const moverFocoArbol = (documento: DocumentoDto, destino: 'siguiente' | 'anterior' | 'inicio' | 'fin') => {
@@ -873,6 +893,38 @@ export default function App() {
     }
   };
 
+  const guardarMetadatosActivo = async () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento) {
+      return;
+    }
+    const etiquetas = etiquetasEdicion
+      .split(',')
+      .map((etiqueta) => etiqueta.trim())
+      .filter(Boolean);
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se guardaron los metadatos: primero resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const actualizado =
+        documento.tipo === 'escena'
+          ? await actualizarEscena(actual.raiz, documento.id, estadoEdicion || null, etiquetas)
+          : await actualizarNota(actual.raiz, documento.id, etiquetas);
+      setDocumentos((lista) =>
+        lista.map((candidato) =>
+          candidato.id === actualizado.id ? { ...candidato, ...actualizado } : candidato,
+        ),
+      );
+      fijarActivo(actualizado);
+      setMensaje('Metadatos del documento guardados.');
+    } catch (fallo) {
+      setMensaje(`No se pudieron guardar los metadatos: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
   const cambiarArchivoActivo = async (archivo: 'archivado' | 'papelera' | null) => {
     const actual = proyectoRef.current;
     const documento = activoRef.current;
@@ -904,10 +956,9 @@ export default function App() {
     }
   };
 
-  const duplicarActivo = async () => {
+  const duplicarPorId = async (id: string) => {
     const actual = proyectoRef.current;
-    const documento = activoRef.current;
-    if (!actual || !documento) {
+    if (!actual) {
       return;
     }
     const guardado = await guardarAhora();
@@ -916,12 +967,33 @@ export default function App() {
       return;
     }
     try {
-      const copia = await duplicarDocumento(actual.raiz, documento.id);
+      const copia = await duplicarDocumento(actual.raiz, id);
       setDocumentos(await listar(actual.raiz, true));
       await seleccionar(copia);
       setMensaje(`Documento duplicado: ${copia.titulo}.`);
     } catch (fallo) {
       setMensaje(`No se pudo duplicar: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const duplicarActivo = async () => {
+    const documento = activoRef.current;
+    if (documento) {
+      await duplicarPorId(documento.id);
+    }
+  };
+
+  const copiarActivo = () => {
+    const documento = activoRef.current;
+    if (documento) {
+      setDocumentoCopiado(documento.id);
+      setMensaje(`Documento copiado: ${documento.titulo}.`);
+    }
+  };
+
+  const pegarDocumento = async () => {
+    if (documentoCopiado) {
+      await duplicarPorId(documentoCopiado);
     }
   };
 
@@ -938,6 +1010,7 @@ export default function App() {
         orden: null,
         estado: null,
         archivo: null,
+        etiquetas: [],
         clase: null,
       } satisfies DocumentoDto);
     await seleccionar(documento);
@@ -1387,7 +1460,9 @@ export default function App() {
 
   useEffect(() => {
     setTituloEdicion(activo?.titulo ?? '');
-  }, [activo?.id, activo?.titulo]);
+    setEstadoEdicion(activo?.estado ?? 'borrador');
+    setEtiquetasEdicion((activo?.etiquetas ?? []).join(', '));
+  }, [activo?.id, activo?.titulo, activo?.estado, activo?.etiquetas]);
 
   useEffect(() => {
     if (!temporizadorActivo || temporizadorPausado) {
@@ -1612,6 +1687,14 @@ export default function App() {
             <button className="dabble-mas" aria-label="Crear archivo" title="Crear archivo próximamente" disabled>
               +
             </button>
+          </div>
+          <div className="dabble-filtro-etiqueta">
+            <input
+              value={filtroEtiqueta}
+              onChange={(evento) => setFiltroEtiqueta(evento.target.value)}
+              placeholder="Filtrar por etiqueta"
+              aria-label="Filtrar por etiqueta"
+            />
           </div>
 
           {modoBusqueda ? (
@@ -2207,6 +2290,37 @@ export default function App() {
                         aria-label="Título del documento"
                       />
                     </label>
+                    {activo.tipo === 'escena' && (
+                      <label className="dabble-campo-meta">
+                        <span>Estado</span>
+                        <select
+                          value={estadoEdicion}
+                          onChange={(evento) => setEstadoEdicion(evento.target.value)}
+                          aria-label="Estado de la escena"
+                        >
+                          <option value="borrador">Borrador</option>
+                          <option value="revision">Revisión</option>
+                          <option value="final">Final</option>
+                        </select>
+                      </label>
+                    )}
+                    <label className="dabble-campo-meta">
+                      <span>Etiquetas</span>
+                      <input
+                        value={etiquetasEdicion}
+                        onChange={(evento) => setEtiquetasEdicion(evento.target.value)}
+                        placeholder="separadas por comas"
+                        aria-label="Etiquetas del documento"
+                      />
+                    </label>
+                    <div className="dabble-acciones-documento">
+                      <button
+                        className="dabble-boton"
+                        onClick={() => void guardarMetadatosActivo()}
+                      >
+                        Guardar metadatos
+                      </button>
+                    </div>
                     <div className="dabble-acciones-documento">
                       <button
                         className="dabble-boton"
@@ -2220,6 +2334,19 @@ export default function App() {
                       >
                         Duplicar
                       </button>
+                    </div>
+                    <div className="dabble-acciones-documento">
+                      <button className="dabble-boton" onClick={copiarActivo}>
+                        Copiar
+                      </button>
+                      {documentoCopiado && (
+                        <button
+                          className="dabble-boton"
+                          onClick={() => void pegarDocumento()}
+                        >
+                          Pegar copia
+                        </button>
+                      )}
                     </div>
                     <div className="dabble-acciones-documento secundarias">
                       {activo.archivo ? (

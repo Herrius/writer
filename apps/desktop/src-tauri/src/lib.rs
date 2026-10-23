@@ -60,6 +60,8 @@ pub struct DocumentoDto {
     pub estado: Option<String>,
     /// Ubicación de archivo o papelera.
     pub archivo: Option<String>,
+    /// Etiquetas.
+    pub etiquetas: Vec<String>,
     /// Tipo de nota.
     pub clase: Option<String>,
 }
@@ -741,6 +743,31 @@ fn mover(
 }
 
 #[tauri::command]
+fn actualizar_escena(
+    ruta: String,
+    objetivo: String,
+    estado: Option<String>,
+    etiquetas: Vec<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    Project::new(&ruta)
+        .actualizar_escena(&objetivo, estado.as_deref(), &etiquetas)
+        .map_err(error)?;
+    leer(ruta, objetivo)
+}
+
+#[tauri::command]
+fn actualizar_nota(
+    ruta: String,
+    objetivo: String,
+    etiquetas: Vec<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    Project::new(&ruta)
+        .actualizar_nota(&objetivo, &etiquetas)
+        .map_err(error)?;
+    leer(ruta, objetivo)
+}
+
+#[tauri::command]
 fn cambiar_archivo(
     ruta: String,
     objetivo: String,
@@ -794,6 +821,7 @@ fn documento_dto(documento: Documento) -> DocumentoDto {
             orden: Some(encontrada.escena.orden),
             estado: encontrada.escena.estado,
             archivo: encontrada.escena.archivo,
+            etiquetas: encontrada.escena.etiquetas.unwrap_or_default(),
             clase: None,
         },
         Documento::Nota(encontrada) => DocumentoDto {
@@ -806,6 +834,7 @@ fn documento_dto(documento: Documento) -> DocumentoDto {
             orden: None,
             estado: None,
             archivo: encontrada.nota.archivo,
+            etiquetas: encontrada.nota.etiquetas.unwrap_or_default(),
             clase: Some(encontrada.nota.tipo),
         },
     }
@@ -863,6 +892,8 @@ pub fn run() {
             proyecto_e2e,
             escribir,
             mover,
+            actualizar_escena,
+            actualizar_nota,
             cambiar_archivo,
             renombrar,
             duplicar,
@@ -1082,6 +1113,16 @@ mod tests {
         )
         .expect("mover");
         assert!(movida.ruta.starts_with("manuscrito/02-libro/01-capitulo/"));
+
+        let actualizada = actualizar_escena(
+            ruta.clone(),
+            escena.id.clone(),
+            Some("final".to_string()),
+            vec!["clave".to_string()],
+        )
+        .expect("actualizar escena");
+        assert_eq!(actualizada.estado.as_deref(), Some("final"));
+        assert_eq!(actualizada.etiquetas, vec!["clave".to_string()]);
 
         let archivada = cambiar_archivo(
             ruta.clone(),

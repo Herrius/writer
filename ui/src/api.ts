@@ -70,6 +70,7 @@ const demoDocumentos: DocumentoDto[] = [
     orden: 10,
     estado: 'revision',
     archivo: null,
+    etiquetas: [],
     clase: null,
   },
   {
@@ -83,6 +84,7 @@ const demoDocumentos: DocumentoDto[] = [
     orden: 20,
     estado: 'borrador',
     archivo: null,
+    etiquetas: [],
     clase: null,
   },
   {
@@ -95,6 +97,7 @@ const demoDocumentos: DocumentoDto[] = [
     orden: null,
     estado: null,
     archivo: null,
+    etiquetas: [],
     clase: 'personajes',
   },
   {
@@ -107,6 +110,7 @@ const demoDocumentos: DocumentoDto[] = [
     orden: null,
     estado: null,
     archivo: null,
+    etiquetas: [],
     clase: 'tramas',
   },
 ];
@@ -288,6 +292,55 @@ export async function mover(
     return { ...documento };
   }
   return invoke<DocumentoDto>('mover', { ruta, objetivo, libro, capitulo, tipo });
+}
+
+export async function actualizarEscena(
+  ruta: string,
+  objetivo: string,
+  estado: string | null,
+  etiquetas: string[],
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw {
+        tipo: 'no-encontrado',
+        mensaje: `documento no encontrado en la demo: ${objetivo}`,
+      } satisfies ErrorDto;
+    }
+    documento.estado = estado;
+    documento.etiquetas = etiquetas;
+    return { ...documento };
+  }
+  return invoke<DocumentoDto>('actualizar_escena', {
+    ruta,
+    objetivo,
+    estado,
+    etiquetas,
+  });
+}
+
+export async function actualizarNota(
+  ruta: string,
+  objetivo: string,
+  etiquetas: string[],
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw {
+        tipo: 'no-encontrado',
+        mensaje: `documento no encontrado en la demo: ${objetivo}`,
+      } satisfies ErrorDto;
+    }
+    documento.etiquetas = etiquetas;
+    return { ...documento };
+  }
+  return invoke<DocumentoDto>('actualizar_nota', { ruta, objetivo, etiquetas });
 }
 
 export async function cambiarArchivo(

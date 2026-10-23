@@ -1,10 +1,10 @@
 # Iteración 20 — Fase 2.1: renombrar y duplicar documentos
 
 - **Fecha:** 2026-10-23
-- **Estado:** renombrar, duplicar, arrastrar/soltar y archivo/papelera
-  implementados; resto de 2.1 pendiente.
-- **Commits:** `2a8dd8c` (renombrar/duplicar), `a423c8e` (arrastrar/soltar) y el
-  commit de archivo/papelera.
+- **Estado:** **2.1 completa** en funcionalidad; pendiente revisión formal de
+  QA/UX.
+- **Commits:** `2a8dd8c` (renombrar/duplicar), `a423c8e` (arrastrar/soltar),
+  `cba0040` (archivo/papelera) y los commits de metadatos/copia.
 - **Contrato:** [`../esquema-v1.md`](../esquema-v1.md) (escenas y notas) y
   [`../esquema-v2.md`](../esquema-v2.md) (extensiones).
 
@@ -20,6 +20,9 @@
 - Archivar, enviar a papelera y restaurar escenas/notas con el campo lógico
   `archivo`, sin mover ni renombrar el Markdown.
 - Filtrar el árbol por activos, archivo y papelera.
+- Editar estado y etiquetas de escenas; etiquetas de notas.
+- Filtrar por etiqueta.
+- Copiar un documento y pegarlo como copia nueva.
 
 ## 2. Archivos
 
@@ -37,6 +40,8 @@
 | `e2e/fase-2-1-manuscrito.spec.ts` | Flujo E2E de renombrar/duplicar |
 | `e2e/fase-2-1-arrastrar.spec.ts` | Flujo E2E de arrastrar/soltar entre capítulos |
 | `e2e/fase-2-1-archivo.spec.ts` | Flujo E2E de archivar, filtrar y restaurar |
+| `e2e/fase-2-1-metadatos.spec.ts` | Flujo E2E de estado, etiquetas y filtro |
+| `e2e/fase-2-1-copiar.spec.ts` | Flujo E2E de copiar y pegar documento |
 
 ## 3. Decisiones
 
@@ -58,18 +63,21 @@ pnpm ui:test                                                               61/61
 pnpm exec playwright test e2e/fase-2-1-manuscrito.spec.ts                  1/1
 pnpm exec playwright test e2e/fase-2-1-arrastrar.spec.ts                  1/1
 pnpm exec playwright test e2e/fase-2-1-archivo.spec.ts                    1/1
-pnpm e2e                                                                   29/29
+pnpm exec playwright test e2e/fase-2-1-metadatos.spec.ts                  1/1
+pnpm exec playwright test e2e/fase-2-1-copiar.spec.ts                     1/1
+pnpm e2e                                                                   31/31
 ```
 
-## 5. Pendiente de 2.1
+## 5. Pendiente
 
-- Estados, etiquetas y filtros por etiqueta.
-- Copiar/pegar documentos completos.
-- Navegación y filtro de archivos por texto.
-- Revisión de accesibilidad y E2E de las operaciones nuevas.
+- Revisión formal de QA/UX del bloque 2.1.
+- Reordenar dentro del mismo capítulo por drag & drop; hoy se mueve entre
+  capítulos.
+- Copiar/pegar con el portapapeles del sistema; hoy la copia es interna del
+  proyecto.
+- Navegación por árbol con teclado para las nuevas acciones.
 
-El drag & drop mueve escenas entre capítulos; no reordena dentro del capítulo
-todavía.
+El resto de 2.1 está implementado y probado.
 
 ## 6. Límites
 

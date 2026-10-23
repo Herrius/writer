@@ -92,6 +92,21 @@ fn renombrar_y_duplicar_documentos() {
     assert_eq!(renombrada, ruta);
     assert_eq!(proyecto.leer(&id).expect("leer").titulo(), "Renombrada");
 
+    proyecto
+        .actualizar_escena(
+            &id,
+            Some("revision"),
+            &["clave".to_string(), "clave".to_string()],
+        )
+        .expect("actualizar escena");
+    match proyecto.leer(&id).expect("leer metadatos") {
+        verify::Documento::Escena(encontrada) => {
+            assert_eq!(encontrada.escena.estado.as_deref(), Some("revision"));
+            assert_eq!(encontrada.escena.etiquetas, Some(vec!["clave".to_string()]));
+        }
+        _ => panic!("se esperaba una escena"),
+    }
+
     let (copia_id, copia_ruta) = proyecto.duplicar(&id).expect("duplicar escena");
     assert_ne!(copia_id, id);
     assert!(copia_ruta.contains("copia-de-renombrada"), "{copia_ruta}");

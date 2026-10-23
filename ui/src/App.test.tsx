@@ -123,6 +123,7 @@ const documento: DocumentoDto = {
   orden: 10,
   estado: 'borrador',
   archivo: null,
+  etiquetas: [],
   clase: null,
 };
 
