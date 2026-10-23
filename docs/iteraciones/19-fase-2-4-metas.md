@@ -3,6 +3,7 @@
 - **Fecha:** 2026-10-23
 - **Estado:** implementado de extremo a extremo; pendiente revisión y
   estadísticas avanzadas.
+- **Commits:** `7b30de7` (núcleo), `9b8919f` (Tauri/UI), `330f62d` (formato).
 - **Contrato:** [`../metas-v1.md`](../metas-v1.md) y
   [`../esquema-v2.md`](../esquema-v2.md) §4.
 - **Fase:** 2.4 (metas, estadísticas y temporizador).
