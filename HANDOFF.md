@@ -179,6 +179,9 @@ writer/
 - `goals`: metas y sesiones locales en `.escritor/metas/` y
   `.escritor/sesiones/`, con validación y escritura atómica. **Implementado en
   núcleo, Tauri y UI; pendientes rachas, gráfico y backup.**
+- **Manuscrito:** `renombrar` y `duplicar` escenas/notas conservan ID, ruta e
+  historial del original; la copia recibe ID nuevo y título «Copia de …».
+  **Implementado; faltan archivar, papelera, drag & drop, estados y filtros.**
 
 ### Comandos Tauri
 
@@ -318,14 +321,17 @@ ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
 2. **Fase 2.4 — metas**: implementada de extremo a extremo en
    [`docs/iteraciones/19-fase-2-4-metas.md`](docs/iteraciones/19-fase-2-4-metas.md);
    faltan rachas, gráfico histórico, backup y revisión.
-3. **Fase 2.1–2.6 — resto del núcleo local**: manuscrito, comentarios,
-   planificación, importación/exportación y plantillas. Se abre por bloques,
-   con los módulos ya separados.
-3. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
+3. **Fase 2.1 — manuscrito**: renombrar y duplicar implementados en
+   [`docs/iteraciones/20-fase-2-1-manuscrito.md`](docs/iteraciones/20-fase-2-1-manuscrito.md);
+   faltan archivar, papelera, drag & drop, estados, etiquetas y filtros.
+4. **Fase 2.2–2.6 — resto del núcleo local**: comentarios, planificación,
+   importación/exportación y plantillas. Se abre por bloques, con los módulos ya
+   separados.
+5. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
    original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
    checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,
    CI remoto) siguen registrados y no forman parte del alcance de Fase 1.
-4. **Fase 3 (IA/MCP) del plan anterior**: pospuesta. Sus condiciones del
+6. **Fase 3 (IA/MCP) del plan anterior**: pospuesta. Sus condiciones del
    product owner siguen vigentes para cuando se retome; no se implementa en la
    etapa local/offline.
 

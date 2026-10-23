@@ -256,6 +256,51 @@ export async function verificar(ruta: string): Promise<EscaneoDto> {
   return invoke<EscaneoDto>('verificar', { ruta });
 }
 
+export async function renombrar(
+  ruta: string,
+  objetivo: string,
+  titulo: string,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw {
+        tipo: 'no-encontrado',
+        mensaje: `documento no encontrado en la demo: ${objetivo}`,
+      } satisfies ErrorDto;
+    }
+    documento.titulo = titulo;
+    return { ...documento };
+  }
+  return invoke<DocumentoDto>('renombrar', { ruta, objetivo, titulo });
+}
+
+export async function duplicar(ruta: string, objetivo: string): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw {
+        tipo: 'no-encontrado',
+        mensaje: `documento no encontrado en la demo: ${objetivo}`,
+      } satisfies ErrorDto;
+    }
+    const copia: DocumentoDto = {
+      ...documento,
+      id: `demo-copia-${Date.now()}`,
+      titulo: `Copia de ${documento.titulo}`,
+      ruta: documento.ruta.replace(/\.md$/, '-copia.md'),
+      hashArchivo: `demo:copia-${Date.now()}`,
+    };
+    demoDocumentos.push(copia);
+    return { ...copia };
+  }
+  return invoke<DocumentoDto>('duplicar', { ruta, objetivo });
+}
+
 export async function buscar(
   ruta: string,
   consulta: string,

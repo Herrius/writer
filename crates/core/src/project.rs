@@ -675,6 +675,107 @@ impl Project {
         Ok((id, relativa))
     }
 
+    /// Cambia el título visible de una escena o nota.
+    ///
+    /// No cambia el nombre del archivo: las rutas y los IDs se mantienen para
+    /// no romper referencias. El título es metadato del documento.
+    pub fn renombrar(&self, id_o_ruta: &str, titulo: &str) -> Result<String> {
+        let titulo = titulo.trim();
+        if titulo.is_empty() {
+            return Err(Error::Input("el título no puede estar vacío".into()));
+        }
+        model::validar_texto(titulo, "titulo", "documento")?;
+        let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let (relativa, bytes, scope) = match documento {
+            Documento::Escena(mut encontrada) => {
+                encontrada.escena.titulo = titulo.to_string();
+                (
+                    encontrada.relativa.clone(),
+                    encontrada.escena.a_bytes(),
+                    "estructura",
+                )
+            }
+            Documento::Nota(mut encontrada) => {
+                encontrada.nota.titulo = titulo.to_string();
+                (
+                    encontrada.relativa.clone(),
+                    encontrada.nota.a_bytes(),
+                    "notas",
+                )
+            }
+        };
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::existente(relativa.clone(), bytes)],
+            "humano",
+            scope,
+            None,
+            None,
+        )?;
+        Ok(relativa)
+    }
+
+    /// Duplica una escena o nota con un ID nuevo y sin historial.
+    ///
+    /// La copia conserva metadatos y cuerpo, pero no comparte ID ni revisión
+    /// con el original. En escenas se asigna el siguiente `orden` libre del
+    /// capítulo; en notas se reutiliza el tipo.
+    pub fn duplicar(&self, id_o_ruta: &str) -> Result<(String, String)> {
+        let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let (id, relativa, bytes, scope) = match documento {
+            Documento::Escena(encontrada) => {
+                let partes: Vec<&str> = encontrada.relativa.split('/').collect();
+                let libro = partes[1];
+                let capitulo = partes[2];
+                let titulo = format!("Copia de {}", encontrada.escena.titulo);
+                let orden = siguiente_orden(&sesion.escaneo, libro, capitulo);
+                let relativa = nombre_escena_libre(&self.raiz, libro, capitulo, &titulo)?;
+                let mut nueva = Escena::nueva(&titulo, orden)?;
+                nueva.estado = encontrada.escena.estado.clone();
+                nueva.pov = encontrada.escena.pov.clone();
+                nueva.tramas = encontrada.escena.tramas.clone();
+                nueva.personajes = encontrada.escena.personajes.clone();
+                nueva.fecha_narrativa = encontrada.escena.fecha_narrativa.clone();
+                nueva.etiquetas = encontrada.escena.etiquetas.clone();
+                nueva.extra = encontrada.escena.extra.clone();
+                nueva.cuerpo = encontrada.escena.cuerpo.clone();
+                let id = nueva.id.clone();
+                (id, relativa, nueva.a_bytes(), "estructura")
+            }
+            Documento::Nota(encontrada) => {
+                let titulo = format!("Copia de {}", encontrada.nota.titulo);
+                let relativa = nombre_nota_libre(&self.raiz, &encontrada.nota.tipo, &titulo)?;
+                let mut nueva = Nota::nueva(&encontrada.nota.tipo, &titulo)?;
+                nueva.fija = encontrada.nota.fija;
+                nueva.etiquetas = encontrada.nota.etiquetas.clone();
+                nueva.refs = encontrada.nota.refs.clone();
+                nueva.extra = encontrada.nota.extra.clone();
+                nueva.cuerpo = encontrada.nota.cuerpo.clone();
+                let id = nueva.id.clone();
+                (id, relativa, nueva.a_bytes(), "notas")
+            }
+        };
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::nuevo(relativa.clone(), bytes)],
+            "humano",
+            scope,
+            None,
+            None,
+        )?;
+        Ok((id, relativa))
+    }
+
     /// Reemplaza el cuerpo de una escena o nota.
     pub fn escribir_cuerpo(&self, id_o_ruta: &str, cuerpo: &str) -> Result<u64> {
         Ok(self

@@ -8,6 +8,7 @@ import {
   crearProyecto,
   cuarentena,
   descartarCuarentena,
+  duplicar,
   elegirCarpetaCreacion,
   elegirDestinoDocx,
   escribir,
@@ -19,6 +20,7 @@ import {
   leerSesiones,
   listar,
   mostrar,
+  renombrar,
   revertir,
 } from './api';
 import type { DocumentoDto } from './types/DocumentoDto';
@@ -66,6 +68,8 @@ vi.mock('./api', () => ({
   guardarMetas: vi.fn(),
   agregarSesion: vi.fn(),
   leerSesiones: vi.fn(),
+  renombrar: vi.fn(),
+  duplicar: vi.fn(),
   proyectoE2e: vi.fn().mockResolvedValue(null),
   errorDe: (fallo: unknown) => {
     if (typeof fallo === 'object' && fallo !== null && 'tipo' in fallo && 'mensaje' in fallo) {
@@ -93,6 +97,8 @@ const leerMetasMock = vi.mocked(leerMetas);
 const guardarMetasMock = vi.mocked(guardarMetas);
 const agregarSesionMock = vi.mocked(agregarSesion);
 const leerSesionesMock = vi.mocked(leerSesiones);
+const renombrarMock = vi.mocked(renombrar);
+const duplicarMock = vi.mocked(duplicar);
 
 const proyecto: ProyectoDto = {
   raiz: '/tmp/novela',
@@ -212,6 +218,16 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
   guardarMetasMock.mockResolvedValue();
   agregarSesionMock.mockResolvedValue('(demo)');
   leerSesionesMock.mockResolvedValue([]);
+  renombrarMock.mockImplementation(async (_ruta, _objetivo, titulo) => ({
+    ...documento,
+    titulo,
+  }));
+  duplicarMock.mockResolvedValue({
+    ...documento,
+    id: '01DUPLICADO000000000000000',
+    titulo: `Copia de ${documento.titulo}`,
+    ruta: 'manuscrito/01-libro/01-capitulo/002-copia.md',
+  });
 }
 
 async function abrirDemo(): Promise<HTMLTextAreaElement> {
@@ -560,6 +576,21 @@ describe('autosave de la interfaz', () => {
       { timeout: 3000 },
     );
     expect(await screen.findByText('faro')).toBeTruthy();
+  });
+
+  it('renombra y duplica el documento activo', async () => {
+    await abrirDemo();
+    fireEvent.click(screen.getByRole('tab', { name: 'Notas' }));
+
+    const titulo = screen.getByRole('textbox', { name: 'Título del documento' });
+    fireEvent.change(titulo, { target: { value: 'Nuevo título' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Renombrar' }));
+    await waitFor(() =>
+      expect(renombrarMock).toHaveBeenCalledWith('/tmp/novela', documento.id, 'Nuevo título'),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicar' }));
+    await waitFor(() => expect(duplicarMock).toHaveBeenCalledWith('/tmp/novela', documento.id));
   });
 
   it('exporta el manuscrito a DOCX con las notas elegidas', async () => {

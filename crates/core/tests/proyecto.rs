@@ -76,6 +76,48 @@ fn crear_escribir_mover_y_revertir() {
 }
 
 #[test]
+fn renombrar_y_duplicar_documentos() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+
+    let (id, ruta) = proyecto
+        .crear_escena("Original", None, None, Some(20))
+        .expect("crear escena");
+    proyecto
+        .escribir_cuerpo(&id, "Texto de la escena.\n")
+        .expect("escribir");
+
+    let renombrada = proyecto.renombrar(&id, "Renombrada").expect("renombrar");
+    assert_eq!(renombrada, ruta);
+    assert_eq!(proyecto.leer(&id).expect("leer").titulo(), "Renombrada");
+
+    let (copia_id, copia_ruta) = proyecto.duplicar(&id).expect("duplicar escena");
+    assert_ne!(copia_id, id);
+    assert!(copia_ruta.contains("copia-de-renombrada"), "{copia_ruta}");
+    let copia = proyecto.leer(&copia_id).expect("leer copia");
+    assert_eq!(copia.titulo(), "Copia de Renombrada");
+    assert_eq!(copia.cuerpo(), "Texto de la escena.\n");
+
+    let (nota_id, _) = proyecto
+        .crear_nota("personajes", "Marta")
+        .expect("crear nota");
+    let (nota_copia_id, nota_copia_ruta) = proyecto.duplicar(&nota_id).expect("duplicar nota");
+    assert_ne!(nota_copia_id, nota_id);
+    assert!(
+        nota_copia_ruta.contains("copia-de-marta"),
+        "{nota_copia_ruta}"
+    );
+    assert_eq!(
+        proyecto.leer(&nota_copia_id).expect("leer nota").titulo(),
+        "Copia de Marta"
+    );
+
+    let escaneo = proyecto.verificar().expect("verificar");
+    assert!(escaneo.errores.is_empty(), "errores: {:?}", escaneo.errores);
+}
+
+#[test]
 fn escritura_con_hash_base_detecta_cambios_externos() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));

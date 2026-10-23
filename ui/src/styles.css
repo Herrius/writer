@@ -2710,6 +2710,21 @@ button.guardar:disabled {
   background: #eaf0f6;
 }
 
+.dabble-editor-titulo {
+  margin: 0.4rem 0 0.7rem;
+}
+
+.dabble-acciones-documento {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.dabble-acciones-documento .dabble-boton {
+  flex: 1;
+  margin: 0;
+}
+
 .dabble-notas-panel h3 {
   margin: 0.2rem 0 0.5rem;
   font-size: 0.85rem;

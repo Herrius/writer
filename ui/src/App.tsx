@@ -12,6 +12,7 @@ import {
   crearProyecto as crearProyectoApi,
   cuarentena as pedirCuarentena,
   descartarCuarentena,
+  duplicar as duplicarDocumento,
   elegirDestinoDocx,
   elegirProyecto,
   errorDe,
@@ -26,6 +27,7 @@ import {
   listar,
   mostrar as pedirRevision,
   proyectoE2e,
+  renombrar as renombrarDocumento,
   revertir as revertirRevision,
 } from './api';
 import type { BusquedaDto } from './types/BusquedaDto';
@@ -231,6 +233,7 @@ export default function App() {
   const [metas, setMetas] = useState<MetasDto | null>(null);
   const [sesiones, setSesiones] = useState<SesionDto[]>([]);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
+  const [tituloEdicion, setTituloEdicion] = useState('');
   const [metaDiaria, setMetaDiaria] = useState('');
   const [metaLibro, setMetaLibro] = useState('');
   const [desafioObjetivo, setDesafioObjetivo] = useState('');
@@ -798,6 +801,58 @@ export default function App() {
     }
   };
 
+  const renombrarActivo = async () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    const titulo = tituloEdicion.trim();
+    if (!actual || !documento) {
+      return;
+    }
+    if (!titulo) {
+      setMensaje('El título no puede estar vacío.');
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se renombró: primero resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const actualizado = await renombrarDocumento(actual.raiz, documento.id, titulo);
+      setDocumentos((lista) =>
+        lista.map((candidato) =>
+          candidato.id === actualizado.id ? { ...candidato, ...actualizado } : candidato,
+        ),
+      );
+      fijarActivo(actualizado);
+      setTituloEdicion(actualizado.titulo);
+      setMensaje(`Documento renombrado: ${actualizado.titulo}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo renombrar: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const duplicarActivo = async () => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se duplicó: primero resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const copia = await duplicarDocumento(actual.raiz, documento.id);
+      setDocumentos(await listar(actual.raiz, true));
+      await seleccionar(copia);
+      setMensaje(`Documento duplicado: ${copia.titulo}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo duplicar: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
   const abrirResultado = async (resultado: BusquedaDto) => {
     const documento =
       documentos.find((candidato) => candidato.id === resultado.id) ??
@@ -1256,6 +1311,10 @@ export default function App() {
       desregistrar?.();
     };
   }, []);
+
+  useEffect(() => {
+    setTituloEdicion(activo?.titulo ?? '');
+  }, [activo?.id, activo?.titulo]);
 
   useEffect(() => {
     if (!temporizadorActivo || temporizadorPausado) {
@@ -2015,6 +2074,32 @@ export default function App() {
             ) : (
               <section className="dabble-notas-panel">
                 <h3>Documento</h3>
+                {activo && (
+                  <div className="dabble-editor-titulo">
+                    <label className="dabble-campo-meta">
+                      <span>Título</span>
+                      <input
+                        value={tituloEdicion}
+                        onChange={(evento) => setTituloEdicion(evento.target.value)}
+                        aria-label="Título del documento"
+                      />
+                    </label>
+                    <div className="dabble-acciones-documento">
+                      <button
+                        className="dabble-boton"
+                        onClick={() => void renombrarActivo()}
+                      >
+                        Renombrar
+                      </button>
+                      <button
+                        className="dabble-boton"
+                        onClick={() => void duplicarActivo()}
+                      >
+                        Duplicar
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <dl>
                   <dt>Tipo</dt><dd>{activo ? etiquetaTipo(activo) : '—'}</dd>
                   <dt>Título</dt><dd>{activo?.titulo ?? '—'}</dd>

@@ -737,7 +737,7 @@ fn texto_opcional(campos: &Campos, clave: &str, contexto: &str) -> Result<Option
     }
 }
 
-fn validar_texto(texto: &str, clave: &str, contexto: &str) -> Result<()> {
+pub(crate) fn validar_texto(texto: &str, clave: &str, contexto: &str) -> Result<()> {
     if texto.chars().any(|caracter| caracter < ' ') {
         return Err(Error::Schema(format!(
             "{contexto}: '{clave}' contiene un carácter de control"

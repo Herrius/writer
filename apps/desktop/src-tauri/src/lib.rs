@@ -720,6 +720,20 @@ fn proyecto_e2e() -> Option<String> {
 }
 
 #[tauri::command]
+fn renombrar(ruta: String, objetivo: String, titulo: String) -> Result<DocumentoDto, ErrorDto> {
+    Project::new(&ruta)
+        .renombrar(&objetivo, &titulo)
+        .map_err(error)?;
+    leer(ruta, objetivo)
+}
+
+#[tauri::command]
+fn duplicar(ruta: String, objetivo: String) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = Project::new(&ruta).duplicar(&objetivo).map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
 fn escribir(
     ruta: String,
     objetivo: String,
@@ -813,6 +827,8 @@ pub fn run() {
             descartar_cuarentena,
             proyecto_e2e,
             escribir,
+            renombrar,
+            duplicar,
             leer_metas,
             guardar_metas,
             agregar_sesion,
@@ -995,6 +1011,30 @@ mod tests {
         .expect_err("id inexistente");
         assert_eq!(fallo.tipo, TipoError::NoEncontrado);
         assert!(fallo.mensaje.contains("no encontrado"));
+    }
+
+    #[test]
+    fn renombrar_y_duplicar_sobre_un_proyecto_real() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let raiz = directorio.path().join("documentos");
+        let ruta = raiz.display().to_string();
+        crear_proyecto(ruta.clone(), "Documentos".to_string(), None, None, false)
+            .expect("crear proyecto");
+        let documentos = listar(ruta.clone(), true).expect("listar");
+        let escena = documentos
+            .iter()
+            .find(|documento| documento.tipo == "escena")
+            .expect("escena");
+        let renombrada = renombrar(
+            ruta.clone(),
+            escena.id.clone(),
+            "Escena renombrada".to_string(),
+        )
+        .expect("renombrar");
+        assert_eq!(renombrada.titulo, "Escena renombrada");
+        let copia = duplicar(ruta, escena.id.clone()).expect("duplicar");
+        assert_ne!(copia.id, escena.id);
+        assert_eq!(copia.titulo, "Copia de Escena renombrada");
     }
 
     #[test]
