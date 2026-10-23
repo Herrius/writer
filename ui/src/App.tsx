@@ -9,6 +9,7 @@ import {
   abrirProyecto,
   agregarSesion,
   buscar as buscarEnProyecto,
+  cambiarArchivo as cambiarArchivoApi,
   crearProyecto as crearProyectoApi,
   cuarentena as pedirCuarentena,
   descartarCuarentena,
@@ -236,6 +237,9 @@ export default function App() {
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
   const [tituloEdicion, setTituloEdicion] = useState('');
   const [destinoArrastre, setDestinoArrastre] = useState<string | null>(null);
+  const [filtroArchivo, setFiltroArchivo] = useState<'activo' | 'archivado' | 'papelera'>(
+    'activo',
+  );
   const [metaDiaria, setMetaDiaria] = useState('');
   const [metaLibro, setMetaLibro] = useState('');
   const [desafioObjetivo, setDesafioObjetivo] = useState('');
@@ -319,6 +323,14 @@ export default function App() {
     () => documentos.filter((documento) => documento.tipo === 'nota'),
     [documentos],
   );
+  const escenasVisibles = useMemo(
+    () => escenas.filter((documento) => (documento.archivo ?? 'activo') === filtroArchivo),
+    [escenas, filtroArchivo],
+  );
+  const notasVisibles = useMemo(
+    () => notas.filter((documento) => (documento.archivo ?? 'activo') === filtroArchivo),
+    [notas, filtroArchivo],
+  );
   const idArbolTabbable = focoArbol ?? activo?.id ?? documentos[0]?.id ?? null;
 
   const moverFocoArbol = (documento: DocumentoDto, destino: 'siguiente' | 'anterior' | 'inicio' | 'fin') => {
@@ -352,11 +364,11 @@ export default function App() {
   const gruposEscenas = useMemo(
     () =>
       agrupar(
-        escenas,
+        escenasVisibles,
         (documento) => grupoEscena(documento).clave,
         (documento) => grupoEscena(documento).etiqueta,
       ),
-    [escenas],
+    [escenasVisibles],
   );
   const libros = useMemo(() => {
     const porLibro = new Map<
@@ -482,6 +494,7 @@ export default function App() {
     setMensaje(null);
     setErrorGuardado(null);
     setConsulta('');
+    setFiltroArchivo('activo');
     setResultados([]);
     setErrorBusqueda(null);
     setCuarentena([]);
@@ -860,6 +873,37 @@ export default function App() {
     }
   };
 
+  const cambiarArchivoActivo = async (archivo: 'archivado' | 'papelera' | null) => {
+    const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se cambió de ubicación: primero resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const actualizado = await cambiarArchivoApi(actual.raiz, documento.id, archivo);
+      setDocumentos((lista) =>
+        lista.map((candidato) =>
+          candidato.id === actualizado.id ? { ...candidato, ...actualizado } : candidato,
+        ),
+      );
+      fijarActivo(actualizado);
+      setMensaje(
+        archivo === null
+          ? 'Documento restaurado a activos.'
+          : archivo === 'archivado'
+            ? 'Documento archivado.'
+            : 'Documento enviado a la papelera.',
+      );
+    } catch (fallo) {
+      setMensaje(`No se pudo cambiar de ubicación: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
   const duplicarActivo = async () => {
     const actual = proyectoRef.current;
     const documento = activoRef.current;
@@ -893,6 +937,7 @@ export default function App() {
         hashArchivo: '',
         orden: null,
         estado: null,
+        archivo: null,
         clase: null,
       } satisfies DocumentoDto);
     await seleccionar(documento);
@@ -1603,6 +1648,14 @@ export default function App() {
             </div>
           ) : (
             <div className="dabble-arbol">
+              {filtroArchivo !== 'activo' && (
+                <button
+                  className="dabble-utilidad"
+                  onClick={() => setFiltroArchivo('activo')}
+                >
+                  ← Volver a activos
+                </button>
+              )}
               <h3 className="dabble-seccion">Manuscritos</h3>
               {libros.length === 0 && <p className="dabble-vacio">Sin escenas.</p>}
               {libros.map((libro) => (
@@ -1637,33 +1690,47 @@ export default function App() {
               ))}
 
               <h3 className="dabble-seccion">Tramas</h3>
-              {notas.filter((documento) => documento.clase === 'tramas').length === 0 && (
+              {notasVisibles.filter((documento) => documento.clase === 'tramas').length === 0 && (
                 <p className="dabble-vacio">Sin tramas.</p>
               )}
-              {notas
+              {notasVisibles
                 .filter((documento) => documento.clase === 'tramas')
                 .map((documento) => botonDocumento(documento, '◈'))}
 
               <h3 className="dabble-seccion">Personajes</h3>
-              {notas.filter((documento) => documento.clase === 'personajes').length === 0 && (
+              {notasVisibles.filter((documento) => documento.clase === 'personajes').length === 0 && (
                 <p className="dabble-vacio">Sin personajes.</p>
               )}
-              {notas
+              {notasVisibles
                 .filter((documento) => documento.clase === 'personajes')
                 .map((documento) => botonDocumento(documento, '♙'))}
 
               <h3 className="dabble-seccion">Cuaderno</h3>
-              {notas.filter(
+              {notasVisibles.filter(
                 (documento) => !['tramas', 'personajes'].includes(documento.clase ?? ''),
               ).length === 0 && <p className="dabble-vacio">Sin notas de cuaderno.</p>}
-              {notas
+              {notasVisibles
                 .filter((documento) => !['tramas', 'personajes'].includes(documento.clase ?? ''))
                 .map((documento) => botonDocumento(documento, '▢'))}
 
               <h3 className="dabble-seccion">Utilidades</h3>
               <button className="dabble-utilidad" disabled>▢ Plantillas</button>
-              <button className="dabble-utilidad" disabled>⌂ Archivo</button>
-              <button className="dabble-utilidad" disabled>♲ Papelera</button>
+              <button
+                className={`dabble-utilidad ${
+                  filtroArchivo === 'archivado' ? 'activo' : ''
+                }`}
+                onClick={() => setFiltroArchivo('archivado')}
+              >
+                ⌂ Archivo
+              </button>
+              <button
+                className={`dabble-utilidad ${
+                  filtroArchivo === 'papelera' ? 'activo' : ''
+                }`}
+                onClick={() => setFiltroArchivo('papelera')}
+              >
+                ♲ Papelera
+              </button>
               <button className="dabble-config" disabled title="Configuración del proyecto próximamente">
                 ⚙ Configuración del proyecto
               </button>
@@ -2153,6 +2220,31 @@ export default function App() {
                       >
                         Duplicar
                       </button>
+                    </div>
+                    <div className="dabble-acciones-documento secundarias">
+                      {activo.archivo ? (
+                        <button
+                          className="dabble-boton"
+                          onClick={() => void cambiarArchivoActivo(null)}
+                        >
+                          Restaurar
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            className="dabble-boton"
+                            onClick={() => void cambiarArchivoActivo('archivado')}
+                          >
+                            Archivar
+                          </button>
+                          <button
+                            className="dabble-boton"
+                            onClick={() => void cambiarArchivoActivo('papelera')}
+                          >
+                            A papelera
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}

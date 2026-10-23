@@ -69,6 +69,7 @@ const demoDocumentos: DocumentoDto[] = [
     hashArchivo: 'demo:umbral',
     orden: 10,
     estado: 'revision',
+    archivo: null,
     clase: null,
   },
   {
@@ -81,6 +82,7 @@ const demoDocumentos: DocumentoDto[] = [
     hashArchivo: 'demo:llave',
     orden: 20,
     estado: 'borrador',
+    archivo: null,
     clase: null,
   },
   {
@@ -92,6 +94,7 @@ const demoDocumentos: DocumentoDto[] = [
     hashArchivo: 'demo:marta',
     orden: null,
     estado: null,
+    archivo: null,
     clase: 'personajes',
   },
   {
@@ -103,6 +106,7 @@ const demoDocumentos: DocumentoDto[] = [
     hashArchivo: 'demo:mapa',
     orden: null,
     estado: null,
+    archivo: null,
     clase: 'tramas',
   },
 ];
@@ -284,6 +288,27 @@ export async function mover(
     return { ...documento };
   }
   return invoke<DocumentoDto>('mover', { ruta, objetivo, libro, capitulo, tipo });
+}
+
+export async function cambiarArchivo(
+  ruta: string,
+  objetivo: string,
+  archivo: 'archivado' | 'papelera' | null,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (candidato) => candidato.id === objetivo || candidato.ruta === objetivo,
+    );
+    if (!documento) {
+      throw {
+        tipo: 'no-encontrado',
+        mensaje: `documento no encontrado en la demo: ${objetivo}`,
+      } satisfies ErrorDto;
+    }
+    documento.archivo = archivo;
+    return { ...documento };
+  }
+  return invoke<DocumentoDto>('cambiar_archivo', { ruta, objetivo, archivo });
 }
 
 export async function renombrar(

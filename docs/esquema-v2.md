@@ -251,6 +251,21 @@ notas/ideas/<archivo>.md      # Ideas locales
 - Las Ideas pueden convertirse en proyecto local; la conversión copia el
   contenido y genera IDs nuevos, sin historial.
 
+### 5.3 Archivo y papelera
+
+Escenas y notas admiten un campo opcional `archivo`:
+
+```yaml
+archivo: archivado   # o: papelera
+```
+
+- Ausente o `activo` significa que el documento se ve en el árbol principal.
+- `archivado` lo oculta de la vista activa y lo muestra en «Archivo».
+- `papelera` lo muestra solo en «Papelera».
+- El campo es lógico: el archivo Markdown no se mueve ni se renombra.
+- Restaurar elimina el campo y devuelve el documento a activos.
+- `verify` valida el valor y no lo trata como campo desconocido.
+
 ## 6. Plantillas locales v1
 
 Las plantillas viven en el directorio de datos de la app, no en el proyecto:

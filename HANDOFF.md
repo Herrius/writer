@@ -181,8 +181,9 @@ writer/
   núcleo, Tauri y UI; pendientes rachas, gráfico y backup.**
 - **Manuscrito:** `renombrar` y `duplicar` escenas/notas conservan ID, ruta e
   historial del original; la copia recibe ID nuevo y título «Copia de …».
-  **Arrastrar y soltar** mueve escenas entre capítulos. **Implementado; faltan
-  archivar, papelera, estados, etiquetas y filtros.**
+  **Arrastrar y soltar** mueve escenas entre capítulos. **Archivo/papelera**
+  usa el campo lógico `archivo`, con filtros de activos/archivo/papelera.
+  **Implementado; faltan estados, etiquetas y filtros por etiqueta.**
 
 ### Comandos Tauri
 

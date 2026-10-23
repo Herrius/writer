@@ -22,6 +22,8 @@ pub const TIPOS_NOTA: [&str; 5] = ["tramas", "personajes", "lugares", "cronologi
 
 /// Estados de escena admitidos.
 pub const ESTADOS_ESCENA: [&str; 3] = ["borrador", "revision", "final"];
+/// Ubicaciones de archivo/papelera para escenas y notas.
+pub const ESTADOS_ARCHIVO: [&str; 2] = ["archivado", "papelera"];
 
 /// Políticas de alcance admitidas.
 pub const POLITICAS: [&str; 3] = ["auto", "proponer", "bloquear"];
@@ -82,6 +84,8 @@ pub struct Escena {
     pub orden: i64,
     /// Estado; ausente significa borrador.
     pub estado: Option<String>,
+    /// Ubicación de archivo o papelera; ausente significa activo.
+    pub archivo: Option<String>,
     /// Personaje punto de vista.
     pub pov: Option<String>,
     /// Tramas referenciadas.
@@ -107,6 +111,8 @@ pub struct Nota {
     pub tipo: String,
     /// Título no vacío.
     pub titulo: String,
+    /// Ubicación de archivo o papelera; ausente significa activa.
+    pub archivo: Option<String>,
     /// `true` si la IA no la sobrescribe.
     pub fija: Option<bool>,
     /// Etiquetas.
@@ -326,6 +332,7 @@ impl Escena {
             titulo: titulo.to_string(),
             orden,
             estado: Some("borrador".to_string()),
+            archivo: None,
             pov: None,
             tramas: None,
             personajes: None,
@@ -365,6 +372,14 @@ impl Escena {
                 avisos.push(format!("{contexto}: estado desconocido {valor:?}"));
             }
         }
+        let archivo = texto_opcional(campos, "archivo", contexto)?;
+        if let Some(valor) = &archivo {
+            if !ESTADOS_ARCHIVO.contains(&valor.as_str()) {
+                avisos.push(format!(
+                    "{contexto}: ubicación de archivo desconocida {valor:?}"
+                ));
+            }
+        }
         let pov = texto_opcional(campos, "pov", contexto)?;
         if let Some(valor) = &pov {
             if !ulid::es_valido(valor) {
@@ -386,6 +401,7 @@ impl Escena {
             "titulo",
             "orden",
             "estado",
+            "archivo",
             "pov",
             "tramas",
             "personajes",
@@ -406,6 +422,7 @@ impl Escena {
                 titulo,
                 orden,
                 estado,
+                archivo,
                 pov,
                 tramas,
                 personajes,
@@ -427,6 +444,9 @@ impl Escena {
         ];
         if let Some(valor) = &self.estado {
             campos.push(("estado".to_string(), Valor::Texto(valor.clone())));
+        }
+        if let Some(valor) = &self.archivo {
+            campos.push(("archivo".to_string(), Valor::Texto(valor.clone())));
         }
         if let Some(valor) = &self.pov {
             campos.push(("pov".to_string(), Valor::Texto(valor.clone())));
@@ -472,6 +492,7 @@ impl Nota {
             id: ulid::nuevo()?,
             tipo: tipo.to_string(),
             titulo: titulo.to_string(),
+            archivo: None,
             fija: Some(false),
             etiquetas: None,
             refs: None,
@@ -503,11 +524,27 @@ impl Nota {
         if titulo.trim().is_empty() {
             return Err(Error::Schema(format!("{contexto}: 'titulo' está vacío")));
         }
+        let archivo = texto_opcional(campos, "archivo", contexto)?;
+        if let Some(valor) = &archivo {
+            if !ESTADOS_ARCHIVO.contains(&valor.as_str()) {
+                avisos.push(format!(
+                    "{contexto}: ubicación de archivo desconocida {valor:?}"
+                ));
+            }
+        }
         let fija = booleano_opcional(campos, "fija", contexto)?;
         let etiquetas = lista_textos(campos, "etiquetas", contexto)?;
         let refs = lista_ulids(campos, "refs", contexto)?;
         let mut extra = campos.clone();
-        for clave in ["id", "tipo", "titulo", "fija", "etiquetas", "refs"] {
+        for clave in [
+            "id",
+            "tipo",
+            "titulo",
+            "archivo",
+            "fija",
+            "etiquetas",
+            "refs",
+        ] {
             extra.remove(clave);
         }
         for clave in extra.keys() {
@@ -520,6 +557,7 @@ impl Nota {
                 id,
                 tipo,
                 titulo,
+                archivo,
                 fija,
                 etiquetas,
                 refs,
@@ -537,6 +575,9 @@ impl Nota {
             ("tipo".to_string(), Valor::Texto(self.tipo.clone())),
             ("titulo".to_string(), Valor::Texto(self.titulo.clone())),
         ];
+        if let Some(valor) = &self.archivo {
+            campos.push(("archivo".to_string(), Valor::Texto(valor.clone())));
+        }
         if let Some(valor) = self.fija {
             campos.push(("fija".to_string(), Valor::Booleano(valor)));
         }

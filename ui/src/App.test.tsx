@@ -122,6 +122,7 @@ const documento: DocumentoDto = {
   hashArchivo: 'blake3:original',
   orden: 10,
   estado: 'borrador',
+  archivo: null,
   clase: null,
 };
 

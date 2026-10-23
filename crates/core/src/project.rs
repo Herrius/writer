@@ -11,7 +11,7 @@ use crate::fsutil;
 use crate::hash;
 use crate::index::{EscenaFila, Indice, NotaFila};
 use crate::lock::ProjectLock;
-use crate::model::{self, Escena, Nota, Proyecto, TIPOS_NOTA};
+use crate::model::{self, Escena, Nota, Proyecto, ESTADOS_ARCHIVO, TIPOS_NOTA};
 use crate::oplog::{Efecto, Entrada, Log, Operacion};
 use crate::recovery;
 use crate::ulid;
@@ -702,6 +702,53 @@ impl Project {
             }
             Documento::Nota(mut encontrada) => {
                 encontrada.nota.titulo = titulo.to_string();
+                (
+                    encontrada.relativa.clone(),
+                    encontrada.nota.a_bytes(),
+                    "notas",
+                )
+            }
+        };
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::existente(relativa.clone(), bytes)],
+            "humano",
+            scope,
+            None,
+            None,
+        )?;
+        Ok(relativa)
+    }
+
+    /// Cambia la ubicación lógica de una escena o nota.
+    ///
+    /// `None` la devuelve a la vista activa; `archivado` la oculta del árbol
+    /// principal; `papelera` la marca para borrado definitivo.
+    pub fn cambiar_archivo(&self, id_o_ruta: &str, archivo: Option<&str>) -> Result<String> {
+        if let Some(valor) = archivo {
+            if !ESTADOS_ARCHIVO.contains(&valor) {
+                return Err(Error::Input(format!(
+                    "ubicación de archivo no válida: {valor}"
+                )));
+            }
+        }
+        let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let (relativa, bytes, scope) = match documento {
+            Documento::Escena(mut encontrada) => {
+                encontrada.escena.archivo = archivo.map(str::to_string);
+                (
+                    encontrada.relativa.clone(),
+                    encontrada.escena.a_bytes(),
+                    "estructura",
+                )
+            }
+            Documento::Nota(mut encontrada) => {
+                encontrada.nota.archivo = archivo.map(str::to_string);
                 (
                     encontrada.relativa.clone(),
                     encontrada.nota.a_bytes(),

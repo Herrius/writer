@@ -58,6 +58,8 @@ pub struct DocumentoDto {
     pub orden: Option<i64>,
     /// Estado de escena.
     pub estado: Option<String>,
+    /// Ubicación de archivo o papelera.
+    pub archivo: Option<String>,
     /// Tipo de nota.
     pub clase: Option<String>,
 }
@@ -739,6 +741,18 @@ fn mover(
 }
 
 #[tauri::command]
+fn cambiar_archivo(
+    ruta: String,
+    objetivo: String,
+    archivo: Option<String>,
+) -> Result<DocumentoDto, ErrorDto> {
+    Project::new(&ruta)
+        .cambiar_archivo(&objetivo, archivo.as_deref())
+        .map_err(error)?;
+    leer(ruta, objetivo)
+}
+
+#[tauri::command]
 fn renombrar(ruta: String, objetivo: String, titulo: String) -> Result<DocumentoDto, ErrorDto> {
     Project::new(&ruta)
         .renombrar(&objetivo, &titulo)
@@ -779,6 +793,7 @@ fn documento_dto(documento: Documento) -> DocumentoDto {
             hash_archivo: encontrada.hash,
             orden: Some(encontrada.escena.orden),
             estado: encontrada.escena.estado,
+            archivo: encontrada.escena.archivo,
             clase: None,
         },
         Documento::Nota(encontrada) => DocumentoDto {
@@ -790,6 +805,7 @@ fn documento_dto(documento: Documento) -> DocumentoDto {
             hash_archivo: encontrada.hash,
             orden: None,
             estado: None,
+            archivo: encontrada.nota.archivo,
             clase: Some(encontrada.nota.tipo),
         },
     }
@@ -847,6 +863,7 @@ pub fn run() {
             proyecto_e2e,
             escribir,
             mover,
+            cambiar_archivo,
             renombrar,
             duplicar,
             leer_metas,
@@ -1057,7 +1074,7 @@ mod tests {
         assert_eq!(copia.titulo, "Copia de Escena renombrada");
 
         let movida = mover(
-            ruta,
+            ruta.clone(),
             escena.id.clone(),
             Some("02-libro".to_string()),
             Some("01-capitulo".to_string()),
@@ -1065,6 +1082,16 @@ mod tests {
         )
         .expect("mover");
         assert!(movida.ruta.starts_with("manuscrito/02-libro/01-capitulo/"));
+
+        let archivada = cambiar_archivo(
+            ruta.clone(),
+            escena.id.clone(),
+            Some("archivado".to_string()),
+        )
+        .expect("archivar");
+        assert_eq!(archivada.archivo.as_deref(), Some("archivado"));
+        let restaurada = cambiar_archivo(ruta, escena.id.clone(), None).expect("restaurar");
+        assert!(restaurada.archivo.is_none());
     }
 
     #[test]

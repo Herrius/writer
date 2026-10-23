@@ -2441,7 +2441,7 @@ button.guardar:disabled {
   font: inherit;
   font-size: 0.78rem;
   text-align: left;
-  cursor: not-allowed;
+  cursor: pointer;
 }
 
 .dabble-config {
@@ -2730,6 +2730,21 @@ button.guardar:disabled {
 .dabble-acciones-documento .dabble-boton {
   flex: 1;
   margin: 0;
+}
+
+.dabble-acciones-documento.secundarias {
+  margin-top: 0.35rem;
+}
+
+.dabble-utilidad:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.dabble-utilidad.activo {
+  background: #eaf0f6;
+  color: #35536b;
+  font-weight: 600;
 }
 
 .dabble-notas-panel h3 {

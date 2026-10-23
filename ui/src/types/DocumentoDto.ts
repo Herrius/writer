@@ -37,6 +37,10 @@ orden: number | null,
  */
 estado: string | null, 
 /**
+ * Ubicación de archivo o papelera.
+ */
+archivo: string | null, 
+/**
  * Tipo de nota.
  */
 clase: string | null, };
