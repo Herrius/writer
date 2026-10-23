@@ -5,9 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use writer_core::goals::{
-    Desafio, MetaArchivada, MetaDiaria, MetaLibro, Metas, Pausa, Sesion,
-};
+use writer_core::goals::{Desafio, MetaArchivada, MetaDiaria, MetaLibro, Metas, Pausa, Sesion};
 use writer_core::project::Project;
 use writer_core::verify::{Documento, Escaneo};
 use writer_core::Error as ErrorNucleo;
