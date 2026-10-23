@@ -55,6 +55,8 @@
   escritura e historial adaptada de las referencias de Dabble.
 - [`iteraciones/17-fase-1-rediseno-panel.md`](iteraciones/17-fase-1-rediseno-panel.md)
   — Fase 1: contrato visual, retirada de bloques y ajuste del panel de Proyectos.
+- [`iteraciones/18-fase-2-0.md`](iteraciones/18-fase-2-0.md) — Fase 2.0:
+  contratos de almacenamiento y modularización para el trabajo en paralelo.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura
