@@ -20,6 +20,7 @@ type Props = {
   onCambio: (markdown: string) => void;
   onComentario?: (texto: string, textoMarcado: string) => Promise<string | null>;
   ancla?: string | null;
+  corrector?: boolean;
 };
 
 export function EditorMarkdown({
@@ -30,6 +31,7 @@ export function EditorMarkdown({
   onCambio,
   onComentario,
   ancla,
+  corrector = true,
 }: Props) {  const alCambiar = useRef(onCambio);
   alCambiar.current = onCambio;
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
@@ -65,6 +67,10 @@ export function EditorMarkdown({
       editor.setEditable(editable);
     }
   }, [editor, editable]);
+
+  useEffect(() => {
+    editor?.view.dom.setAttribute('spellcheck', corrector ? 'true' : 'false');
+  }, [editor, corrector]);
 
   useEffect(() => {
     if (!ancla || ancla === ultimaAncla.current) {

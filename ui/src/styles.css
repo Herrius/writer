@@ -3636,3 +3636,293 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   border-radius: 0.35rem;
   background: var(--papel);
 }
+
+/* Fase 3.3 — tipografía, temas, preferencias y paleta */
+:root {
+  --editor-font-family: Georgia, "Times New Roman", serif;
+  --editor-font-size: 18px;
+  --editor-line-height: 1.85;
+  --editor-paragraph-gap: 1.05em;
+}
+
+.editor-content .ProseMirror,
+.dabble-hoja .editor-prose {
+  font-family: var(--editor-font-family);
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+}
+
+.editor-content .ProseMirror p {
+  margin-bottom: var(--editor-paragraph-gap);
+}
+
+.dabble-preferencias-muestra {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.35rem;
+  background: var(--papel-2);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.modal-preferencias {
+  width: min(560px, calc(100vw - 2rem));
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  border-radius: 0.5rem;
+  background: var(--papel);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+}
+
+.modal-preferencias-cabecera,
+.modal-preferencias-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.modal-preferencias-pie {
+  border-top: 1px solid var(--linea);
+  border-bottom: 0;
+  justify-content: flex-end;
+}
+
+.modal-preferencias-cabecera h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+}
+
+.modal-preferencias-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+  padding: 1rem 1.1rem;
+}
+
+.paleta-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgb(20 18 15 / 35%);
+  backdrop-filter: blur(2px);
+}
+
+.paleta-comandos {
+  width: min(620px, calc(100vw - 2rem));
+  max-height: 70vh;
+  overflow: hidden;
+  border: 1px solid var(--linea);
+  border-radius: 0.55rem;
+  background: var(--papel);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 30%);
+}
+
+.paleta-comandos > input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--linea);
+  outline: none;
+  background: var(--papel);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.paleta-comandos ul {
+  max-height: 50vh;
+  margin: 0;
+  padding: 0.3rem;
+  overflow: auto;
+  list-style: none;
+}
+
+.paleta-comandos li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.paleta-comandos li.activo,
+.paleta-comandos li:hover {
+  background: var(--acento-suave);
+}
+
+.paleta-comandos li > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.paleta-comandos li small {
+  overflow: hidden;
+  color: var(--tinta-suave);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paleta-comandos kbd {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.25rem;
+  color: var(--tinta-suave);
+  font-family: inherit;
+  font-size: 0.65rem;
+}
+
+.paleta-vacio {
+  justify-content: center;
+  color: var(--tinta-suave);
+  font-style: italic;
+}
+
+.paleta-comandos footer {
+  display: flex;
+  gap: 1rem;
+  padding: 0.45rem 0.8rem;
+  border-top: 1px solid var(--linea);
+  color: var(--tinta-suave);
+  font-size: 0.65rem;
+}
+
+.dabble-app.modo-enfoque .dabble-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dabble-app.modo-enfoque .dabble-sidebar,
+.dabble-app.modo-enfoque .dabble-derecha {
+  display: none;
+}
+
+.dabble-app.modo-enfoque .dabble-centro {
+  padding-inline: max(1rem, 8vw);
+}
+
+[data-tema='sepia'] {
+  color-scheme: light;
+}
+
+[data-tema='sepia'] body {
+  background:
+    radial-gradient(circle at 20% 0%, rgb(255 248 230 / 60%), transparent 34rem),
+    #e9deca;
+}
+
+[data-tema='sepia'] .dabble-app,
+[data-tema='sepia'] .dabble-topbar,
+[data-tema='sepia'] .dabble-sidebar,
+[data-tema='sepia'] .dabble-derecha,
+[data-tema='sepia'] .dabble-centro {
+  background-color: #efe5d2;
+  color: #3b3023;
+}
+
+[data-tema='sepia'] .dabble-documento {
+  background: #fbf3e3;
+}
+
+[data-tema='oscuro'] body {
+  background: #121212;
+  color: #e8e2d8;
+}
+
+[data-tema='oscuro'] .dabble-app,
+[data-tema='oscuro'] .dabble-topbar,
+[data-tema='oscuro'] .dabble-sidebar,
+[data-tema='oscuro'] .dabble-derecha,
+[data-tema='oscuro'] .dabble-centro,
+[data-tema='oscuro'] .dabble-statusbar {
+  background-color: #191919;
+  color: #e8e2d8;
+  border-color: #363636;
+}
+
+[data-tema='oscuro'] .dabble-documento {
+  background: #222;
+  color: #e8e2d8;
+  box-shadow: 0 0.4rem 1.4rem rgb(0 0 0 / 40%);
+}
+
+[data-tema='oscuro'] .dabble-titulo,
+[data-tema='oscuro'] .dabble-hoja .editor-prose,
+[data-tema='oscuro'] .editor-content .ProseMirror {
+  color: #eee8de;
+}
+
+[data-tema='oscuro'] .dabble-doc,
+[data-tema='oscuro'] .dabble-utilidad,
+[data-tema='oscuro'] .dabble-config {
+  color: #c9c2b8;
+}
+
+[data-tema='oscuro'] .dabble-doc:hover,
+[data-tema='oscuro'] .dabble-tab:hover {
+  background: #2b2b2b;
+}
+
+[data-tema='oscuro'] .dabble-doc.activo {
+  background: #3f6190;
+  color: #fff;
+}
+
+[data-tema='oscuro'] input,
+[data-tema='oscuro'] select,
+[data-tema='oscuro'] textarea {
+  border-color: #4a4a4a;
+  background: #2a2a2a;
+  color: #eee8de;
+}
+
+[data-tema='oscuro'] .dabble-derecha-tabs,
+[data-tema='oscuro'] .dabble-topbar,
+[data-tema='oscuro'] .dabble-statusbar,
+[data-tema='oscuro'] .dabble-hoja .editor-toolbar {
+  border-color: #363636;
+}
+
+[data-tema='oscuro'] .dabble-hoja .editor-toolbar {
+  background: rgb(34 34 34 / 94%);
+}
+
+[data-tema='oscuro'] .diff-contenedor,
+[data-tema='oscuro'] .diff-igual {
+  background: #1d1d1d;
+  color: #eee8de;
+}
+
+[data-tema='oscuro'] .diff-tabla th {
+  background: #2a2a2a;
+  color: #a9a299;
+}
+
+[data-tema='oscuro'] .diff-insertada td:nth-child(3),
+[data-tema='oscuro'] .diff-insertada td:nth-child(4) {
+  background: #203529;
+}
+
+[data-tema='oscuro'] .diff-borrada td:nth-child(1),
+[data-tema='oscuro'] .diff-borrada td:nth-child(2) {
+  background: #3a2320;
+}
+
+@media (max-width: 900px) {
+  .dabble-app.modo-enfoque .dabble-centro {
+    padding-inline: 1rem;
+  }
+}

@@ -543,6 +543,61 @@ describe('autosave de la interfaz', () => {
     expect(screen.getByText('Texto nuevo.')).toBeTruthy();
   });
 
+  it('abre documentos con Quick Open y ejecuta comandos', async () => {
+    await abrirDemo();
+    fireEvent.keyDown(window, { key: 'p', ctrlKey: true });
+    expect(await screen.findByRole('dialog', { name: 'Abrir documento' })).toBeTruthy();
+    const entrada = screen.getByRole('textbox', { name: 'Buscar documento' });
+    fireEvent.change(entrada, { target: { value: 'Uno' } });
+    fireEvent.keyDown(entrada, { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Abrir documento' })).toBeNull(),
+    );
+
+    fireEvent.keyDown(window, { key: 'p', ctrlKey: true, shiftKey: true });
+    expect(await screen.findByRole('dialog', { name: 'Paleta de comandos' })).toBeTruthy();
+    const comando = screen.getByRole('textbox', { name: 'Buscar comando' });
+    fireEvent.change(comando, { target: { value: 'sepia' } });
+    fireEvent.keyDown(comando, { key: 'Enter' });
+    await waitFor(() => expect(document.documentElement.dataset.tema).toBe('sepia'));
+  });
+
+  it('cambia tipografía y tema desde preferencias y los conserva', async () => {
+    await abrirDemo();
+    fireEvent.click(screen.getByRole('button', { name: 'Preferencias' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Preferencias de escritura' }),
+    ).toBeTruthy();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Tema' }), {
+      target: { value: 'oscuro' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Tipografía' }), {
+      target: { value: 'mono' },
+    });
+    fireEvent.change(screen.getByRole('slider', { name: /Tamaño del texto/ }), {
+      target: { value: '22' },
+    });
+    expect(document.documentElement.dataset.tema).toBe('oscuro');
+    expect(document.documentElement.style.getPropertyValue('--editor-font-size')).toBe(
+      '22px',
+    );
+    expect(window.localStorage.getItem('writer:preferencias:v1')).toContain('"tema":"oscuro"');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Listo' }));
+    expect(screen.queryByRole('dialog', { name: 'Preferencias de escritura' })).toBeNull();
+  });
+
+  it('activa el modo enfoque con Alt+Z', async () => {
+    await abrirDemo();
+    fireEvent.keyDown(window, { key: 'z', altKey: true });
+    await waitFor(() =>
+      expect(document.querySelector('.dabble-app')?.classList.contains('modo-enfoque')).toBe(
+        true,
+      ),
+    );
+  });
+
   it('guarda de inmediato con Ctrl+S', async () => {
     const editor = await abrirDemo();
     fireEvent.change(editor, { target: { value: 'Guardado inmediato.\n' } });

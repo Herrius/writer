@@ -93,6 +93,14 @@ import type { TipoError } from './types/TipoError';
 import { EditorMarkdown } from './EditorMarkdown';
 import { PanelCambios } from './features/cambios/PanelCambios';
 import { DiffLineas } from './features/cambios/DiffLineas';
+import { ModalPreferencias } from './features/preferencias/ModalPreferencias';
+import {
+  aplicarPreferencias,
+  cargarPreferencias,
+  guardarPreferencias,
+  type Preferencias,
+} from './features/preferencias/preferencias';
+import { Paleta, type ComandoPaleta } from './features/paleta/Paleta';
 import { Inicio, type DatosNuevoProyecto } from './Inicio';
 import { analizarCompatibilidad } from './markdown/compatibilidad';
 import { contarPalabras, textoSinMarcas } from './palabras';
@@ -372,6 +380,9 @@ export default function App() {
   const [confirmarDescarte, setConfirmarDescarte] = useState<string | null>(null);
   const [descartando, setDescartando] = useState<string | null>(null);
   const [recientes, setRecientes] = useState<Reciente[]>(() => leerRecientes());
+  const [preferencias, setPreferencias] = useState<Preferencias>(() => cargarPreferencias());
+  const [preferenciasAbiertas, setPreferenciasAbiertas] = useState(false);
+  const [paleta, setPaleta] = useState<'documentos' | 'comandos' | null>(null);
 
   const cargando = useRef(false);
   const navegando = useRef(false);
@@ -408,6 +419,11 @@ export default function App() {
     activoRef.current = nuevo;
     setActivo(nuevo);
   };
+
+  useEffect(() => {
+    aplicarPreferencias(preferencias);
+    guardarPreferencias(preferencias);
+  }, [preferencias]);
 
   const cancelarTemporizador = () => {
     if (temporizadorRef.current !== null) {
@@ -2301,6 +2317,11 @@ export default function App() {
         evento.preventDefault();
         buscadorRef.current?.focus();
         buscadorRef.current?.select();
+      } else if (evento.shiftKey && evento.key.toLowerCase() === 'h') {
+        evento.preventDefault();
+        setRevisionSeleccionada(null);
+        setDetalleRevision(null);
+        setVista('historial');
       } else if (evento.altKey && evento.key.toLowerCase() === 'e') {
         evento.preventDefault();
         setVista('editor');
@@ -2312,6 +2333,31 @@ export default function App() {
     window.addEventListener('keydown', alPulsar);
     return () => window.removeEventListener('keydown', alPulsar);
   }, []);
+
+  useEffect(() => {
+    const alPulsar = (evento: KeyboardEvent) => {
+      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'p') {
+        evento.preventDefault();
+        setPaleta(evento.shiftKey ? 'comandos' : 'documentos');
+        return;
+      }
+      if (evento.altKey && evento.key.toLowerCase() === 'z') {
+        evento.preventDefault();
+        setPreferencias((valor) => ({ ...valor, modoEnfoque: !valor.modoEnfoque }));
+        return;
+      }
+      if (
+        evento.key === 'Escape' &&
+        paleta === null &&
+        !preferenciasAbiertas &&
+        preferencias.modoEnfoque
+      ) {
+        setPreferencias((valor) => ({ ...valor, modoEnfoque: false }));
+      }
+    };
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  }, [paleta, preferenciasAbiertas, preferencias.modoEnfoque]);
 
   useEffect(() => {
     const alSalir = (evento: BeforeUnloadEvent) => {
@@ -2566,6 +2612,68 @@ export default function App() {
   }, [sesiones]);
   const modoBusqueda = consulta.trim().length >= 2;
 
+  const comandos: ComandoPaleta[] = [
+    { id: 'guardar', etiqueta: 'Guardar', detalle: 'Escribe los cambios pendientes', atajo: 'Ctrl+S' },
+    { id: 'buscar', etiqueta: 'Buscar en el proyecto', atajo: 'Ctrl+F' },
+    { id: 'historial', etiqueta: 'Abrir historial', atajo: 'Ctrl+Shift+H' },
+    { id: 'cambios', etiqueta: 'Revisar cambios propuestos' },
+    { id: 'preferencias', etiqueta: 'Preferencias de escritura' },
+    { id: 'enfoque', etiqueta: 'Alternar modo enfoque', atajo: 'Alt+Z' },
+    { id: 'tema-claro', etiqueta: 'Tema claro' },
+    { id: 'tema-sepia', etiqueta: 'Tema sepia' },
+    { id: 'tema-oscuro', etiqueta: 'Tema oscuro' },
+    { id: 'exportar-docx', etiqueta: 'Exportar DOCX' },
+    { id: 'exportar-pdf', etiqueta: 'Exportar PDF' },
+  ];
+
+  const ejecutarComando = (id: string) => {
+    setPaleta(null);
+    switch (id) {
+      case 'guardar':
+        void guardarAhora();
+        break;
+      case 'buscar':
+        buscadorRef.current?.focus();
+        buscadorRef.current?.select();
+        break;
+      case 'historial':
+        setRevisionSeleccionada(null);
+        setDetalleRevision(null);
+        setVista('historial');
+        break;
+      case 'cambios':
+        setPanelDerecho('cambios');
+        break;
+      case 'preferencias':
+        setPreferenciasAbiertas(true);
+        break;
+      case 'enfoque':
+        setPreferencias((valor) => ({ ...valor, modoEnfoque: !valor.modoEnfoque }));
+        break;
+      case 'tema-claro':
+      case 'tema-sepia':
+      case 'tema-oscuro':
+        setPreferencias((valor) => ({
+          ...valor,
+          tema: id.replace('tema-', '') as Preferencias['tema'],
+        }));
+        break;
+      case 'exportar-docx':
+        void exportarDocumento();
+        break;
+      case 'exportar-pdf':
+        void exportarPdfActivo();
+        break;
+      default:
+        break;
+    }
+  };
+
+  const abrirDocumentoDesdePaleta = (documento: DocumentoDto) => {
+    setPaleta(null);
+    void seleccionar(documento);
+  };
+
   const botonDocumento = (documento: DocumentoDto, icono: string) => (
     <button
       key={documento.id}
@@ -2620,7 +2728,7 @@ export default function App() {
   }
 
   return (
-    <div className="dabble-app">
+    <div className={`dabble-app ${preferencias.modoEnfoque ? 'modo-enfoque' : ''}`}>
       <a className="saltar-contenido" href="#panel-principal">
         Saltar al contenido
       </a>
@@ -2735,6 +2843,14 @@ export default function App() {
           </button>
           <button className="icono-dabble" aria-label="Ayuda" title="Ayuda">
             ?
+          </button>
+          <button
+            className="icono-dabble"
+            aria-label="Preferencias"
+            title="Preferencias de escritura"
+            onClick={() => setPreferenciasAbiertas(true)}
+          >
+            ⚙
           </button>
           <span className="dabble-avatar" aria-label={`Sesión de ${proyecto?.autor || 'escritor'}`}>
             {(proyecto?.autor || 'E').charAt(0).toLocaleUpperCase()}
@@ -2909,8 +3025,12 @@ export default function App() {
               >
                 ♲ Papelera
               </button>
-              <button className="dabble-config" disabled title="Configuración del proyecto próximamente">
-                ⚙ Configuración del proyecto
+              <button
+                className="dabble-config"
+                onClick={() => setPreferenciasAbiertas(true)}
+                title="Preferencias de escritura"
+              >
+                ⚙ Preferencias de escritura
               </button>
             </div>
           )}
@@ -3218,6 +3338,7 @@ export default function App() {
                     tramas={tramas}
                     onCambio={alCambiar}
                     ancla={anclaComentario}
+                    corrector={preferencias.corrector}
                     onComentario={async (texto, textoMarcado) => {
                       const actual = proyectoRef.current;
                       const documento = activoRef.current;
@@ -4194,6 +4315,25 @@ export default function App() {
             </footer>
           </div>
         </div>
+      )}
+
+      {preferenciasAbiertas && (
+        <ModalPreferencias
+          preferencias={preferencias}
+          onCambio={setPreferencias}
+          onCerrar={() => setPreferenciasAbiertas(false)}
+        />
+      )}
+
+      {paleta && (
+        <Paleta
+          modo={paleta}
+          documentos={documentos}
+          comandos={comandos}
+          onCerrar={() => setPaleta(null)}
+          onDocumento={abrirDocumentoDesdePaleta}
+          onComando={ejecutarComando}
+        />
       )}
     </div>
   );
