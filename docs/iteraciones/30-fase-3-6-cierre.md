@@ -139,3 +139,14 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
   ejecutar la acción del navegador.
 - La prueba de aceptación con un id de cambio nuevo cubre el fallback al cambio
   devuelto por el guardado previo.
+
+## 10. Revisión final
+
+- **QA/seguridad r4:** aprueba `e8c00c4` tras verificar el fail-closed, el
+  guardado normal, el CAS, los sidecars, el fallback de id nuevo y la suite
+  completa.
+- **UX/accesibilidad/release r3:** aprueba `80c5698`/`e8c00c4`; verificó
+  instaladores actuales, drawer, foco, modales, tabs a 200 %, diff y docs.
+- **Commit de cierre:** `347adcb` (tag local `fase-3-congelado`).
+- **Límites externos:** Windows, Word/LibreOffice, app instalada y release
+  público siguen en Fase 4/5.

@@ -10,6 +10,7 @@
 - **Objetivo de plataforma:** Windows y Linux. Estado validado: Linux x86_64.
   Windows requiere una máquina real (MSVC, WebView2, instalador y E2E nativo).
 - **Rama:** `main`, sin remoto ni CI remoto. Repositorio inicial `1c9f3c6`.
+- **Fase 3 congelada:** `347adcb`, tag local `fase-3-congelado`; QA/seguridad r4 y UX r3 aprobaron.
 
 ## 1. Resumen
 
