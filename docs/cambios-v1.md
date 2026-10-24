@@ -23,7 +23,7 @@ Ruta:
 ```
 
 Un cambio por documento. Si se vuelve a guardar una propuesta para el mismo
-documento, se actualiza el sidecar existente mientras su `baseHash` siga
+documento, se actualiza el sidecar existente mientras su `base_hash` siga
 coincidiendo. Si el documento cambió por fuera, la propuesta anterior se
 descarta y se crea una nueva con la base actual.
 
@@ -35,8 +35,8 @@ descarta y se crea una nueva con la base actual.
   "ruta": "manuscrito/01-libro/01-capitulo/001-escena.md",
   "autor": "local",
   "ts": "2026-10-24T10:00:00Z",
-  "baseRevision": 12,
-  "baseHash": "blake3:...",
+  "base_revision": 12,
+  "base_hash": "blake3:...",
   "base": "Cuerpo actual sin frontmatter.\n",
   "propuesta": "Cuerpo propuesto sin frontmatter.\n"
 }
@@ -49,7 +49,7 @@ Reglas:
 - `version` debe ser `1`.
 - `autor` no vacío, máximo 200 caracteres.
 - `ts` es RFC 3339.
-- `baseHash` es un hash del esquema (`blake3:` + 64 hex) del archivo completo,
+- `base_hash` es un hash del esquema (`blake3:` + 64 hex) del archivo completo,
   no solo del cuerpo.
 - Cada cuerpo está limitado a 4 MiB.
 - `.escritor/cambios/` debe ser un directorio real; se rechazan enlaces.
@@ -62,7 +62,7 @@ Reglas:
 2. Edita el documento.
 3. El autosave llama a `registrar_cambio` en vez de escribir el archivo.
 4. El panel **Cambios** muestra el diff entre `base` y `propuesta`.
-5. **Aceptar** verifica que el archivo siga teniendo `baseHash`, escribe
+5. **Aceptar** verifica que el archivo siga teniendo `base_hash`, escribe
    `propuesta` mediante una transacción y elimina el sidecar.
 6. **Rechazar** elimina el sidecar y deja el documento intacto.
 
@@ -74,14 +74,28 @@ sea el último del editor.
 
 - Registrar un cambio toma el lock del proyecto y lee la base con el mismo
   escaneo que un guardado.
-- Aplicar compara `baseHash` con el hash actual del archivo. Si no coincide,
+- Aplicar compara `base_hash` con el hash actual del archivo. Si no coincide,
   devuelve conflicto y no escribe.
 - No hay fusión automática entre una propuesta y una edición externa. El usuario
   debe rechazar/recargar y volver a proponer.
 - La ventana CAS conocida de v1 sigue aplicando entre la comprobación y el
   reemplazo; los procesos cooperativos quedan protegidos por el lock.
 
-## 5. Diff
+## 5. Operaciones bloqueadas
+
+Mientras un documento tiene un cambio pendiente, las operaciones que cambian su
+ruta, su contenido o sus metadatos devuelven conflicto y no se ejecutan:
+
+- guardar el cuerpo por la ruta normal (la UI usa la propuesta);
+- renombrar, actualizar estado/etiquetas/rol, archivar o cambiar de ubicación;
+- mover dentro del manuscrito, reordenar o intercambiar orden;
+- eliminar el documento;
+- revertir una revisión mientras exista cualquier propuesta pendiente.
+
+El usuario debe aceptar o rechazar la propuesta primero. Así no quedan sidecars
+huérfanos ni dos propuestas para el mismo documento.
+
+## 6. Diff
 
 El detalle incluye líneas con tipo `igual`, `insertada` o `borrada`, número de
 línea en cada lado y texto. El contrato del algoritmo está en
@@ -90,7 +104,7 @@ línea en cada lado y texto. El contrato del algoritmo está en
 La vista es lado a lado. Aceptar y rechazar operan sobre el cambio completo; no
 hay aceptación por fragmento en v1.
 
-## 6. API
+## 7. API
 
 Núcleo:
 
@@ -110,7 +124,7 @@ Tauri:
 - `descartar_cambio(ruta, id)`
 - `comparar_documento(ruta, objetivo, revision)`
 
-## 7. Límites de v1
+## 8. Límites de v1
 
 - No hay sugerencias inline ni aceptación por hunk: el cambio es el documento
   completo.
@@ -120,5 +134,5 @@ Tauri:
 - No se registra un cambio si la propuesta coincide con la base; se elimina la
   propuesta anterior.
 - El sidecar se elimina después del commit. Si el borrado fallara, el cambio
-  quedaría visible pero su `baseHash` ya no coincidiría y no podría aplicarse
+  quedaría visible pero su `base_hash` ya no coincidiría y no podría aplicarse
   otra vez.

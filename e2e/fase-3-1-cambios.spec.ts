@@ -19,6 +19,7 @@ test('propone un cambio, lo revisa y lo acepta', async ({ page }) => {
   await page.getByRole('button', { name: 'Aceptar cambio' }).click();
   await expect(page.getByText(/Cambio aceptado en la revisión/)).toBeVisible();
   await expect(estado).toHaveText('guardado');
+  await expect(page.locator('.ProseMirror')).toBeFocused();
 });
 
 test('rechaza una propuesta y conserva el texto anterior', async ({ page }) => {
@@ -48,6 +49,9 @@ test('compara una revisión con el documento actual', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Historial' }).click();
   await expect(page.getByRole('heading', { name: /Revisión/ })).toBeVisible();
+  await page.getByRole('button', { name: /Revisión 2/ }).click();
+  await expect(page.getByRole('heading', { name: 'Revisión 2' })).toBeVisible();
   await page.getByRole('button', { name: 'Comparar con el documento actual' }).first().click();
-  await expect(page.getByText(/Diferencias con la revisión/)).toBeVisible();
+  await expect(page.getByText('Diferencias con la revisión 2')).toBeVisible();
+  await expect(page.getByText('[Versión 2 de la demo]', { exact: true })).toBeVisible();
 });

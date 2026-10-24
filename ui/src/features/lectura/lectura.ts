@@ -24,12 +24,12 @@ export async function listarVoces(): Promise<VozSistema[]> {
     return [];
   }
   const sintesis = window.speechSynthesis;
-  const actuales = sintesis.getVoices();
+  const actuales = sintesis.getVoices().filter((voz) => voz.localService);
   if (actuales.length > 0) {
     return actuales.map((voz) => ({
       nombre: voz.name,
       idioma: voz.lang,
-      local: voz.localService,
+      local: true,
     }));
   }
   return new Promise((resolver) => {
@@ -41,11 +41,14 @@ export async function listarVoces(): Promise<VozSistema[]> {
       terminado = true;
       sintesis.removeEventListener?.('voiceschanged', finalizar);
       resolver(
-        sintesis.getVoices().map((voz) => ({
-          nombre: voz.name,
-          idioma: voz.lang,
-          local: voz.localService,
-        })),
+        sintesis
+          .getVoices()
+          .filter((voz) => voz.localService)
+          .map((voz) => ({
+            nombre: voz.name,
+            idioma: voz.lang,
+            local: true,
+          })),
       );
     };
     sintesis.addEventListener?.('voiceschanged', finalizar, { once: true });
@@ -86,15 +89,16 @@ export function hablar(texto: string, opciones: OpcionesLectura = {}): boolean {
   const velocidad = Math.min(2, Math.max(0.5, opciones.velocidad ?? 1));
   utterance.rate = velocidad;
   utterance.lang = 'es-ES';
-  const voces = sintesis.getVoices();
+  const voces = sintesis.getVoices().filter((voz) => voz.localService);
+  if (voces.length === 0) {
+    return false;
+  }
   const elegida =
     (opciones.voz && voces.find((voz) => voz.name === opciones.voz)) ||
     voces.find((voz) => voz.lang.toLowerCase().startsWith('es')) ||
-    null;
-  if (elegida) {
-    utterance.voice = elegida;
-    utterance.lang = elegida.lang;
-  }
+    voces[0];
+  utterance.voice = elegida;
+  utterance.lang = elegida.lang;
   utterance.onend = () => opciones.onFin?.();
   utterance.onerror = (evento) => {
     const mensaje =

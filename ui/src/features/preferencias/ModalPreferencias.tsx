@@ -21,7 +21,10 @@ export function ModalPreferencias({ preferencias, onCambio, onCerrar }: Props) {
 
   useEffect(() => {
     anteriorFoco.current = document.activeElement as HTMLElement | null;
-    dialogoRef.current?.focus();
+    const primero = dialogoRef.current?.querySelector<HTMLElement>(
+      'select, button, input, [tabindex]:not([tabindex="-1"])',
+    );
+    primero?.focus();
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
         evento.preventDefault();
@@ -39,7 +42,10 @@ export function ModalPreferencias({ preferencias, onCambio, onCerrar }: Props) {
       }
       const primero = enfocables[0];
       const ultimo = enfocables[enfocables.length - 1];
-      if (evento.shiftKey && document.activeElement === primero) {
+      if (document.activeElement === dialogoRef.current) {
+        evento.preventDefault();
+        (evento.shiftKey ? ultimo : primero).focus();
+      } else if (evento.shiftKey && document.activeElement === primero) {
         evento.preventDefault();
         ultimo.focus();
       } else if (!evento.shiftKey && document.activeElement === ultimo) {

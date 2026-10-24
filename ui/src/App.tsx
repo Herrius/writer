@@ -92,6 +92,7 @@ import type { SesionDto } from './types/SesionDto';
 import type { TipoError } from './types/TipoError';
 import { EditorMarkdown } from './EditorMarkdown';
 import { PanelCambios } from './features/cambios/PanelCambios';
+import { ModalDiff } from './features/cambios/ModalDiff';
 import { DiffLineas } from './features/cambios/DiffLineas';
 import { ModalPreferencias } from './features/preferencias/ModalPreferencias';
 import {
@@ -151,6 +152,13 @@ const RETARDO_AUTOGUARDADO = 900;
 
 function fechaHoy(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function hayDialogoAbierto(): boolean {
+  return (
+    typeof document !== 'undefined' &&
+    document.querySelector('[role="dialog"][aria-modal="true"]') !== null
+  );
 }
 
 function formatearTiempo(segundos: number): string {
@@ -394,6 +402,8 @@ export default function App() {
   const [preferencias, setPreferencias] = useState<Preferencias>(() => cargarPreferencias());
   const [preferenciasAbiertas, setPreferenciasAbiertas] = useState(false);
   const [paleta, setPaleta] = useState<'documentos' | 'comandos' | null>(null);
+  const [diffAbierto, setDiffAbierto] = useState(false);
+  const [panelAbierto, setPanelAbierto] = useState(false);
   const [voces, setVoces] = useState<VozSistema[]>([]);
   const [vozLectura, setVozLectura] = useState('');
   const [velocidadLectura, setVelocidadLectura] = useState(1);
@@ -605,7 +615,8 @@ export default function App() {
     !soloLecturaProyecto &&
     !bloqueoDocumento &&
     !bloqueoGuardado &&
-    !revirtiendo;
+    !revirtiendo &&
+    !procesandoCambio;
   puedeEditarRef.current = puedeEditar;
   modoSugerenciasRef.current = modoSugerencias;
   cambioActivoRef.current = cambioActivo;
@@ -760,6 +771,8 @@ export default function App() {
     detalleSeq.current += 1;
     busquedaSeq.current += 1;
     setConfirmarReversion(null);
+    setModoSugerencias(false);
+    modoSugerenciasRef.current = false;
     setCambiosProyecto([]);
     setCambioActivo(null);
     setErrorCambios(null);
@@ -793,7 +806,7 @@ export default function App() {
         setCuarentena([]);
       }
       await cargarMetas(ruta);
-      await cargarCambiosDeProyecto(ruta, leido?.id);
+      void cargarCambiosDeProyecto(ruta, leido?.id);
       setEstado('listo');
     } catch (fallo) {
       const detalle = errorDe(fallo);
@@ -2061,6 +2074,10 @@ export default function App() {
       );
       setEstadoGuardado('guardado');
       setErrorGuardado(null);
+      setDiffAbierto(false);
+      window.setTimeout(() => {
+        (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
+      }, 0);
       setMensaje(`Cambio aceptado en la revisión ${guardado.revision}.`);
     } catch (fallo) {
       setErrorCambios(errorDe(fallo).mensaje);
@@ -2088,6 +2105,10 @@ export default function App() {
         setRevisionEditor((valor) => valor + 1);
       }
       setEstadoGuardado('guardado');
+      setDiffAbierto(false);
+      window.setTimeout(() => {
+        (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
+      }, 0);
       setMensaje('Cambio rechazado; el documento conserva su versión anterior.');
     } catch (fallo) {
       setErrorCambios(errorDe(fallo).mensaje);
@@ -2191,6 +2212,10 @@ export default function App() {
     setResultados([]);
     setRevisiones([]);
     setDetalleRevision(null);
+    setModoSugerencias(false);
+    modoSugerenciasRef.current = false;
+    setCambiosProyecto([]);
+    setCambioActivo(null);
     setMensaje(null);
   };
 
@@ -2372,7 +2397,7 @@ export default function App() {
 
   useEffect(() => {
     const alPulsar = (evento: KeyboardEvent) => {
-      if (!(evento.ctrlKey || evento.metaKey)) {
+      if (hayDialogoAbierto() || !(evento.ctrlKey || evento.metaKey)) {
         return;
       }
       if (evento.key.toLowerCase() === 's') {
@@ -2404,6 +2429,22 @@ export default function App() {
 
   useEffect(() => {
     const alPulsar = (evento: KeyboardEvent) => {
+      if (hayDialogoAbierto()) {
+        return;
+      }
+      if (
+        evento.altKey &&
+        !evento.ctrlKey &&
+        !evento.metaKey &&
+        evento.key.toLowerCase() === 'e'
+      ) {
+        evento.preventDefault();
+        setVista('editor');
+        window.setTimeout(() => {
+          (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
+        }, 0);
+        return;
+      }
       if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'p') {
         evento.preventDefault();
         setPaleta(evento.shiftKey ? 'comandos' : 'documentos');
@@ -2414,10 +2455,15 @@ export default function App() {
         setPreferencias((valor) => ({ ...valor, modoEnfoque: !valor.modoEnfoque }));
         return;
       }
+      if (evento.key === 'Escape' && panelAbierto && window.matchMedia('(max-width: 900px)').matches) {
+        setPanelAbierto(false);
+        return;
+      }
       if (
         evento.key === 'Escape' &&
         paleta === null &&
         !preferenciasAbiertas &&
+        !diffAbierto &&
         preferencias.modoEnfoque
       ) {
         setPreferencias((valor) => ({ ...valor, modoEnfoque: false }));
@@ -2425,7 +2471,7 @@ export default function App() {
     };
     window.addEventListener('keydown', alPulsar);
     return () => window.removeEventListener('keydown', alPulsar);
-  }, [paleta, preferenciasAbiertas, preferencias.modoEnfoque]);
+  }, [paleta, preferenciasAbiertas, preferencias.modoEnfoque, panelAbierto, diffAbierto]);
 
   useEffect(() => {
     const alSalir = (evento: BeforeUnloadEvent) => {
@@ -2686,7 +2732,7 @@ export default function App() {
   const modoBusqueda = consulta.trim().length >= 2;
   const lecturaDisponible = soportaLectura();
   const textoVisible = textoSinMarcas(cuerpoVisible);
-  const caracteresDocumento = textoVisible.length;
+  const caracteresDocumento = textoParaLectura(cuerpoVisible).length;
   const parrafosDocumento = textoVisible
     .split(/\n\s*\n/)
     .filter((parrafo) => parrafo.trim().length > 0).length;
@@ -2793,9 +2839,11 @@ export default function App() {
         break;
       case 'cambios':
         setPanelDerecho('cambios');
+        setPanelAbierto(true);
         break;
       case 'herramientas':
         setPanelDerecho('herramientas');
+        setPanelAbierto(true);
         break;
       case 'leer-documento':
         leerDocumento();
@@ -2830,7 +2878,11 @@ export default function App() {
 
   const abrirDocumentoDesdePaleta = (documento: DocumentoDto) => {
     setPaleta(null);
-    void seleccionar(documento);
+    void seleccionar(documento).then(() => {
+      window.setTimeout(() => {
+        (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
+      }, 0);
+    });
   };
 
   const botonDocumento = (documento: DocumentoDto, icono: string) => (
@@ -2887,7 +2939,11 @@ export default function App() {
   }
 
   return (
-    <div className={`dabble-app ${preferencias.modoEnfoque ? 'modo-enfoque' : ''}`}>
+    <div
+      className={`dabble-app ${preferencias.modoEnfoque ? 'modo-enfoque' : ''} ${
+        panelAbierto ? 'panel-abierto' : ''
+      }`}
+    >
       <a className="saltar-contenido" href="#panel-principal">
         Saltar al contenido
       </a>
@@ -2991,7 +3047,10 @@ export default function App() {
                 : ''
             }`}
             title="Control de cambios"
-            onClick={() => setPanelDerecho('cambios')}
+            onClick={() => {
+              setPanelDerecho('cambios');
+              setPanelAbierto(true);
+            }}
           >
             ±
             {cambiosProyecto.length > 0 && (
@@ -3002,6 +3061,15 @@ export default function App() {
           </button>
           <button className="icono-dabble" aria-label="Ayuda" title="Ayuda">
             ?
+          </button>
+          <button
+            className="dabble-panel-toggle"
+            aria-label="Abrir panel lateral"
+            aria-expanded={panelAbierto}
+            title="Panel lateral"
+            onClick={() => setPanelAbierto((valor) => !valor)}
+          >
+            ▤
           </button>
           <button
             className="icono-dabble"
@@ -3202,7 +3270,7 @@ export default function App() {
             </pre>
           )}
           {mensaje && (
-            <div className="banner-info">
+            <div className="banner-info" role="status" aria-live="polite">
               <span>{mensaje}</span>
               <button className="secundario pequeno" onClick={() => setMensaje(null)}>
                 Cerrar
@@ -3597,7 +3665,22 @@ export default function App() {
             </ul>
           </aside>
         ) : (
-          <aside className="dabble-derecha">
+          <>
+          {panelAbierto && (
+          <button
+            className="dabble-panel-fondo"
+            aria-label="Cerrar panel lateral"
+            onClick={() => setPanelAbierto(false)}
+          />
+        )}
+        <aside className={`dabble-derecha ${panelAbierto ? 'abierto' : ''}`}>
+            <button
+              className="dabble-panel-cerrar"
+              aria-label="Cerrar panel lateral"
+              onClick={() => setPanelAbierto(false)}
+            >
+              ×
+            </button>
             <div className="dabble-derecha-tabs" role="tablist" aria-label="Panel lateral">
               <button
                 role="tab"
@@ -4399,7 +4482,7 @@ export default function App() {
               </section>
             ) : panelDerecho === 'cambios' ? (
               <PanelCambios
-                modo={modoSugerencias}
+                modo={modoSugerencias || cambioActivo !== null}
                 cambios={cambiosProyecto}
                 activo={cambioActivo}
                 documentos={documentos}
@@ -4414,6 +4497,7 @@ export default function App() {
                 onAceptar={() => void aceptarCambioActivo()}
                 onDescartar={() => void descartarCambioActivo()}
                 onAbrirDocumento={abrirDocumentoDeCambio}
+                onVerDiff={() => setDiffAbierto(true)}
               />
             ) : (
               <PanelHerramientas
@@ -4443,6 +4527,7 @@ export default function App() {
               />
             )}
           </aside>
+          </>
         )}
       </div>
 
@@ -4515,6 +4600,15 @@ export default function App() {
           preferencias={preferencias}
           onCambio={setPreferencias}
           onCerrar={() => setPreferenciasAbiertas(false)}
+        />
+      )}
+
+      {diffAbierto && cambioActivo && (
+        <ModalDiff
+          lineas={cambioActivo.lineas}
+          etiquetaBase="Documento actual"
+          etiquetaPropuesta="Propuesta"
+          onCerrar={() => setDiffAbierto(false)}
         />
       )}
 

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { CambioDetalleDto } from '../../types/CambioDetalleDto';
 import type { CambioResumenDto } from '../../types/CambioResumenDto';
 import type { DocumentoDto } from '../../types/DocumentoDto';
-import { DiffLineas } from './DiffLineas';
 
 type Props = {
   modo: boolean;
@@ -17,6 +16,7 @@ type Props = {
   onAceptar: (id: string) => void;
   onDescartar: (id: string) => void;
   onAbrirDocumento: (id: string) => void;
+  onVerDiff: () => void;
 };
 
 function tituloDocumento(documentos: DocumentoDto[], id: string): string {
@@ -36,6 +36,7 @@ export function PanelCambios({
   onAceptar,
   onDescartar,
   onAbrirDocumento,
+  onVerDiff,
 }: Props) {
   const [confirmarDescarte, setConfirmarDescarte] = useState<string | null>(null);
 
@@ -47,13 +48,14 @@ export function PanelCambios({
           type="checkbox"
           role="switch"
           checked={modo}
+          disabled={activo !== null}
           onChange={(evento) => onModo(evento.target.checked)}
         />
         <span>
           <strong>Proponer cambios</strong>
           <small>
             Lo que escribas se guarda como propuesta; el documento no cambia hasta
-            aceptarla.
+            aceptarla. Acepta o rechaza el cambio pendiente para desactivar el modo.
           </small>
         </span>
       </label>
@@ -108,11 +110,9 @@ export function PanelCambios({
             </button>
           </div>
 
-          <DiffLineas
-            lineas={activo.lineas}
-            etiquetaBase="Documento actual"
-            etiquetaPropuesta="Propuesta"
-          />
+          <button className="dabble-boton" onClick={onVerDiff}>
+            Ver diferencias en grande
+          </button>
 
           <div className="dabble-acciones-documento">
             <button

@@ -63,7 +63,7 @@ Requiere **pnpm 12** y, en Linux, las bibliotecas de Tauri (`webkit2gtk-4.1`,
 
 | Comprobación | Qué detecta |
 |---|---|
-| `pnpm e2e` | 7 flujos de la demo en Chromium: autosave persistente, búsqueda con salto, formato/recuento, historial, marcas, cuarentena y DOCX. |
+| `pnpm e2e` | 47 flujos de la demo en Chromium: autosave, búsqueda, historial, cambios, preferencias, paleta, TTS simulado, cuarentena, DOCX y responsive/zoom. |
 | `pnpm e2e:tauri` | 2 escenarios reales de escritorio en Linux: `Ctrl+S` con verificación en disco y cierre de ventana con cambios pendientes. |
 
 Requiere Chromium de Playwright (`pnpm e2e:install`) y, para Tauri,

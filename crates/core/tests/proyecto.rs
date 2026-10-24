@@ -86,11 +86,16 @@ fn un_cambio_obsoleto_por_hash_no_se_aplica() {
         .registrar_cambio(&id, "Propuesta.\n", "Autora")
         .expect("registrar")
         .expect("cambio");
-    proyecto
-        .escribir_cuerpo(&id, "Cambio externo.\n")
-        .expect("escribir");
+    let ruta_documento = proyecto.raiz().join(documento.relativa());
+    let original = std::fs::read_to_string(&ruta_documento).expect("leer original");
+    let (frontmatter, _) = original.split_once("\n---\n").expect("frontmatter");
+    std::fs::write(
+        &ruta_documento,
+        format!("{frontmatter}\n---\n\nCambio externo.\n"),
+    )
+    .expect("escritura externa");
     let error = proyecto.aplicar_cambio(&cambio.id).expect_err("conflicto");
-    assert!(matches!(error, Error::Conflict(_)));
+    assert!(matches!(error, Error::Conflict(_)), "error: {error:?}");
 }
 
 #[test]
@@ -1369,4 +1374,100 @@ fn modelos_nuevos_son_validos() {
     assert_eq!(escena.estado.as_deref(), Some("borrador"));
     let nota = Nota::nueva("tramas", "Trama").expect("nota");
     assert_eq!(nota.tipo, "tramas");
+}
+
+#[test]
+fn sidecar_de_cambio_corrupto_se_aparta_sin_bloquear() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cambios-rotos"));
+    proyecto.init("Cambios", None, None).expect("init");
+    let carpeta = proyecto.raiz().join(".escritor/cambios");
+    std::fs::create_dir_all(&carpeta).expect("carpeta");
+    let archivo = writer_core::ulid::nuevo().expect("ulid");
+    std::fs::write(carpeta.join(format!("{archivo}.json")), b"{no-json").expect("sidecar");
+    assert!(proyecto.listar_cambios().expect("listar").is_empty());
+    assert!(proyecto.verificar().expect("verificar").errores.is_empty());
+    assert!(
+        std::fs::read_dir(proyecto.raiz().join(".escritor/cuarentena"))
+            .expect("cuarentena")
+            .any(|entrada| entrada
+                .ok()
+                .is_some_and(|item| item.file_name().to_string_lossy().ends_with(".json")))
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn sidecar_de_cambio_que_es_fifo_se_aparta_sin_colgar() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cambios-fifo"));
+    proyecto.init("Cambios", None, None).expect("init");
+    let carpeta = proyecto.raiz().join(".escritor/cambios");
+    std::fs::create_dir_all(&carpeta).expect("carpeta");
+    let archivo = writer_core::ulid::nuevo().expect("ulid");
+    let ruta = carpeta.join(format!("{archivo}.json"));
+    let estado = std::process::Command::new("mkfifo")
+        .arg(&ruta)
+        .status()
+        .expect("mkfifo");
+    assert!(estado.success());
+    assert!(proyecto.listar_cambios().expect("listar").is_empty());
+    assert!(!ruta.exists());
+}
+
+#[test]
+fn una_escritura_externa_entre_escaneo_y_commit_no_se_sobrescribe() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cas-externo"));
+    proyecto.init("CAS", None, None).expect("init");
+    let mut sesion = proyecto.escritura().expect("sesión");
+    let documento = sesion.escaneo.escenas.first().expect("escena");
+    let ruta = documento.relativa.clone();
+    let hash_base = documento.hash.clone();
+    let ruta_absoluta = proyecto.raiz().join(&ruta);
+    std::fs::write(&ruta_absoluta, "CONTENIDO EXTERNO\n").expect("escritura externa");
+    let error = proyecto
+        .commit_efectos(
+            &mut sesion,
+            vec![Cambio::existente_con_base(
+                ruta,
+                b"contenido del editor\n".to_vec(),
+                Some(&hash_base),
+            )],
+            "humano",
+            "prosa",
+            None,
+            None,
+        )
+        .expect_err("debe detectar el cambio externo");
+    assert!(matches!(error, Error::Conflict(_)));
+    assert_eq!(
+        std::fs::read_to_string(&ruta_absoluta).expect("leer"),
+        "CONTENIDO EXTERNO\n"
+    );
+}
+
+#[test]
+fn no_se_mueve_un_documento_con_cambio_pendiente() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cambio-mover"));
+    proyecto.init("Cambios", None, None).expect("init");
+    let documento = proyecto.listar(false).expect("listar").remove(0);
+    let id = documento.id().to_string();
+    let ruta = documento.relativa().to_string();
+    let cambio = proyecto
+        .registrar_cambio(&id, "Propuesta.\n", "Autora")
+        .expect("registrar")
+        .expect("cambio");
+    let error = proyecto
+        .mover(&id, Some("02-libro"), None, None)
+        .expect_err("debe bloquear el movimiento");
+    assert!(matches!(error, Error::Conflict(_)));
+    assert_eq!(proyecto.listar_cambios().expect("cambios").len(), 1);
+    assert_eq!(
+        proyecto.leer(&id).expect("leer").relativa(),
+        ruta,
+        "el documento no se movió"
+    );
+    proyecto.aplicar_cambio(&cambio.id).expect("aplicar");
 }

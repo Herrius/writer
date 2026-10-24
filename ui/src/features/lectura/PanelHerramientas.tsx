@@ -106,7 +106,7 @@ export function PanelHerramientas({
               <option value="">Voz predeterminada</option>
               {voces.map((opcion) => (
                 <option key={opcion.nombre} value={opcion.nombre}>
-                  {opcion.nombre} ({opcion.idioma}){opcion.local ? '' : ' · red'}
+                  {opcion.nombre} ({opcion.idioma})
                 </option>
               ))}
             </select>
@@ -141,6 +141,7 @@ export function PanelHerramientas({
               <button
                 className="dabble-boton-primario"
                 onClick={pausado ? onReanudar : onLeer}
+                disabled={!pausado && voces.length === 0}
               >
                 {pausado ? 'Reanudar' : 'Leer documento'}
               </button>
@@ -152,7 +153,7 @@ export function PanelHerramientas({
             <button
               className="dabble-boton"
               onClick={onLeerSeleccion}
-              disabled={palabrasSeleccion === 0}
+              disabled={palabrasSeleccion === 0 || voces.length === 0}
             >
               Leer selección
             </button>

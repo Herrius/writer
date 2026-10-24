@@ -4,18 +4,18 @@ Motor de escritura con archivos como fuente de verdad: Markdown + frontmatter pa
 el proyecto, índice SQLite reconstruible y un log de operaciones que permite
 recuperarse de un corte sin perder ni medio cambio.
 
-Este repositorio ha cerrado la **Fase 2 (Interfaz, v0.2)** como hito de producto
-en **Linux x86_64**, con aceptación del product owner y observaciones. El motor
-y la CLI (Fase 1) están completos; la interfaz Tauri abre proyectos, muestra el
-árbol, permite leer y **editar con autosave**, busca con FTS5, ofrece historial
-con reversión, exporta a DOCX, muestra la cuarentena, permite marcar personajes,
-tramas y comentarios, y se empaqueta en deb/rpm. El **release público no está
-autorizado** todavía: AppImage, firma, updater, Windows, CI remoto y la
-prueba de la app instalada son condiciones de publicación. **El objetivo del
-producto es Windows y Linux**; el estado actual está validado en **Linux
-x86_64** y Windows todavía no se ha construido ni probado. **El plan de fases
-queda pospuesto de forma permanente hasta nuevo aviso** (2026-10-22); no se
-inician nuevas fases ni releases con el plan anterior.
+Este repositorio ha cerrado la **Fase 3 (Local avanzado)** en **Linux
+x86_64**. El motor y la CLI (Fase 1), la interfaz y la publicación local (Fase 2)
+y las extensiones locales de la Fase 3 están implementados: control de cambios,
+comparación de versiones, preferencias y temas, lectura en voz alta, Quick Open,
+paleta de comandos y presupuestos de rendimiento. La app se empaqueta en deb/rpm.
+
+El **release público no está autorizado** todavía: AppImage, firma, updater,
+Windows, CI remoto y la prueba de la app instalada son condiciones de
+publicación. **El objetivo del producto es Windows y Linux**; el estado actual
+está validado en **Linux x86_64** y Windows pasa a la Fase 4, pendiente de una
+máquina real. La Fase 3 es local/offline: no hay cuentas, servidor,
+sincronización ni servicios online.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -27,22 +27,20 @@ inician nuevas fases ni releases con el plan anterior.
 | Fase | Contenido | Estado |
 |---|---|---|
 | 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
-| 1 | Motor + CLI (v0.1) | **Completada en local (Linux, Rust 1.99.1; MSRV 1.89.0 verificada; corrección 02.2)** |
-| 2 | Interfaz Tauri (v0.2) | **Aprobada con observaciones (Linux x86_64). Release público no autorizado** |
-| 2.1 | Creación de proyectos y onboarding | **Aprobada con observaciones (Linux x86_64)** |
-| 2.2 | Interfaz de escritura e historial | **Aprobada con observaciones (Linux x86_64; Windows pendiente); release público no autorizado** |
-| 3 | IA + MCP (v0.3) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
-| 4 | Licencias + Pro (v0.4) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
-| 5 | Sync (v0.5, opcional) | Pospuesta permanentemente hasta nuevo aviso (2026-10-22) |
+| 1 | Motor + CLI (v0.1) | **Completada en local (Linux; MSRV 1.89 verificada)** |
+| 2 | Interfaz Tauri (v0.2) | **Cerrada funcionalmente en Linux; release público no autorizado** |
+| 3 | Local avanzado | **Cerrada funcionalmente en Linux x86_64** |
+| 4 | Windows | **Pendiente de máquina Windows: MSVC, WebView2, instalador y E2E nativo** |
+| 5 | Documentación y cierre | Pendiente después de Windows |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula 94 pruebas
-(34 unitarias, 35 de integración y 25 de CLI). La Fase 2 añade 3 pruebas de la
-cáscara Tauri y 59 pruebas de UI (corpus Markdown, compatibilidad, autosave,
-búsqueda, historial, DOCX, cuarentena, marcas, accesibilidad, creación y
-regresiones). Además, 12 flujos E2E de navegador con Playwright y 2 escenarios E2E de
-escritorio con Tauri/WebDriver (`Ctrl+S` y cierre de ventana).
+exportación Markdown e inyección de fallos. El conjunto Rust acumula **74
+unitarias + 45 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
+tiene 8 pruebas y la UI 76 (corpus, preferencias, lectura simulada, autosave,
+búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 47 flujos E2E
+de navegador y 2 escenarios de escritorio con Tauri/WebDriver (`Ctrl+S` y cierre
+de ventana).
 
 ## Requisitos
 

@@ -1,6 +1,6 @@
 export function textoSinMarcas(markdown: string): string {
   return markdown.replace(
-    /\[\[(?:personaje|trama|comentario):[^|\]]*\|([\s\S]*?)\]\]/g,
+    /\[\[(?:personaje|trama|comentario|nota):[^|\]]*\|([\s\S]*?)\]\]/g,
     '$1',
   );
 }

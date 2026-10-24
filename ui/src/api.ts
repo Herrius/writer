@@ -156,6 +156,32 @@ const demoDocumentos: DocumentoDto[] = [
   },
 ];
 
+const demoHistoricos = new Map<number, Map<string, string>>();
+
+function capturarHistoricoDemo(revision: number): void {
+  demoHistoricos.set(
+    revision,
+    new Map(demoDocumentos.map((documento) => [documento.ruta, documento.cuerpo])),
+  );
+}
+
+for (let revision = 1; revision <= demoProyecto.revision; revision += 1) {
+  const mapa = new Map<string, string>();
+  for (const documento of demoDocumentos) {
+    let cuerpo = documento.cuerpo;
+    if (revision === 1 && documento.ruta.includes('umbral')) {
+      cuerpo = cuerpo.replace(
+        'La casa olía a lluvia vieja.',
+        'La casa olía a humedad y a leña mojada.',
+      );
+    } else if (revision < demoProyecto.revision) {
+      cuerpo = `${cuerpo}\n\n[Versión ${revision} de la demo]`;
+    }
+    mapa.set(documento.ruta, cuerpo);
+  }
+  demoHistoricos.set(revision, mapa);
+}
+
 function demoFiltrado(notas: boolean): DocumentoDto[] {
   return demoDocumentos.filter((documento) => notas || documento.tipo === 'escena');
 }
@@ -1114,11 +1140,15 @@ export async function mostrar(ruta: string, revision: number): Promise<RevisionD
       ts: entrada?.ts ?? '2026-10-20T17:00:00Z',
       autor: 'humano',
       scope: entrada?.scope ?? 'prosa',
-      contenidos: demoDocumentos.map((documento) => ({
-        ruta: documento.ruta,
-        contenido:
-          `---\nid: ${documento.id}\ntitulo: "${documento.titulo}"\n---\n\n` + documento.cuerpo,
-      })),
+      contenidos: demoDocumentos.map((documento) => {
+        const cuerpo =
+          demoHistoricos.get(revision)?.get(documento.ruta) ?? documento.cuerpo;
+        return {
+          ruta: documento.ruta,
+          contenido:
+            `---\nid: ${documento.id}\ntitulo: "${documento.titulo}"\n---\n\n` + cuerpo,
+        };
+      }),
     };
   }
   return invoke<RevisionDetalleDto>('mostrar', { ruta, revision });
@@ -1127,6 +1157,7 @@ export async function mostrar(ruta: string, revision: number): Promise<RevisionD
 export async function revertir(ruta: string, revision: number): Promise<ReversionDto> {
   if (!esTauri) {
     demoProyecto.revision += 1;
+    capturarHistoricoDemo(demoProyecto.revision);
     return { revision: demoProyecto.revision, erroresPendientes: [] };
   }
   return invoke<ReversionDto>('revertir', { ruta, revision });
@@ -1229,6 +1260,7 @@ export async function aplicarCambio(
       documento.hashArchivo = hashDemo(documento.cuerpo);
     }
     demoProyecto.revision += 1;
+    capturarHistoricoDemo(demoProyecto.revision);
     cambiosDemo = cambiosDemo.filter((item) => item.id !== id);
     return {
       revision: demoProyecto.revision,
@@ -1259,7 +1291,7 @@ export async function compararDocumento(
       throw new Error('Documento de demostración no encontrado.');
     }
     const base =
-      revision >= demoProyecto.revision ? documento.cuerpo : '';
+      demoHistoricos.get(revision)?.get(documento.ruta) ?? '';
     const diff = compararLineas(base, documento.cuerpo);
     return {
       revision,
@@ -1337,6 +1369,7 @@ export async function escribir(
     documento.cuerpo = cuerpo;
     documento.hashArchivo = hashDemo(cuerpo);
     demoProyecto.revision += 1;
+    capturarHistoricoDemo(demoProyecto.revision);
     return { revision: demoProyecto.revision, hashArchivo: documento.hashArchivo };
   }
   return invoke<GuardadoDto>('escribir', { ruta, objetivo, cuerpo, hashBase });

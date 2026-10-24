@@ -716,6 +716,7 @@ fn texto_sin_marcas(cuerpo: &str) -> String {
             prefijo.starts_with("personaje:")
                 || prefijo.starts_with("trama:")
                 || prefijo.starts_with("comentario:")
+                || prefijo.starts_with("nota:")
         });
         if let Some((_, contenido)) = interior.split_once('|').filter(|_| es_marca) {
             salida.push_str(contenido);

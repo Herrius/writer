@@ -4063,3 +4063,121 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 [data-tema='oscuro'] .dabble-tab.activo {
   background: #2a2a2a;
 }
+
+/* Panel lateral accesible en ventanas estrechas o con zoom alto */
+.dabble-panel-toggle,
+.dabble-panel-cerrar,
+.dabble-panel-fondo {
+  display: none;
+}
+
+.dabble-derecha-tabs {
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+}
+
+.dabble-derecha-tabs button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-diff {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, calc(100vw - 2rem));
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: var(--papel);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 30%);
+}
+
+.modal-diff-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.modal-diff-cabecera h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+}
+
+.modal-diff-cuerpo {
+  min-height: 0;
+  padding: 0.8rem;
+  overflow: auto;
+}
+
+.modal-diff .diff-contenedor {
+  max-height: 70vh;
+}
+
+@media (max-width: 900px) {
+  .dabble-panel-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--linea);
+    border-radius: 0.3rem;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .dabble-app.panel-abierto .dabble-derecha {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    width: min(360px, 94vw);
+    border-left: 1px solid var(--linea);
+    background: var(--papel);
+    box-shadow: -16px 0 50px rgb(0 0 0 / 35%);
+    overflow: auto;
+  }
+
+  .dabble-app.panel-abierto .dabble-panel-fondo {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: block;
+    border: 0;
+    background: rgb(0 0 0 / 35%);
+    cursor: pointer;
+  }
+
+  .dabble-panel-cerrar {
+    display: block;
+    align-self: flex-end;
+    margin: 0.5rem 0.5rem 0;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--linea);
+    border-radius: 0.3rem;
+    background: transparent;
+    color: var(--tinta);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+}
+
+.dabble-vacio {
+  color: #5f554a;
+}
+
+[data-tema='sepia'] {
+  --tinta-suave: #5f4f3a;
+}
+
+[data-tema='sepia'] .dabble-vacio {
+  color: #5a4b38;
+}

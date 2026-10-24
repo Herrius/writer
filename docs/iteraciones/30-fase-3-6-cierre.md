@@ -34,11 +34,11 @@
 ```text
 cargo fmt --all --check                              OK
 cargo clippy --workspace --all-targets --all-features  OK
-cargo test --workspace --all-targets --locked        74 + 41 + 25 + 1 perf
+cargo test --workspace --all-targets --locked        74 + 45 + 25 + 1 perf
 cargo test desktop                                   8/8
 pnpm typecheck                                       OK
-pnpm ui:test                                         75/75
-pnpm e2e                                             43/43
+pnpm ui:test                                         76/76
+pnpm e2e                                             47/47
 ci.py calidad                                        OK
 ci.py interfaz                                       OK
 ci.py producto                                       OK
@@ -65,3 +65,35 @@ ci.py empaquetado                                    OK
 La Fase 3 está cerrada funcionalmente en Linux x86_64. No queda deuda funcional
 local del alcance 3.1–3.5; los límites anteriores son decisiones de v1 o
 validaciones externas. El siguiente paso es la Fase 4 en una máquina Windows.
+
+## 6. Correcciones de la revisión QA/UX r1
+
+La primera revisión independiente bloqueó la fase. Se corrigieron:
+
+- **P1 pérdida de texto al aceptar/rechazar:** el editor se bloquea mientras
+  `procesandoCambio` está activo; aceptar guarda antes la propuesta más reciente
+  y relee el sidecar antes de aplicar.
+- **P1 panel lateral inaccesible a 720 px/zoom:** el panel derecho se abre como
+  drawer con botón, fondo y cierre; las pestañas usan truncado accesible.
+- **P1 diff ilegible en 250 px:** el diff se revisa en un modal de ancho
+  completo; el panel solo conserva el resumen y las acciones.
+- **P1 voz remota:** solo se listan y usan voces `localService = true`; sin voz
+  local no se habla y los botones se desactivan.
+- **P2 propuestas huérfanas:** mover, eliminar, metadatos, reordenar, escribir
+  por la ruta normal y revertir se bloquean mientras haya una propuesta.
+- **P2 sidecar no regular:** FIFO, directorios, symlinks y JSON gigantes se
+  apartan a cuarentena; la carga del proyecto no espera al panel de cambios.
+- **P2 CAS:** el hash base esperado se comprueba también en la preparación y
+  antes del reemplazo, no solo en el escaneo inicial.
+- **P2 modo propuesto:** se reinicia al cambiar de proyecto; el interruptor
+  queda bloqueado mientras hay una propuesta pendiente.
+- **P2 modales:** foco inicial, trampa de Tab/Shift+Tab, Escape y bloqueo de
+  atajos globales mientras hay un diálogo.
+- **P2 foco y anuncios:** foco al editor tras aceptar/rechazar o Quick Open;
+  banner de éxito con `role=status`.
+- **P2 contraste:** estados vacíos y textos secundarios oscurecidos en claro y
+  sepia.
+- **P2 demo:** snapshots por revisión para que la comparación no sea ficticia;
+  el E2E comprueba una revisión anterior y texto concreto.
+- **P3:** `Alt+E`, marcas `nota` en el texto leído y recuento de caracteres
+  visible.

@@ -54,6 +54,7 @@ pub struct SesionEscritura {
 struct Preparado {
     efecto: Efecto,
     contenido: Option<Vec<u8>>,
+    hash_esperado: Option<String>,
 }
 
 /// Cambio que se aplicará en una transacción.
@@ -65,6 +66,8 @@ pub struct Cambio {
     pub contenido: Option<Vec<u8>>,
     /// Si es `true`, el archivo no debe existir antes.
     pub crear_solo: bool,
+    /// Hash que debe tener el archivo antes de aplicar el cambio.
+    pub hash_esperado: Option<String>,
 }
 
 impl Cambio {
@@ -74,6 +77,21 @@ impl Cambio {
             ruta: ruta.into(),
             contenido: Some(contenido),
             crear_solo: false,
+            hash_esperado: None,
+        }
+    }
+
+    /// Escribe un archivo existente comprobando el hash base hasta el reemplazo.
+    pub fn existente_con_base(
+        ruta: impl Into<String>,
+        contenido: Vec<u8>,
+        hash_base: Option<&str>,
+    ) -> Self {
+        Self {
+            ruta: ruta.into(),
+            contenido: Some(contenido),
+            crear_solo: false,
+            hash_esperado: hash_base.map(str::to_string),
         }
     }
 
@@ -83,6 +101,7 @@ impl Cambio {
             ruta: ruta.into(),
             contenido: Some(contenido),
             crear_solo: true,
+            hash_esperado: None,
         }
     }
 
@@ -92,6 +111,7 @@ impl Cambio {
             ruta: ruta.into(),
             contenido: None,
             crear_solo: false,
+            hash_esperado: None,
         }
     }
 }
@@ -704,6 +724,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         let Documento::Escena(mut encontrada) = documento else {
             return Err(Error::Input("solo se pueden reordenar escenas".to_string()));
         };
@@ -745,6 +766,7 @@ impl Project {
                 .por_id(id)
                 .or_else(|| sesion.escaneo.por_ruta(id))
                 .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id}")))?;
+            self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
             let Documento::Escena(encontrada) = documento else {
                 return Err(Error::Input("solo se pueden reordenar escenas".to_string()));
             };
@@ -834,6 +856,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         let (relativa, bytes, scope) = match documento {
             Documento::Escena(mut encontrada) => {
                 encontrada.escena.titulo = titulo.to_string();
@@ -882,6 +905,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         let Documento::Escena(mut encontrada) = documento else {
             return Err(Error::Input(
                 "solo las escenas tienen estado de escena".to_string(),
@@ -911,6 +935,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         let Documento::Nota(mut encontrada) = documento else {
             return Err(Error::Input(
                 "actualizar_nota solo acepta notas".to_string(),
@@ -951,6 +976,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         let Documento::Nota(mut encontrada) = documento else {
             return Err(Error::Input(
                 "actualizar_personaje solo acepta notas".to_string(),
@@ -993,6 +1019,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         let (relativa, bytes, scope) = match documento {
             Documento::Escena(mut encontrada) => {
                 encontrada.escena.archivo = archivo.map(str::to_string);
@@ -1097,6 +1124,12 @@ impl Project {
         hash_base: Option<&str>,
     ) -> Result<ResultadoGuardado> {
         let mut sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         self.guardar_cuerpo_en_sesion(&mut sesion, id_o_ruta, cuerpo, hash_base)
     }
 
@@ -1141,7 +1174,7 @@ impl Project {
         let hash_archivo = crate::hash::hash(&bytes);
         let revision = self.commit_efectos(
             sesion,
-            vec![Cambio::existente(ruta, bytes)],
+            vec![Cambio::existente_con_base(ruta, bytes, hash_base)],
             "humano",
             scope,
             None,
@@ -1151,6 +1184,16 @@ impl Project {
             revision,
             hash_archivo,
         })
+    }
+
+    /// Rechaza operaciones estructurales mientras haya una propuesta pendiente.
+    fn exigir_sin_cambio_pendiente(&self, documento: &str, ruta: &str) -> Result<()> {
+        if changes::para_documento(&self.raiz, documento, ruta)?.is_some() {
+            return Err(Error::Conflict(format!(
+                "hay un cambio propuesto pendiente para {ruta}; acéptalo o recházalo antes de modificarlo"
+            )));
+        }
+        Ok(())
     }
 
     /// Lista los cambios locales pendientes.
@@ -1331,6 +1374,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         match documento {
             Documento::Escena(encontrada) => {
                 let partes: Vec<&str> = encontrada.relativa.split('/').collect();
@@ -1418,6 +1462,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
         let relativa = documento.relativa().to_string();
         let scope = match documento {
             Documento::Escena(_) => "estructura",
@@ -1442,6 +1487,12 @@ impl Project {
     /// errores que queden después.
     pub fn revertir(&self, revision: u64) -> Result<ResultadoRevertir> {
         let mut sesion = self.escritura_con(true)?;
+        if !changes::listar(&self.raiz)?.is_empty() {
+            return Err(Error::Conflict(
+                "hay cambios propuestos pendientes; acéptalos o recházalos antes de revertir"
+                    .to_string(),
+            ));
+        }
         let operacion = sesion
             .log
             .operaciones()
@@ -1646,6 +1697,14 @@ impl Project {
                     cambio.ruta
                 )));
             }
+            if let Some(esperado) = &cambio.hash_esperado {
+                if hash_anterior.as_deref() != Some(esperado.as_str()) {
+                    return Err(Error::Conflict(format!(
+                        "el archivo cambió antes de la transacción: {}",
+                        cambio.ruta
+                    )));
+                }
+            }
             let hash_nuevo = cambio.contenido.as_ref().map(|bytes| hash::hash(bytes));
             if hash_anterior == hash_nuevo {
                 continue;
@@ -1663,6 +1722,7 @@ impl Project {
                     hash_anterior,
                 },
                 contenido: cambio.contenido,
+                hash_esperado: cambio.hash_esperado,
             });
         }
         if preparados.is_empty() {
@@ -1765,7 +1825,11 @@ impl SesionEscritura {
 fn aplicar_efecto(ruta: &Path, preparado: &Preparado) -> Result<()> {
     fault::antes_de_comprobar(ruta)?;
     let actual = hash::hash_archivo(ruta)?;
-    if actual != preparado.efecto.hash_anterior {
+    let coincide = match &preparado.hash_esperado {
+        Some(esperado) => actual.as_deref() == Some(esperado.as_str()),
+        None => actual == preparado.efecto.hash_anterior,
+    };
+    if !coincide {
         return Err(Error::Conflict(format!(
             "CAS: {} cambió antes del reemplazo",
             preparado.efecto.ruta

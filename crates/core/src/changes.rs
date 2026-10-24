@@ -20,6 +20,9 @@ pub const VERSION: u32 = 1;
 /// Tamaño máximo de cada cuerpo guardado en un cambio.
 pub const MAX_CUERPO: usize = 4 * 1024 * 1024;
 
+/// Tamaño máximo del JSON completo (dos cuerpos + metadatos).
+const MAX_SIDECAR: u64 = (MAX_CUERPO as u64) * 2 + 64 * 1024;
+
 /// Cambio local propuesto.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CambioLocal {
@@ -125,8 +128,18 @@ impl CambioLocal {
 /// Lee un cambio por ULID.
 pub fn leer(raiz: &Path, id: &str) -> Result<CambioLocal> {
     let ruta = ruta_cambio(raiz, id)?;
-    if ruta.exists() {
-        fsutil::archivo_real(&ruta)?;
+    let metadatos =
+        std::fs::symlink_metadata(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+    if !metadatos.file_type().is_file() || metadatos.file_type().is_symlink() {
+        return Err(Error::Integrity(format!(
+            "el cambio no es un archivo regular: {}",
+            ruta.display()
+        )));
+    }
+    if metadatos.len() > MAX_SIDECAR {
+        return Err(Error::Input(format!(
+            "el cambio supera el máximo de {MAX_SIDECAR} bytes"
+        )));
     }
     let bytes = fsutil::leer_opcional(&ruta)?
         .ok_or_else(|| Error::NotFound(format!("cambio no encontrado: {id}")))?;
@@ -164,7 +177,20 @@ pub fn listar(raiz: &Path) -> Result<Vec<CambioLocal>> {
         if ruta.extension().and_then(|valor| valor.to_str()) != Some("json") {
             continue;
         }
-        let bytes = std::fs::read(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+        let Ok(metadatos) = std::fs::symlink_metadata(&ruta) else {
+            continue;
+        };
+        if !metadatos.file_type().is_file()
+            || metadatos.file_type().is_symlink()
+            || metadatos.len() > MAX_SIDECAR
+        {
+            let _ = fsutil::apartar_sidecar(raiz, &ruta);
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(&ruta) else {
+            let _ = fsutil::apartar_sidecar(raiz, &ruta);
+            continue;
+        };
         let Ok(cambio) = serde_json::from_slice::<CambioLocal>(&bytes) else {
             let _ = fsutil::apartar_sidecar(raiz, &ruta);
             continue;

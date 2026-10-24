@@ -28,12 +28,44 @@ export function Paleta({
   const [consulta, setConsulta] = useState('');
   const [seleccion, setSeleccion] = useState(0);
   const entradaRef = useRef<HTMLInputElement | null>(null);
+  const dialogoRef = useRef<HTMLDivElement | null>(null);
   const anteriorFoco = useRef<HTMLElement | null>(null);
+  const cerrarRef = useRef(onCerrar);
+  cerrarRef.current = onCerrar;
 
   useEffect(() => {
     anteriorFoco.current = document.activeElement as HTMLElement | null;
     entradaRef.current?.focus();
-    return () => anteriorFoco.current?.focus?.();
+    const alPulsar = (evento: globalThis.KeyboardEvent) => {
+      if (evento.key === 'Escape') {
+        evento.preventDefault();
+        cerrarRef.current();
+        return;
+      }
+      if (evento.key !== 'Tab' || !dialogoRef.current) {
+        return;
+      }
+      const enfocables = dialogoRef.current.querySelectorAll<HTMLElement>(
+        'input, button, [tabindex]:not([tabindex="-1"])',
+      );
+      if (enfocables.length === 0) {
+        return;
+      }
+      const primero = enfocables[0];
+      const ultimo = enfocables[enfocables.length - 1];
+      if (evento.shiftKey && document.activeElement === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    };
+    document.addEventListener('keydown', alPulsar);
+    return () => {
+      document.removeEventListener('keydown', alPulsar);
+      anteriorFoco.current?.focus?.();
+    };
   }, [modo]);
 
   const termino = consulta.trim().toLocaleLowerCase();
@@ -108,6 +140,7 @@ export function Paleta({
         role="dialog"
         aria-modal="true"
         aria-label={modo === 'documentos' ? 'Abrir documento' : 'Paleta de comandos'}
+        ref={dialogoRef}
       >
         <input
           ref={entradaRef}

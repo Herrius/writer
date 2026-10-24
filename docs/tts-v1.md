@@ -7,7 +7,9 @@
 ## 1. Lectura en voz alta
 
 La UI usa la Web Speech API del WebView (`speechSynthesis` y
-`SpeechSynthesisUtterance`). No hay servicios de voz, cuentas ni envío de texto.
+`SpeechSynthesisUtterance`). **Solo se listan y usan voces locales**
+(`localService = true`); las voces remotas se ocultan para no enviar el
+manuscrito fuera del equipo. No hay servicios de voz ni cuentas.
 
 - **Leer documento:** convierte el Markdown visible en texto plano y lo lee.
 - **Leer selección:** lee el texto seleccionado en el editor.

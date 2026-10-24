@@ -28,6 +28,7 @@ class UtteranceFalsa {
 const voces: VozFalsa[] = [
   { name: 'Voz española', lang: 'es-ES', localService: true },
   { name: 'English voice', lang: 'en-US', localService: true },
+  { name: 'Voz remota', lang: 'es-ES', localService: false },
 ];
 
 function instalarSintesis() {
@@ -79,6 +80,13 @@ describe('lectura en voz alta', () => {
     expect(utterance.text).toBe('Hola mundo.');
     expect(utterance.rate).toBe(1.5);
     expect(utterance.voice?.name).toBe('Voz española');
+  });
+
+  it('no usa una voz remota si no hay ninguna local', () => {
+    const { sintesis, hablarFn } = instalarSintesis();
+    sintesis.getVoices = () => [voces[2]];
+    expect(hablar('Hola')).toBe(false);
+    expect(hablarFn).not.toHaveBeenCalled();
   });
 
   it('detiene la lectura y no falla sin soporte', () => {
