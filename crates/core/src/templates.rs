@@ -178,7 +178,8 @@ pub fn eliminar_plantilla(directorio: &Path, slug: &str) -> Result<()> {
     if !manifiesto.is_file() {
         return Err(Error::NotFound(format!("plantilla no encontrada: {slug}")));
     }
-    let _ = leer_manifiesto(&manifiesto)?;
+    // Se permite limpiar una plantilla corrupta: el manifiesto existe, pero
+    // puede no ser válido. El slug y el directorio ya están validados.
     std::fs::remove_dir_all(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))
 }
 
@@ -693,6 +694,17 @@ mod tests {
             Project::new(&destino).listar(true).expect("listar").len(),
             3
         );
+    }
+
+    #[test]
+    fn elimina_una_plantilla_corrupta_por_slug() {
+        let temporal = tempfile::tempdir().expect("temporal");
+        let directorio = temporal.path().join("plantillas");
+        let ruta = directorio.join("rota");
+        std::fs::create_dir_all(&ruta).expect("carpeta");
+        std::fs::write(ruta.join("plantilla.json"), b"{no-json").expect("manifiesto");
+        eliminar_plantilla(&directorio, "rota").expect("eliminar corrupta");
+        assert!(!ruta.exists());
     }
 
     #[test]

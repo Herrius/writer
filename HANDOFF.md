@@ -133,7 +133,7 @@ WebKit/WebView2 al ejecutar `cargo test --workspace` del núcleo.
 ```text
 cargo fmt --all --check                         OK
 cargo clippy --workspace --all-targets -D warnings   OK
-cargo test --workspace --all-targets --locked   90 + 49 + 25 + 1 perf
+cargo test --workspace --all-targets --locked   91 + 49 + 25 + 1 perf
 cargo test desktop                              9/9
 pnpm typecheck                                  OK
 pnpm ui:test                                    83/83

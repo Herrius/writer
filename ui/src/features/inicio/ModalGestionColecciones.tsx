@@ -21,7 +21,7 @@ export function ModalGestionColecciones({ colecciones, onGuardar, onCerrar }: Pr
   useTrampaTab(dialogoRef);
 
   useEffect(() => {
-    dialogoRef.current?.querySelector<HTMLElement>('input, button')?.focus();
+    dialogoRef.current?.querySelector<HTMLElement>('.fila-coleccion input, .modal-inicio-cabecera button')?.focus();
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
         evento.preventDefault();
@@ -96,6 +96,11 @@ export function ModalGestionColecciones({ colecciones, onGuardar, onCerrar }: Pr
               <small>{coleccion.rutas.length} proyecto(s)</small>
               <button
                 className="dabble-boton peligro"
+                aria-label={
+                  confirmar === coleccion.id
+                    ? `Confirmar eliminación de ${coleccion.nombre}`
+                    : `Eliminar colección ${coleccion.nombre}`
+                }
                 onClick={() => {
                   if (confirmar !== coleccion.id) {
                     setConfirmar(coleccion.id);
@@ -104,7 +109,7 @@ export function ModalGestionColecciones({ colecciones, onGuardar, onCerrar }: Pr
                   setBorrador((actual) => actual.filter((item) => item.id !== coleccion.id));
                   setConfirmar(null);
                   window.requestAnimationFrame(() => {
-                    dialogoRef.current?.querySelector<HTMLElement>('input, button')?.focus();
+                    dialogoRef.current?.querySelector<HTMLElement>('.fila-coleccion input, .modal-inicio-cabecera button')?.focus();
                   });
                 }}
               >

@@ -59,7 +59,7 @@
 ## 3. Pruebas
 
 ```text
-cargo test --workspace --all-targets --locked   90 unit + 49 integración + 25 CLI + 1 perf
+cargo test --workspace --all-targets --locked   91 unit + 49 integración + 25 CLI + 1 perf
 cargo test desktop                              9/9
 pnpm typecheck                                  OK
 pnpm ui:test                                    83/83
@@ -98,7 +98,7 @@ Casos nuevos destacados:
   durante la operación, menú `⋯` de 24×24 y papelera responsive a 960/720/200 %.
 - **Colecciones:** se guardan antes de Abrir, Mover o crear otra colección.
 - **Contraste:** metadatos y “Crear desde plantilla” corregidos.
-- **Docs:** conteos 90/49/25+1, 83 UI y 55 E2E; límites y validaciones
+- **Docs:** conteos 91/49/25+1, 83 UI y 55 E2E; límites y validaciones
   actualizados.
 
 ## 6. Correcciones de la revisión QA/UX r2
@@ -118,5 +118,13 @@ Casos nuevos destacados:
   mientras se procesa.
 - **Plantillas corruptas:** se pueden eliminar por API aunque el manifiesto sea
   inválido; el listado sigue mostrando solo las válidas.
-- **Docs:** 90 unitarias + 49 integración + 25 CLI + 1 rendimiento, 83 UI y
+- **Docs:** 91 unitarias + 49 integración + 25 CLI + 1 rendimiento, 83 UI y
   55 E2E.
+
+## 7. Últimos ajustes P3
+
+- Las plantillas corruptas se pueden eliminar por API/slug aunque no se listen.
+- Los errores de colecciones no se duplican detrás del modal y se limpian al
+  cerrarlo; al borrar una fila se enfoca el siguiente campo.
+- Los conteos finales son 91 unitarias + 49 integración + 25 CLI + 1
+  rendimiento, 83 UI y 55 E2E.

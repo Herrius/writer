@@ -696,7 +696,7 @@ export function Inicio({
               </div>
             )}
 
-            {errorOrganizacion && (
+            {errorOrganizacion && !accionesProyecto && (
               <p className="dabble-error colecciones-error" role="alert">
                 {errorOrganizacion}
               </p>
@@ -887,6 +887,7 @@ export function Inicio({
                                 setPlantillas((actual) =>
                                   actual.filter((item) => item.slug !== opcion.slug),
                                 );
+                                setErrorPlantillas(null);
                                 setExito(`Plantilla «${opcion.nombre}» eliminada.`);
                                 enfocarPestanaActiva();
                               })
@@ -1028,7 +1029,10 @@ export function Inicio({
         <ModalAccionesProyecto
           reciente={accionesProyecto}
           colecciones={colecciones}
-          onCerrar={() => setAccionesProyecto(null)}
+          onCerrar={() => {
+            setAccionesProyecto(null);
+            setErrorOrganizacion(null);
+          }}
           onAbrir={() => onAbrirReciente(accionesProyecto.ruta)}
           onGuardarColecciones={(ids) => guardarAsignacion(accionesProyecto.ruta, ids)}
           error={errorOrganizacion}
@@ -1087,6 +1091,7 @@ export function Inicio({
           onGuardar={async (nueva) => {
             const guardada = await guardarPlantilla(nueva);
             setPlantillas((actual) => [...actual, guardada]);
+            setErrorPlantillas(null);
             setModalPlantilla(false);
             setExito(`Plantilla «${guardada.nombre}» creada.`);
           }}
