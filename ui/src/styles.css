@@ -3926,3 +3926,56 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
     padding-inline: 1rem;
   }
 }
+
+/* Fase 3.4 — herramientas de escritura y lectura en voz alta */
+.dabble-herramientas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 0.9rem 1rem 1.4rem;
+}
+
+.dabble-herramientas h3,
+.dabble-herramientas h4 {
+  margin: 0;
+}
+
+.dabble-herramientas h4 {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--linea);
+  font-size: 0.82rem;
+}
+
+.dabble-estadisticas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.dabble-estadisticas div {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.35rem;
+  background: var(--papel);
+}
+
+.dabble-estadisticas dt {
+  color: var(--tinta-suave);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.dabble-estadisticas dd {
+  margin: 0.1rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.dabble-derecha-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dabble-derecha-tabs button {
+  font-size: 0.7rem;
+}

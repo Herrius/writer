@@ -101,6 +101,17 @@ import {
   type Preferencias,
 } from './features/preferencias/preferencias';
 import { Paleta, type ComandoPaleta } from './features/paleta/Paleta';
+import { PanelHerramientas } from './features/lectura/PanelHerramientas';
+import {
+  detenerLectura,
+  hablar,
+  listarVoces,
+  pausarLectura,
+  reanudarLectura,
+  soportaLectura,
+  textoParaLectura,
+  type VozSistema,
+} from './features/lectura/lectura';
 import { Inicio, type DatosNuevoProyecto } from './Inicio';
 import { analizarCompatibilidad } from './markdown/compatibilidad';
 import { contarPalabras, textoSinMarcas } from './palabras';
@@ -295,7 +306,7 @@ export default function App() {
   const [consulta, setConsulta] = useState('');
   const [focoArbol, setFocoArbol] = useState<string | null>(null);
   const [panelDerecho, setPanelDerecho] = useState<
-    'metas' | 'notas' | 'comentarios' | 'plan' | 'cambios'
+    'metas' | 'notas' | 'comentarios' | 'plan' | 'cambios' | 'herramientas'
   >('metas');
   const [comentarios, setComentarios] = useState<ComentarioDto[]>([]);
   const [errorComentarios, setErrorComentarios] = useState<string | null>(null);
@@ -383,6 +394,13 @@ export default function App() {
   const [preferencias, setPreferencias] = useState<Preferencias>(() => cargarPreferencias());
   const [preferenciasAbiertas, setPreferenciasAbiertas] = useState(false);
   const [paleta, setPaleta] = useState<'documentos' | 'comandos' | null>(null);
+  const [voces, setVoces] = useState<VozSistema[]>([]);
+  const [vozLectura, setVozLectura] = useState('');
+  const [velocidadLectura, setVelocidadLectura] = useState(1);
+  const [leyendo, setLeyendo] = useState(false);
+  const [pausadoLectura, setPausadoLectura] = useState(false);
+  const [errorLectura, setErrorLectura] = useState<string | null>(null);
+  const [seleccionTexto, setSeleccionTexto] = useState('');
 
   const cargando = useRef(false);
   const navegando = useRef(false);
@@ -424,6 +442,34 @@ export default function App() {
     aplicarPreferencias(preferencias);
     guardarPreferencias(preferencias);
   }, [preferencias]);
+
+  useEffect(() => {
+    let cancelado = false;
+    void listarVoces().then((lista) => {
+      if (!cancelado) {
+        setVoces(lista);
+        setVozLectura((actual) => actual || lista[0]?.nombre || '');
+      }
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const alCambiarSeleccion = () => {
+      setSeleccionTexto(window.getSelection()?.toString() ?? '');
+    };
+    document.addEventListener('selectionchange', alCambiarSeleccion);
+    return () => document.removeEventListener('selectionchange', alCambiarSeleccion);
+  }, []);
+
+  useEffect(() => {
+    detenerLectura();
+    setLeyendo(false);
+    setPausadoLectura(false);
+    setErrorLectura(null);
+  }, [activo?.id]);
 
   const cancelarTemporizador = () => {
     if (temporizadorRef.current !== null) {
@@ -2611,12 +2657,81 @@ export default function App() {
     return total;
   }, [sesiones]);
   const modoBusqueda = consulta.trim().length >= 2;
+  const lecturaDisponible = soportaLectura();
+  const textoVisible = textoSinMarcas(cuerpoVisible);
+  const caracteresDocumento = textoVisible.length;
+  const parrafosDocumento = textoVisible
+    .split(/\n\s*\n/)
+    .filter((parrafo) => parrafo.trim().length > 0).length;
+  const minutosLectura = Math.ceil(palabrasDocumento / 200);
+  const palabrasSeleccion = contarPalabras(textoSinMarcas(seleccionTexto));
+
+  const iniciarLectura = (texto: string) => {
+    const limpio = textoParaLectura(texto);
+    if (!limpio) {
+      setErrorLectura('No hay texto para leer.');
+      return;
+    }
+    const iniciada = hablar(limpio, {
+      voz: vozLectura || undefined,
+      velocidad: velocidadLectura,
+      onFin: () => {
+        setLeyendo(false);
+        setPausadoLectura(false);
+      },
+      onError: (mensaje) => {
+        setErrorLectura(mensaje);
+        setLeyendo(false);
+        setPausadoLectura(false);
+      },
+    });
+    if (!iniciada) {
+      setErrorLectura(
+        'Este WebView no pudo iniciar la lectura con las voces del sistema.',
+      );
+      return;
+    }
+    setErrorLectura(null);
+    setLeyendo(true);
+    setPausadoLectura(false);
+  };
+
+  const leerDocumento = () => iniciarLectura(cuerpoVisible);
+
+  const leerSeleccion = () => {
+    const seleccion = window.getSelection()?.toString() ?? '';
+    if (!seleccion.trim()) {
+      setErrorLectura('Selecciona texto en el documento para leerlo.');
+      return;
+    }
+    iniciarLectura(seleccion);
+  };
+
+  const pausarLecturaActual = () => {
+    pausarLectura();
+    setPausadoLectura(true);
+  };
+
+  const reanudarLecturaActual = () => {
+    reanudarLectura();
+    setPausadoLectura(false);
+  };
+
+  const detenerLecturaActual = () => {
+    detenerLectura();
+    setLeyendo(false);
+    setPausadoLectura(false);
+    setErrorLectura(null);
+  };
 
   const comandos: ComandoPaleta[] = [
     { id: 'guardar', etiqueta: 'Guardar', detalle: 'Escribe los cambios pendientes', atajo: 'Ctrl+S' },
     { id: 'buscar', etiqueta: 'Buscar en el proyecto', atajo: 'Ctrl+F' },
     { id: 'historial', etiqueta: 'Abrir historial', atajo: 'Ctrl+Shift+H' },
     { id: 'cambios', etiqueta: 'Revisar cambios propuestos' },
+    { id: 'herramientas', etiqueta: 'Herramientas de escritura' },
+    { id: 'leer-documento', etiqueta: 'Leer documento en voz alta' },
+    { id: 'detener-lectura', etiqueta: 'Detener lectura' },
     { id: 'preferencias', etiqueta: 'Preferencias de escritura' },
     { id: 'enfoque', etiqueta: 'Alternar modo enfoque', atajo: 'Alt+Z' },
     { id: 'tema-claro', etiqueta: 'Tema claro' },
@@ -2643,6 +2758,15 @@ export default function App() {
         break;
       case 'cambios':
         setPanelDerecho('cambios');
+        break;
+      case 'herramientas':
+        setPanelDerecho('herramientas');
+        break;
+      case 'leer-documento':
+        leerDocumento();
+        break;
+      case 'detener-lectura':
+        detenerLecturaActual();
         break;
       case 'preferencias':
         setPreferenciasAbiertas(true);
@@ -3480,6 +3604,14 @@ export default function App() {
               >
                 Cambios
               </button>
+              <button
+                role="tab"
+                aria-selected={panelDerecho === 'herramientas'}
+                className={panelDerecho === 'herramientas' ? 'activo' : ''}
+                onClick={() => setPanelDerecho('herramientas')}
+              >
+                Herramientas
+              </button>
             </div>
             {panelDerecho === 'metas' ? (
               <>
@@ -4230,7 +4362,7 @@ export default function App() {
                   Restaurar backup
                 </button>
               </section>
-            ) : (
+            ) : panelDerecho === 'cambios' ? (
               <PanelCambios
                 modo={modoSugerencias}
                 cambios={cambiosProyecto}
@@ -4247,6 +4379,32 @@ export default function App() {
                 onAceptar={() => void aceptarCambioActivo()}
                 onDescartar={() => void descartarCambioActivo()}
                 onAbrirDocumento={abrirDocumentoDeCambio}
+              />
+            ) : (
+              <PanelHerramientas
+                soporta={lecturaDisponible}
+                voces={voces}
+                voz={vozLectura}
+                velocidad={velocidadLectura}
+                leyendo={leyendo}
+                pausado={pausadoLectura}
+                error={errorLectura}
+                palabras={palabrasDocumento}
+                caracteres={caracteresDocumento}
+                parrafos={parrafosDocumento}
+                minutosLectura={minutosLectura}
+                palabrasSeleccion={palabrasSeleccion}
+                enfoque={preferencias.modoEnfoque}
+                onVoz={setVozLectura}
+                onVelocidad={setVelocidadLectura}
+                onLeer={leerDocumento}
+                onLeerSeleccion={leerSeleccion}
+                onPausar={pausarLecturaActual}
+                onReanudar={reanudarLecturaActual}
+                onDetener={detenerLecturaActual}
+                onEnfoque={(activo) =>
+                  setPreferencias((valor) => ({ ...valor, modoEnfoque: activo }))
+                }
               />
             )}
           </aside>
