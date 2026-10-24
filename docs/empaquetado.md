@@ -1,7 +1,7 @@
 # Empaquetado — Tauri
 
-- **Fecha:** 2026-10-21
-- **Estado:** vigente para la Fase 2
+- **Fecha:** 2026-10-24
+- **Estado:** vigente para la Fase 3; artefactos Linux reconstruidos tras las correcciones
 - **Configuración:** `apps/desktop/src-tauri/tauri.conf.json`
 
 ## 1. Configuración

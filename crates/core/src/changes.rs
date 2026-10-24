@@ -154,6 +154,11 @@ pub fn guardar(raiz: &Path, cambio: &CambioLocal) -> Result<()> {
     cambio.validar()?;
     let ruta = ruta_cambio(raiz, &cambio.id)?;
     let bytes = serde_json::to_vec_pretty(cambio)?;
+    if bytes.len() as u64 > MAX_SIDECAR {
+        return Err(Error::Input(format!(
+            "el JSON del cambio supera el máximo de {MAX_SIDECAR} bytes"
+        )));
+    }
     fsutil::escribir_atomico(&ruta, &bytes)
 }
 

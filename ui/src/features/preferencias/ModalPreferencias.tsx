@@ -28,6 +28,7 @@ export function ModalPreferencias({ preferencias, onCambio, onCerrar }: Props) {
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
         evento.preventDefault();
+        evento.stopPropagation();
         cerrarRef.current();
         return;
       }

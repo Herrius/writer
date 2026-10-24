@@ -21,6 +21,7 @@ export function ModalDiff({ lineas, etiquetaBase, etiquetaPropuesta, onCerrar }:
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
         evento.preventDefault();
+        evento.stopPropagation();
         cerrarRef.current();
         return;
       }

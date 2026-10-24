@@ -154,6 +154,14 @@ function fechaHoy(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function esVistaEstrecha(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(max-width: 900px)').matches
+  );
+}
+
 function hayDialogoAbierto(): boolean {
   return (
     typeof document !== 'undefined' &&
@@ -420,6 +428,7 @@ export default function App() {
   const buscadorRef = useRef<HTMLInputElement | null>(null);
   const bannerErrorRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
+  const panelToggleRef = useRef<HTMLButtonElement | null>(null);
   const proyectoRef = useRef<ProyectoDto | null>(null);
   const activoRef = useRef<DocumentoDto | null>(null);
   const puedeEditarRef = useRef(false);
@@ -449,10 +458,39 @@ export default function App() {
     setActivo(nuevo);
   };
 
+  const cerrarPanel = () => {
+    setPanelAbierto(false);
+    window.setTimeout(() => {
+      if (esVistaEstrecha()) {
+        panelToggleRef.current?.focus();
+      }
+    }, 0);
+  };
+
+  const enfocarTrasCambio = () => {
+    window.setTimeout(() => {
+      if (panelAbierto && esVistaEstrecha()) {
+        (document.querySelector('.dabble-panel-cerrar') as HTMLElement | null)?.focus();
+      } else {
+        (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
+      }
+    }, 0);
+  };
+
   useEffect(() => {
     aplicarPreferencias(preferencias);
     guardarPreferencias(preferencias);
   }, [preferencias]);
+
+  useEffect(() => {
+    if (!panelAbierto || !esVistaEstrecha()) {
+      return;
+    }
+    const temporizador = window.setTimeout(() => {
+      (document.querySelector('.dabble-panel-cerrar') as HTMLElement | null)?.focus();
+    }, 0);
+    return () => window.clearTimeout(temporizador);
+  }, [panelAbierto]);
 
   useEffect(() => {
     let cancelado = false;
@@ -493,6 +531,12 @@ export default function App() {
   const limpiarPendiente = () => {
     cancelarTemporizador();
     pendienteRef.current = null;
+  };
+
+  const limpiarPendienteDe = (documentoId: string) => {
+    if (pendienteRef.current?.id === documentoId) {
+      limpiarPendiente();
+    }
   };
 
   const escenas = useMemo(
@@ -2023,30 +2067,30 @@ export default function App() {
     if (!actual || procesandoCambio) {
       return;
     }
-    const id = cambioActivoRef.current?.id;
-    const teniaPendiente = pendienteRef.current !== null;
-    if (teniaPendiente) {
-      const guardadoPendiente = await guardarAhora();
-      if (!guardadoPendiente) {
-        return;
-      }
-    }
-    let cambio = cambioActivoRef.current;
-    if (teniaPendiente && id) {
-      try {
-        cambio = await leerCambio(actual.raiz, id);
-      } catch {
-        setCambioActivo(null);
-        setEstadoGuardado('guardado');
-        return;
-      }
-    }
-    if (!cambio) {
-      return;
-    }
     setProcesandoCambio(true);
     setErrorCambios(null);
     try {
+      const id = cambioActivoRef.current?.id;
+      const teniaPendiente = pendienteRef.current !== null;
+      if (teniaPendiente) {
+        const guardadoPendiente = await guardarAhora();
+        if (!guardadoPendiente) {
+          return;
+        }
+      }
+      let cambio = cambioActivoRef.current;
+      if (teniaPendiente && id) {
+        try {
+          cambio = await leerCambio(actual.raiz, id);
+        } catch {
+          setCambioActivo(null);
+          setEstadoGuardado('guardado');
+          return;
+        }
+      }
+      if (!cambio) {
+        return;
+      }
       const guardado = await aplicarCambio(actual.raiz, cambio.id);
       const cuerpo = cambio.propuesta.replace(/\n$/, '');
       fijarProyecto({ ...actual, revision: guardado.revision });
@@ -2067,7 +2111,7 @@ export default function App() {
         cuerpoEditorRef.current = cuerpo;
         setRevisionEditor((valor) => valor + 1);
       }
-      limpiarPendiente();
+      limpiarPendienteDe(cambio.documento);
       setCambioActivo(null);
       setCambiosProyecto((lista) =>
         lista.filter((item) => item.id !== cambio.id),
@@ -2075,9 +2119,7 @@ export default function App() {
       setEstadoGuardado('guardado');
       setErrorGuardado(null);
       setDiffAbierto(false);
-      window.setTimeout(() => {
-        (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
-      }, 0);
+      enfocarTrasCambio();
       setMensaje(`Cambio aceptado en la revisión ${guardado.revision}.`);
     } catch (fallo) {
       setErrorCambios(errorDe(fallo).mensaje);
@@ -2098,7 +2140,7 @@ export default function App() {
       await descartarCambio(actual.raiz, cambio.id);
       setCambiosProyecto((lista) => lista.filter((item) => item.id !== cambio.id));
       setCambioActivo(null);
-      limpiarPendiente();
+      limpiarPendienteDe(cambio.documento);
       const documentoActivo = activoRef.current;
       if (documentoActivo?.id === cambio.documento) {
         cuerpoEditorRef.current = documentoActivo.cuerpo;
@@ -2106,9 +2148,7 @@ export default function App() {
       }
       setEstadoGuardado('guardado');
       setDiffAbierto(false);
-      window.setTimeout(() => {
-        (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
-      }, 0);
+      enfocarTrasCambio();
       setMensaje('Cambio rechazado; el documento conserva su versión anterior.');
     } catch (fallo) {
       setErrorCambios(errorDe(fallo).mensaje);
@@ -2455,8 +2495,8 @@ export default function App() {
         setPreferencias((valor) => ({ ...valor, modoEnfoque: !valor.modoEnfoque }));
         return;
       }
-      if (evento.key === 'Escape' && panelAbierto && window.matchMedia('(max-width: 900px)').matches) {
-        setPanelAbierto(false);
+      if (evento.key === 'Escape' && panelAbierto && esVistaEstrecha()) {
+        cerrarPanel();
         return;
       }
       if (
@@ -3067,6 +3107,7 @@ export default function App() {
             aria-label="Abrir panel lateral"
             aria-expanded={panelAbierto}
             title="Panel lateral"
+            ref={panelToggleRef}
             onClick={() => setPanelAbierto((valor) => !valor)}
           >
             ▤
@@ -3609,8 +3650,23 @@ export default function App() {
           )}
         </main>
 
+        {panelAbierto && (
+          <button
+            className="dabble-panel-fondo"
+            aria-label="Cerrar panel lateral"
+            onClick={cerrarPanel}
+          />
+        )}
+
         {vista === 'historial' ? (
           <aside className="dabble-derecha dabble-derecha-historial">
+            <button
+              className="dabble-panel-cerrar"
+              aria-label="Cerrar panel lateral"
+              onClick={cerrarPanel}
+            >
+              ×
+            </button>
             <header className="dabble-derecha-cabecera">
               <strong>Historial de versiones</strong>
               <button
@@ -3666,18 +3722,11 @@ export default function App() {
           </aside>
         ) : (
           <>
-          {panelAbierto && (
-          <button
-            className="dabble-panel-fondo"
-            aria-label="Cerrar panel lateral"
-            onClick={() => setPanelAbierto(false)}
-          />
-        )}
         <aside className={`dabble-derecha ${panelAbierto ? 'abierto' : ''}`}>
             <button
               className="dabble-panel-cerrar"
               aria-label="Cerrar panel lateral"
-              onClick={() => setPanelAbierto(false)}
+              onClick={cerrarPanel}
             >
               ×
             </button>

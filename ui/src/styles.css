@@ -4077,9 +4077,9 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 
 .dabble-derecha-tabs button {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.15;
 }
 
 .modal-diff {
@@ -4116,6 +4116,10 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 
 .modal-diff .diff-contenedor {
   max-height: 70vh;
+}
+
+.modal-diff .diff-tabla {
+  min-width: 680px;
 }
 
 @media (max-width: 900px) {

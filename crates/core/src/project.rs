@@ -1188,12 +1188,14 @@ impl Project {
 
     /// Rechaza operaciones estructurales mientras haya una propuesta pendiente.
     fn exigir_sin_cambio_pendiente(&self, documento: &str, ruta: &str) -> Result<()> {
-        if changes::para_documento(&self.raiz, documento, ruta)?.is_some() {
-            return Err(Error::Conflict(format!(
+        match changes::para_documento(&self.raiz, documento, ruta) {
+            Ok(Some(_)) => Err(Error::Conflict(format!(
                 "hay un cambio propuesto pendiente para {ruta}; acéptalo o recházalo antes de modificarlo"
-            )));
+            ))),
+            // Un almacén de propuestas ilegible no debe impedir guardar el
+            // manuscrito. El panel de cambios mostrará su propio error.
+            Ok(None) | Err(_) => Ok(()),
         }
-        Ok(())
     }
 
     /// Lista los cambios locales pendientes.
@@ -1487,7 +1489,10 @@ impl Project {
     /// errores que queden después.
     pub fn revertir(&self, revision: u64) -> Result<ResultadoRevertir> {
         let mut sesion = self.escritura_con(true)?;
-        if !changes::listar(&self.raiz)?.is_empty() {
+        let hay_cambios = changes::listar(&self.raiz)
+            .map(|cambios| !cambios.is_empty())
+            .unwrap_or(false);
+        if hay_cambios {
             return Err(Error::Conflict(
                 "hay cambios propuestos pendientes; acéptalos o recházalos antes de revertir"
                     .to_string(),

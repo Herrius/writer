@@ -1471,3 +1471,65 @@ fn no_se_mueve_un_documento_con_cambio_pendiente() {
     );
     proyecto.aplicar_cambio(&cambio.id).expect("aplicar");
 }
+
+#[cfg(unix)]
+#[test]
+fn un_directorio_de_cambios_enlazado_no_impide_guardar_el_manuscrito() {
+    use std::os::unix::fs::symlink;
+
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cambios-enlazados"));
+    proyecto.init("Cambios", None, None).expect("init");
+    let documento = proyecto.listar(false).expect("listar").remove(0);
+    let cambios = proyecto.raiz().join(".escritor/cambios");
+    if cambios.exists() {
+        std::fs::remove_dir_all(&cambios).expect("quitar cambios");
+    }
+    let fuera = directorio.path().join("fuera");
+    std::fs::create_dir(&fuera).expect("fuera");
+    symlink(&fuera, &cambios).expect("symlink");
+    proyecto
+        .escribir_cuerpo(documento.id(), "El manuscrito sigue escribiéndose.\n")
+        .expect("guardar a pesar del sidecar inválido");
+    assert_eq!(
+        proyecto.leer(documento.id()).expect("leer").cuerpo(),
+        "El manuscrito sigue escribiéndose.\n"
+    );
+}
+
+#[test]
+fn sidecar_de_cambio_que_es_directorio_o_gigante_se_aparta() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cambios-tipos"));
+    proyecto.init("Cambios", None, None).expect("init");
+    let carpeta = proyecto.raiz().join(".escritor/cambios");
+    std::fs::create_dir_all(&carpeta).expect("carpeta");
+    let primero = writer_core::ulid::nuevo().expect("ulid");
+    std::fs::create_dir(carpeta.join(format!("{primero}.json"))).expect("directorio");
+    let segundo = writer_core::ulid::nuevo().expect("ulid");
+    let grande = carpeta.join(format!("{segundo}.json"));
+    std::fs::write(&grande, vec![b'x'; 9 * 1024 * 1024]).expect("grande");
+    assert!(proyecto.listar_cambios().expect("listar").is_empty());
+    assert!(!carpeta.join(format!("{primero}.json")).exists());
+    assert!(!grande.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn sidecar_de_cambio_enlazado_se_aparta_sin_seguirlo() {
+    use std::os::unix::fs::symlink;
+
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cambios-symlink"));
+    proyecto.init("Cambios", None, None).expect("init");
+    let carpeta = proyecto.raiz().join(".escritor/cambios");
+    std::fs::create_dir_all(&carpeta).expect("carpeta");
+    let fuera = directorio.path().join("fuera.json");
+    std::fs::write(&fuera, b"{}").expect("fuera");
+    let id = writer_core::ulid::nuevo().expect("ulid");
+    let enlace = carpeta.join(format!("{id}.json"));
+    symlink(&fuera, &enlace).expect("symlink");
+    assert!(proyecto.listar_cambios().expect("listar").is_empty());
+    assert!(!enlace.exists());
+    assert!(fuera.exists(), "el destino del enlace no se toca");
+}

@@ -34,11 +34,11 @@
 ```text
 cargo fmt --all --check                              OK
 cargo clippy --workspace --all-targets --all-features  OK
-cargo test --workspace --all-targets --locked        74 + 45 + 25 + 1 perf
+cargo test --workspace --all-targets --locked        74 + 48 + 25 + 1 perf
 cargo test desktop                                   8/8
 pnpm typecheck                                       OK
-pnpm ui:test                                         76/76
-pnpm e2e                                             47/47
+pnpm ui:test                                         77/77
+pnpm e2e                                             48/48
 ci.py calidad                                        OK
 ci.py interfaz                                       OK
 ci.py producto                                       OK
@@ -97,3 +97,23 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
   el E2E comprueba una revisión anterior y texto concreto.
 - **P3:** `Alt+E`, marcas `nota` en el texto leído y recuento de caracteres
   visible.
+
+## 7. Correcciones de la re-revisión r2
+
+- **P1 texto durante el guardado previo:** aceptar/rechazar activa
+  `procesandoCambio` antes del primer `await`; el editor queda deshabilitado y
+  `limpiarPendienteDe` solo borra el pendiente del documento aplicado. Prueba
+  de regresión en `ui/src/App.test.tsx`.
+- **P2 `.escritor/cambios` inválido:** `exigir_sin_cambio_pendiente` y
+  `revertir` tratan un almacén de propuestas ilegible como “sin propuesta
+  verificable”; el manuscrito se sigue pudiendo guardar. Prueba con symlink en
+  `crates/core/tests/proyecto.rs`.
+- **P1 instaladores:** `ci.py empaquetado` reconstruyó `.deb` y `.rpm` desde el
+  código corregido; el binario embebe el asset JS actual.
+- **P2 foco del drawer:** al abrir se enfoca el cierre; al cerrar vuelve al
+  toggle; el historial usa el mismo fondo/cierre; `Escape` en un modal no cierra
+  el drawer. E2E ampliados.
+- **P3 responsive:** tabs con salto de línea en vez de elipsis, diff con ancho
+  mínimo y pruebas de foco/geometría a 720/960 px.
+- **P3 documentación:** README, HANDOFF, e2e, empaquetado y conteos
+  actualizados a 74 + 48 + 25 + 1, 77 UI y 48 E2E.

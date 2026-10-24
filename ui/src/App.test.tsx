@@ -34,6 +34,7 @@ import {
   resolverComentario,
   revertir,
 } from './api';
+import type { CambioDetalleDto } from './types/CambioDetalleDto';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
@@ -523,6 +524,62 @@ describe('autosave de la interfaz', () => {
     );
     await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
     expect(await screen.findByText(/Cambio aceptado en la revisión/)).toBeTruthy();
+  });
+
+  it('bloquea el editor antes de aplicar una propuesta y no pierde texto', async () => {
+    const inicial: CambioDetalleDto = {
+      id: '01CAMBIO00000000000000001',
+      documento: documento.id,
+      ruta: documento.ruta,
+      autor: 'local',
+      ts: '2026-10-24T10:00:00Z',
+      baseRevision: 1,
+      baseHash: documento.hashArchivo,
+      base: documento.cuerpo,
+      propuesta: 'Propuesta inicial.\n',
+      insertadas: 1,
+      borradas: 0,
+      lineas: [],
+    };
+    const actualizada: CambioDetalleDto = {
+      ...inicial,
+      id: '01CAMBIO00000000000000002',
+      propuesta: 'Propuesta actualizada.\n',
+    };
+    const enGuardado = diferida<CambioDetalleDto | null>();
+    registrarCambioMock
+      .mockResolvedValueOnce(inicial)
+      .mockReturnValueOnce(enGuardado.promesa);
+    leerCambioMock.mockResolvedValue(actualizada);
+    aplicarCambioMock.mockResolvedValue({
+      revision: 2,
+      hashArchivo: 'blake3:actualizada',
+    });
+
+    const editor = await abrirDemo();
+    fireEvent.click(screen.getByRole('button', { name: 'Control de cambios' }));
+    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.change(editor, { target: { value: inicial.propuesta } });
+    await waitFor(() => expect(estadoGuardado()).toBe('cambio propuesto'), {
+      timeout: 3000,
+    });
+
+    fireEvent.change(editor, { target: { value: actualizada.propuesta } });
+    fireEvent.click(screen.getByRole('button', { name: 'Aceptar cambio' }));
+    await waitFor(() => expect(registrarCambioMock).toHaveBeenCalledTimes(2));
+    expect(editor.disabled).toBe(true);
+
+    await act(async () => {
+      enGuardado.resolver(actualizada);
+    });
+    await waitFor(() =>
+      expect(aplicarCambioMock).toHaveBeenCalledWith(
+        '/tmp/novela',
+        actualizada.id,
+      ),
+    );
+    await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
+    expect(screen.getByDisplayValue('Propuesta actualizada.')).toBeTruthy();
   });
 
   it('compara una revisión con el documento actual', async () => {

@@ -39,6 +39,7 @@ export function Paleta({
     const alPulsar = (evento: globalThis.KeyboardEvent) => {
       if (evento.key === 'Escape') {
         evento.preventDefault();
+        evento.stopPropagation();
         cerrarRef.current();
         return;
       }
