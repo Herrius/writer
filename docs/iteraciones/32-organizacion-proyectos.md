@@ -30,7 +30,7 @@
 - Crear plantilla desde la UI (núcleo + Tauri, app data).
 - Usar plantilla preseleccionada en el asistente.
 - Eliminar con confirmación y validar que sea una plantilla real.
-- Límite de 10.000 escenas para evitar plantillas desmesuradas.
+- Límite de 500 escenas para evitar plantillas desmesuradas.
 
 ### Papelera
 
@@ -59,11 +59,11 @@
 ## 3. Pruebas
 
 ```text
-cargo test --workspace --all-targets --locked   83 unit + 49 integración + 25 CLI + 1 perf
+cargo test --workspace --all-targets --locked   90 unit + 49 integración + 25 CLI + 1 perf
 cargo test desktop                              9/9
 pnpm typecheck                                  OK
 pnpm ui:test                                    83/83
-pnpm e2e                                        52/52
+pnpm e2e                                        55/55
 ```
 
 Casos nuevos destacados:
@@ -82,3 +82,41 @@ Casos nuevos destacados:
   UI no los lista automáticamente.
 - No hay purga automática ni restauración de colecciones al recuperar.
 - La validación Windows de `rename`, rutas y permisos sigue pendiente.
+
+## 5. Correcciones de la revisión QA/UX r1
+
+- **Papelera:** la metadata se escribe antes de mover el proyecto; si falla, el
+  slot vacío se elimina y el proyecto no se toca. Se valida que `ruta_original`
+  sea hermana de `.writer-papelera` y que no apunte dentro del slot.
+- **Plantillas:** se rechazan raíces enlazadas, FIFOs y archivos no regulares;
+  se limitan archivos y tamaño; se deduplican notas; el límite baja a 500
+  escenas; la creación corre en `spawn_blocking`.
+- **Límites locales:** colecciones 50/1.000 y papelera 100 se comprueban al
+  escribir y muestran error; ya no se recortan al recargar.
+- **UI:** foco inicial/retorno tras `inert`, trampa Tab, pie de modal fijo,
+  mensajes de error dentro de la confirmación, botones de peligro deshabilitados
+  durante la operación, menú `⋯` de 24×24 y papelera responsive a 960/720/200 %.
+- **Colecciones:** se guardan antes de Abrir, Mover o crear otra colección.
+- **Contraste:** metadatos y “Crear desde plantilla” corregidos.
+- **Docs:** conteos 90/49/25+1, 83 UI y 55 E2E; límites y validaciones
+  actualizados.
+
+## 6. Correcciones de la revisión QA/UX r2
+
+- **Plantillas:** el límite se interpreta sobre la estructura declarada; los
+  archivos de manuscrito solo rellenan escenas existentes y se rechazan si
+  sobran. Presupuesto único de 500 archivos y 64 MiB entre `manuscrito/` y
+  `notas/`; se probó `500 escenas + 1 archivo` y `1 escena + archivos extra`.
+- **Foco apilado:** al abrir una confirmación o crear una colección desde el
+  menú `⋯`, el foco vuelve al disparador original; al borrar filas de
+  colecciones se enfoca el siguiente control; al borrar la última colección se
+  enfoca la pestaña activa.
+- **Límite de colecciones:** el error de 1.000 rutas se muestra dentro del
+  modal y bloquea Abrir/Mover/Nueva hasta corregirlo.
+- **Papelera:** restaurar usa el estado de proceso y deshabilita los botones;
+  el error de purga no se duplica en el fondo; el botón `×` se deshabilita
+  mientras se procesa.
+- **Plantillas corruptas:** se pueden eliminar por API aunque el manifiesto sea
+  inválido; el listado sigue mostrando solo las válidas.
+- **Docs:** 90 unitarias + 49 integración + 25 CLI + 1 rendimiento, 83 UI y
+  55 E2E.

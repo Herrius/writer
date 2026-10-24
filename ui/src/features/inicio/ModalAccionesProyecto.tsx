@@ -1,3 +1,4 @@
+import { useTrampaTab } from './useTrampaTab';
 import { useEffect, useRef, useState } from 'react';
 import type { Coleccion } from '../../organizacion';
 import type { Reciente } from '../../recientes';
@@ -7,9 +8,10 @@ type Props = {
   colecciones: Coleccion[];
   onCerrar: () => void;
   onAbrir: () => void;
-  onGuardarColecciones: (ids: string[]) => void;
+  onGuardarColecciones: (ids: string[]) => boolean;
   onCrearColeccion: () => void;
   onMoverPapelera: () => void;
+  error?: string | null;
 };
 
 export function ModalAccionesProyecto({
@@ -20,17 +22,20 @@ export function ModalAccionesProyecto({
   onGuardarColecciones,
   onCrearColeccion,
   onMoverPapelera,
+  error = null,
 }: Props) {
   const [seleccion, setSeleccion] = useState(
     () => new Set(colecciones.filter((c) => c.rutas.includes(reciente.ruta)).map((c) => c.id)),
   );
   const dialogoRef = useRef<HTMLDivElement | null>(null);
-  const anteriorFoco = useRef<HTMLElement | null>(null);
+  const anteriorFoco = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
+  );
   const cerrarRef = useRef(onCerrar);
   cerrarRef.current = onCerrar;
+  useTrampaTab(dialogoRef);
 
   useEffect(() => {
-    anteriorFoco.current = document.activeElement as HTMLElement | null;
     dialogoRef.current?.querySelector<HTMLElement>('button')?.focus();
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
@@ -42,7 +47,7 @@ export function ModalAccionesProyecto({
     document.addEventListener('keydown', alPulsar);
     return () => {
       document.removeEventListener('keydown', alPulsar);
-      anteriorFoco.current?.focus?.();
+      window.setTimeout(() => anteriorFoco.current?.focus?.(), 50);
     };
   }, []);
 
@@ -86,10 +91,22 @@ export function ModalAccionesProyecto({
           </button>
         </header>
         <div className="modal-inicio-cuerpo">
-          <button className="dabble-boton" onClick={onAbrir}>
+          <button
+            className="dabble-boton"
+            onClick={() => {
+              if (onGuardarColecciones(Array.from(seleccion))) {
+                onAbrir();
+              }
+            }}
+          >
             Abrir proyecto
           </button>
 
+          {error && (
+            <p className="dabble-error" role="alert">
+              {error}
+            </p>
+          )}
           <h3>Colecciones</h3>
           {colecciones.length === 0 ? (
             <p className="dabble-vacio">Todavía no hay colecciones.</p>
@@ -108,7 +125,14 @@ export function ModalAccionesProyecto({
               ))}
             </div>
           )}
-          <button className="dabble-boton" onClick={onCrearColeccion}>
+          <button
+            className="dabble-boton"
+            onClick={() => {
+              if (onGuardarColecciones(Array.from(seleccion))) {
+                onCrearColeccion();
+              }
+            }}
+          >
             + Nueva colección
           </button>
 
@@ -116,7 +140,14 @@ export function ModalAccionesProyecto({
           <p className="dabble-nota-pie">
             El proyecto se moverá a una papelera local recuperable. No se borra del disco.
           </p>
-          <button className="dabble-boton peligro" onClick={onMoverPapelera}>
+          <button
+            className="dabble-boton peligro"
+            onClick={() => {
+              if (onGuardarColecciones(Array.from(seleccion))) {
+                onMoverPapelera();
+              }
+            }}
+          >
             Mover proyecto a la papelera
           </button>
         </div>

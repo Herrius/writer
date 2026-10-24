@@ -86,7 +86,8 @@ export function filtrosActivos(filtros: FiltrosProyectos): number {
   return (
     (filtros.autor.trim() ? 1 : 0) +
     (filtros.periodo !== 'todos' ? 1 : 0) +
-    (filtros.minimoPalabras > 0 ? 1 : 0)
+    (filtros.minimoPalabras > 0 ? 1 : 0) +
+    (filtros.orden !== 'recientes' ? 1 : 0)
   );
 }
 
@@ -187,9 +188,9 @@ export function leerColecciones(): Coleccion[] {
       .map((item) => ({
         ...item,
         nombre: item.nombre.trim(),
-        rutas: Array.from(new Set(item.rutas)).slice(0, 1000),
+        rutas: Array.from(new Set(item.rutas)),
       }))
-      .slice(0, 50);
+      ;
   } catch {
     return [];
   }
@@ -225,10 +226,22 @@ export function leerPapelera(): EntradaPapelera[] {
           typeof item?.id === 'string' &&
           typeof item.titulo === 'string' &&
           typeof item.rutaOriginal === 'string' &&
+          item.rutaOriginal.length <= 4096 &&
           typeof item.rutaPapelera === 'string' &&
-          typeof item.eliminado === 'string',
+          item.rutaPapelera.length <= 4096 &&
+          typeof item.eliminado === 'string' &&
+          (item.autor === null ||
+            item.autor === undefined ||
+            (typeof item.autor === 'string' && item.autor.length <= 200)) &&
+          (item.color === null ||
+            item.color === undefined ||
+            (typeof item.color === 'string' && /^#[0-9a-f]{6}$/i.test(item.color))) &&
+          (item.palabras === undefined ||
+            (typeof item.palabras === 'number' &&
+              Number.isFinite(item.palabras) &&
+              item.palabras >= 0)),
       )
-      .slice(0, 100);
+      ;
   } catch {
     return [];
   }

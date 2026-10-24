@@ -1,3 +1,4 @@
+import { useTrampaTab } from './useTrampaTab';
 import { useEffect, useRef, useState } from 'react';
 import type { Coleccion } from '../../organizacion';
 
@@ -12,12 +13,14 @@ export function ModalGestionColecciones({ colecciones, onGuardar, onCerrar }: Pr
   const [confirmar, setConfirmar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dialogoRef = useRef<HTMLDivElement | null>(null);
-  const anteriorFoco = useRef<HTMLElement | null>(null);
+  const anteriorFoco = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
+  );
   const cerrarRef = useRef(onCerrar);
   cerrarRef.current = onCerrar;
+  useTrampaTab(dialogoRef);
 
   useEffect(() => {
-    anteriorFoco.current = document.activeElement as HTMLElement | null;
     dialogoRef.current?.querySelector<HTMLElement>('input, button')?.focus();
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
@@ -29,7 +32,7 @@ export function ModalGestionColecciones({ colecciones, onGuardar, onCerrar }: Pr
     document.addEventListener('keydown', alPulsar);
     return () => {
       document.removeEventListener('keydown', alPulsar);
-      anteriorFoco.current?.focus?.();
+      window.setTimeout(() => anteriorFoco.current?.focus?.(), 50);
     };
   }, []);
 
@@ -100,6 +103,9 @@ export function ModalGestionColecciones({ colecciones, onGuardar, onCerrar }: Pr
                   }
                   setBorrador((actual) => actual.filter((item) => item.id !== coleccion.id));
                   setConfirmar(null);
+                  window.requestAnimationFrame(() => {
+                    dialogoRef.current?.querySelector<HTMLElement>('input, button')?.focus();
+                  });
                 }}
               >
                 {confirmar === coleccion.id ? 'Confirmar' : 'Eliminar'}

@@ -1051,7 +1051,7 @@ fn eliminar_plantilla(app: tauri::AppHandle, slug: String) -> Result<(), ErrorDt
 }
 
 #[tauri::command]
-fn crear_desde_plantilla(
+async fn crear_desde_plantilla(
     app: tauri::AppHandle,
     slug: String,
     ruta: String,
@@ -1060,15 +1060,23 @@ fn crear_desde_plantilla(
     idioma: Option<String>,
 ) -> Result<ProyectoDto, ErrorDto> {
     let directorio = directorio_plantillas(&app)?;
-    writer_core::templates::crear_desde_plantilla(
-        &directorio,
-        &slug,
-        std::path::Path::new(&ruta),
-        &titulo,
-        autor.as_deref(),
-        idioma.as_deref(),
-    )
-    .map_err(error)?;
+    let ruta_tarea = ruta.clone();
+    let resultado = tauri::async_runtime::spawn_blocking(move || {
+        writer_core::templates::crear_desde_plantilla(
+            &directorio,
+            &slug,
+            std::path::Path::new(&ruta_tarea),
+            &titulo,
+            autor.as_deref(),
+            idioma.as_deref(),
+        )
+    })
+    .await
+    .map_err(|error| ErrorDto {
+        tipo: TipoError::Otro,
+        mensaje: format!("la creación desde plantilla se interrumpió: {error}"),
+    })?;
+    resultado.map_err(error)?;
     abrir_proyecto(ruta)
 }
 

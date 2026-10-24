@@ -81,10 +81,13 @@ Al confirmar:
 
 - No hay subida de imágenes ni selector de arte de portada: el arte por
   defecto es fijo y el color solo lo tiñe.
+- “Crear notas iniciales” se oculta cuando se elige una plantilla: las notas las
+  define el manifiesto de la plantilla.
 - La papelera es local, hermana del proyecto y sin purga automática; ver
   [`papelera-v1.md`](papelera-v1.md).
 - Las colecciones y filtros viven en `localStorage`; no viajan con el proyecto.
-- No hay renombrar, borrar ni mover proyectos desde la GUI.
+- No hay renombrar ni mover proyectos a otra carpeta desde la GUI; sí se
+  pueden mover a la papelera, restaurar y purgar.
 - El color de portada es una preferencia local de recientes, no un dato del
   proyecto.
 - La creación real requiere la app de escritorio; la demo solo muestra el

@@ -5002,3 +5002,86 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
     padding-inline: 1.25rem;
   }
 }
+
+/* Correcciones de accesibilidad y responsive del panel. */
+.modal-inicio {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-inicio-cabecera,
+.modal-inicio-pie {
+  flex: 0 0 auto;
+}
+
+.modal-inicio-cuerpo {
+  min-height: 0;
+  overflow: auto;
+}
+
+.crear-plantilla {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.colecciones-barra > button small,
+.plantilla-tarjeta header small,
+.plantilla-tarjeta dt,
+.papelera-item small {
+  color: #5f5a53;
+}
+
+.colecciones-error {
+  margin: 0.65rem 2.5rem 0;
+}
+
+.tarjeta-menu {
+  width: 24px;
+  height: 24px;
+  right: -2px;
+  bottom: -2px;
+  padding: 0;
+  border-radius: 0.2rem;
+  line-height: 1;
+}
+
+.tarjeta-proyecto .tarjeta-meta {
+  padding-right: 1.6rem;
+}
+
+.papelera-item {
+  min-width: 0;
+}
+
+.papelera-item > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.papelera-item p {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.papelera-acciones {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 960px) {
+  .papelera-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .papelera-acciones {
+    width: 100%;
+  }
+
+  .papelera-lista,
+  .panel-papelera .dabble-error,
+  .colecciones-error {
+    padding-inline: 1.25rem;
+    margin-inline: 0;
+  }
+}

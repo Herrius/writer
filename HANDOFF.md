@@ -133,11 +133,11 @@ WebKit/WebView2 al ejecutar `cargo test --workspace` del núcleo.
 ```text
 cargo fmt --all --check                         OK
 cargo clippy --workspace --all-targets -D warnings   OK
-cargo test --workspace --all-targets --locked   83 + 49 + 25 + 1 perf
-cargo test desktop                              8/8
+cargo test --workspace --all-targets --locked   90 + 49 + 25 + 1 perf
+cargo test desktop                              9/9
 pnpm typecheck                                  OK
 pnpm ui:test                                    83/83
-pnpm e2e                                        52/52
+pnpm e2e                                        55/55
 ci.py calidad                                   OK
 ci.py interfaz                                  OK
 ci.py producto                                  OK

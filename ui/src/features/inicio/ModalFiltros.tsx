@@ -1,3 +1,4 @@
+import { useTrampaTab } from './useTrampaTab';
 import { useEffect, useRef, useState } from 'react';
 import {
   FILTROS_POR_DEFECTO,
@@ -16,13 +17,15 @@ type Props = {
 export function ModalFiltros({ filtros, autores, onAplicar, onCerrar }: Props) {
   const [borrador, setBorrador] = useState(filtros);
   const dialogoRef = useRef<HTMLDivElement | null>(null);
-  const anteriorFoco = useRef<HTMLElement | null>(null);
+  const anteriorFoco = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
+  );
   const cerrarRef = useRef(onCerrar);
   cerrarRef.current = onCerrar;
+  useTrampaTab(dialogoRef);
 
   useEffect(() => {
-    anteriorFoco.current = document.activeElement as HTMLElement | null;
-    dialogoRef.current?.querySelector<HTMLElement>('select, input, button')?.focus();
+    dialogoRef.current?.querySelector<HTMLElement>('.modal-inicio-cuerpo select, .modal-inicio-cuerpo input, .modal-inicio-cuerpo button')?.focus();
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
         evento.preventDefault();
@@ -33,9 +36,14 @@ export function ModalFiltros({ filtros, autores, onAplicar, onCerrar }: Props) {
     document.addEventListener('keydown', alPulsar);
     return () => {
       document.removeEventListener('keydown', alPulsar);
-      anteriorFoco.current?.focus?.();
+      window.setTimeout(() => anteriorFoco.current?.focus?.(), 50);
     };
   }, []);
+
+  const autoresVisibles =
+    borrador.autor && !autores.includes(borrador.autor)
+      ? [borrador.autor, ...autores]
+      : autores;
 
   const actualizar = <K extends keyof FiltrosProyectos>(
     clave: K,
@@ -77,7 +85,7 @@ export function ModalFiltros({ filtros, autores, onAplicar, onCerrar }: Props) {
               onChange={(evento) => actualizar('autor', evento.target.value)}
             >
               <option value="">Cualquier autor</option>
-              {autores.map((autor) => (
+              {autoresVisibles.map((autor) => (
                 <option key={autor} value={autor}>
                   {autor}
                 </option>
@@ -127,7 +135,7 @@ export function ModalFiltros({ filtros, autores, onAplicar, onCerrar }: Props) {
         <footer className="modal-inicio-pie">
           <button
             className="dabble-boton"
-            onClick={() => setBorrador({ ...FILTROS_POR_DEFECTO, orden: borrador.orden })}
+            onClick={() => setBorrador({ ...FILTROS_POR_DEFECTO })}
           >
             Limpiar filtros
           </button>

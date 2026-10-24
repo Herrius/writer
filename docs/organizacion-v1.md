@@ -42,7 +42,8 @@ el proyecto ni se sincronizan.
 }
 ```
 
-- Hasta 50 colecciones; cada una hasta 1.000 rutas.
+- Hasta 50 colecciones; cada una hasta 1.000 rutas. El límite se comprueba
+  al crear/asignar y se muestra un error; no se recorta al leer.
 - Nombre no vacío, ≤ 120 caracteres.
 - Color `#rrggbb`.
 - Las rutas son las mismas rutas absolutas de `writer.recientes.v1`.
@@ -66,7 +67,8 @@ el proyecto ni se sincronizan.
 - No hay colecciones anidadas ni reglas automáticas.
 - Las colecciones son por perfil/equipo, no por proyecto.
 - Si se pierde `localStorage`, se pierden los filtros y las colecciones; los
-  proyectos y sus archivos no se tocan.
+  proyectos y sus archivos no se tocan. Las entradas que superen los límites no
+  se eliminan al cargar: la UI impide seguir creciendo.
 - Las rutas movidas o renombradas fuera de writer no se actualizan solas; el
   filtro de colección simplemente deja de encontrar esa ruta.
 

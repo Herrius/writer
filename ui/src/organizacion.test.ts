@@ -115,5 +115,17 @@ describe('papelera local', () => {
     expect(leerPapelera()).toEqual([entrada]);
     window.localStorage.setItem('writer.papelera.v1', '[{"id": 1}]');
     expect(leerPapelera()).toEqual([]);
+    window.localStorage.setItem(
+      'writer.papelera.v1',
+      JSON.stringify([
+        {
+          ...entrada,
+          autor: 123,
+          color: 'rojo',
+          palabras: 'muchas',
+        },
+      ]),
+    );
+    expect(leerPapelera()).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { useTrampaTab } from './useTrampaTab';
 import { useEffect, useRef } from 'react';
 
 type Props = {
@@ -7,6 +8,8 @@ type Props = {
   peligro?: boolean;
   onConfirmar: () => void;
   onCerrar: () => void;
+  error?: string | null;
+  procesando?: boolean;
 };
 
 export function ModalConfirmar({
@@ -16,14 +19,18 @@ export function ModalConfirmar({
   peligro = false,
   onConfirmar,
   onCerrar,
+  error = null,
+  procesando = false,
 }: Props) {
   const dialogoRef = useRef<HTMLDivElement | null>(null);
-  const anteriorFoco = useRef<HTMLElement | null>(null);
+  const anteriorFoco = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
+  );
   const cerrarRef = useRef(onCerrar);
   cerrarRef.current = onCerrar;
+  useTrampaTab(dialogoRef);
 
   useEffect(() => {
-    anteriorFoco.current = document.activeElement as HTMLElement | null;
     dialogoRef.current?.querySelector<HTMLElement>('button')?.focus();
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') {
@@ -35,7 +42,7 @@ export function ModalConfirmar({
     document.addEventListener('keydown', alPulsar);
     return () => {
       document.removeEventListener('keydown', alPulsar);
-      anteriorFoco.current?.focus?.();
+      window.setTimeout(() => anteriorFoco.current?.focus?.(), 50);
     };
   }, []);
 
@@ -54,6 +61,7 @@ export function ModalConfirmar({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirmar-titulo"
+        aria-describedby="confirmar-descripcion"
         ref={dialogoRef}
         tabIndex={-1}
       >
@@ -62,22 +70,33 @@ export function ModalConfirmar({
             <p className="kicker">confirmación</p>
             <h2 id="confirmar-titulo">{titulo}</h2>
           </div>
-          <button className="cerrar-modal" aria-label="Cerrar confirmación" onClick={onCerrar}>
+          <button
+            className="cerrar-modal"
+            aria-label="Cerrar confirmación"
+            onClick={onCerrar}
+            disabled={procesando}
+          >
             ×
           </button>
         </header>
         <div className="modal-inicio-cuerpo">
-          <p>{descripcion}</p>
+          <p id="confirmar-descripcion">{descripcion}</p>
+          {error && (
+            <p className="dabble-error" role="alert">
+              {error}
+            </p>
+          )}
         </div>
         <footer className="modal-inicio-pie">
-          <button className="dabble-boton" onClick={onCerrar}>
+          <button className="dabble-boton" onClick={onCerrar} disabled={procesando}>
             Cancelar
           </button>
           <button
             className={`dabble-boton-primario ${peligro ? 'peligro' : ''}`}
             onClick={onConfirmar}
+            disabled={procesando}
           >
-            {confirmar}
+            {procesando ? 'Procesando…' : confirmar}
           </button>
         </footer>
       </div>

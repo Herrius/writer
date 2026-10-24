@@ -19,6 +19,8 @@ pub const VERSION: u32 = 1;
 pub const DIRECTORIO: &str = ".writer-papelera";
 const MAX_TITULO: usize = 200;
 const MAX_RUTA: usize = 4096;
+const MAX_AUTOR: usize = 200;
+const MAX_MANIFIESTO: u64 = 64 * 1024;
 
 /// Entrada de un proyecto en la papelera local.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -77,10 +79,31 @@ impl EntradaPapelera {
             ));
         }
         time::parse_rfc3339(&self.eliminado)?;
+        if let Some(autor) = &self.autor {
+            if autor.chars().count() > MAX_AUTOR {
+                return Err(Error::Schema(
+                    "autor de papelera demasiado largo".to_string(),
+                ));
+            }
+        }
         if let Some(color) = &self.color {
-            if !color.starts_with('#') || color.len() != 7 {
+            if color.len() != 7
+                || !color.starts_with('#')
+                || !color[1..].bytes().all(|byte| byte.is_ascii_hexdigit())
+            {
                 return Err(Error::Schema("color de papelera no válido".to_string()));
             }
+        }
+        let original = Path::new(&self.ruta_original);
+        let slot = Path::new(&self.ruta_papelera);
+        let padre_slot = slot
+            .parent()
+            .and_then(Path::parent)
+            .ok_or_else(|| Error::Schema("ruta de papelera sin padre original".to_string()))?;
+        if original.parent() != Some(padre_slot) {
+            return Err(Error::Schema(
+                "la ruta original no es hermana de la papelera".to_string(),
+            ));
         }
         Ok(())
     }
@@ -136,11 +159,6 @@ pub fn mover_a_papelera(
         ));
     }
     std::fs::create_dir(&slot).map_err(|error| Error::Io(error).with_path(&slot))?;
-    let proyecto_en_papelera = slot.join("proyecto");
-    if let Err(error) = std::fs::rename(&proyecto, &proyecto_en_papelera) {
-        let _ = std::fs::remove_dir(&slot);
-        return Err(Error::Io(error).with_path(&proyecto));
-    }
     let entrada = EntradaPapelera {
         version: VERSION,
         id,
@@ -152,10 +170,16 @@ pub fn mover_a_papelera(
         ruta_papelera: slot.to_string_lossy().to_string(),
         eliminado: time::ahora(),
     };
+    // La metadata se escribe antes de tocar el proyecto. Si falla, el slot
+    // contiene solo el manifiesto y se puede eliminar sin ningún riesgo.
     if let Err(error) = escribir_manifiesto(&entrada) {
-        let _ = std::fs::rename(&proyecto_en_papelera, &proyecto);
         let _ = std::fs::remove_dir_all(&slot);
         return Err(error);
+    }
+    let proyecto_en_papelera = slot.join("proyecto");
+    if let Err(error) = std::fs::rename(&proyecto, &proyecto_en_papelera) {
+        let _ = std::fs::remove_dir_all(&slot);
+        return Err(Error::Io(error).with_path(&proyecto));
     }
     Ok(entrada)
 }
@@ -220,10 +244,27 @@ pub fn leer_entrada(ruta_papelera: &Path) -> Result<EntradaPapelera> {
             "la entrada de papelera no es un directorio real".to_string(),
         ));
     }
+    let padre_papelera = ruta_papelera
+        .parent()
+        .ok_or_else(|| Error::Input("la entrada no tiene padre".to_string()))?;
+    crate::fsutil::directorio_real(padre_papelera)?;
+    let canonica = crate::fsutil::directorio_real(ruta_papelera)?;
+    if canonica != ruta_papelera {
+        return Err(Error::Integrity(
+            "la ruta de papelera no es canónica".to_string(),
+        ));
+    }
     let manifiesto = ruta_papelera.join("papelera.json");
-    crate::fsutil::archivo_real(&manifiesto)?;
-    let bytes =
-        std::fs::read(&manifiesto).map_err(|error| Error::Io(error).with_path(&manifiesto))?;
+    let canonico = crate::fsutil::archivo_real(&manifiesto)?;
+    let tamano = std::fs::metadata(&canonico)
+        .map_err(|error| Error::Io(error).with_path(&canonico))?
+        .len();
+    if tamano > MAX_MANIFIESTO {
+        return Err(Error::Input(
+            "metadata de papelera demasiado grande".to_string(),
+        ));
+    }
+    let bytes = std::fs::read(&canonico).map_err(|error| Error::Io(error).with_path(&canonico))?;
     let entrada: EntradaPapelera = serde_json::from_slice(&bytes)
         .map_err(|error| Error::Json(error).with_path(&manifiesto))?;
     entrada.validar()?;
@@ -319,6 +360,41 @@ mod tests {
         std::fs::create_dir(&fuera).expect("fuera");
         assert!(purgar_papelera(&fuera).is_err());
         assert!(fuera.exists());
+    }
+
+    #[test]
+    fn rechaza_metadata_que_restaura_dentro_del_slot() {
+        let (_temporal, ruta) = proyecto_temporal();
+        let entrada = mover_a_papelera(&ruta, "Novela", None, None, 0).expect("mover");
+        let slot = Path::new(&entrada.ruta_papelera);
+        let manifiesto = slot.join("papelera.json");
+        let mut valor: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&manifiesto).expect("leer")).expect("json");
+        valor["ruta_original"] =
+            serde_json::Value::String(slot.join("recuperado").to_string_lossy().to_string());
+        std::fs::write(&manifiesto, serde_json::to_vec(&valor).expect("json")).expect("escribir");
+        assert!(leer_entrada(slot).is_err());
+        assert!(restaurar_de_papelera(slot).is_err());
+        assert!(
+            slot.join("proyecto").is_dir(),
+            "el proyecto sigue en la papelera"
+        );
+    }
+
+    #[test]
+    fn rechaza_metadata_que_restaura_fuera_del_padre() {
+        let (temporal, ruta) = proyecto_temporal();
+        let entrada = mover_a_papelera(&ruta, "Novela", None, None, 0).expect("mover");
+        let slot = Path::new(&entrada.ruta_papelera);
+        let fuera = temporal.path().join("sub").join("ajeno");
+        let manifiesto = slot.join("papelera.json");
+        let mut valor: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&manifiesto).expect("leer")).expect("json");
+        valor["ruta_original"] = serde_json::Value::String(fuera.to_string_lossy().to_string());
+        std::fs::write(&manifiesto, serde_json::to_vec(&valor).expect("json")).expect("escribir");
+        assert!(restaurar_de_papelera(slot).is_err());
+        assert!(!fuera.exists());
+        assert!(slot.join("proyecto").is_dir());
     }
 
     #[test]

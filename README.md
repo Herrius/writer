@@ -36,10 +36,10 @@ sincronización ni servicios online.
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula **74
+exportación Markdown e inyección de fallos. El conjunto Rust acumula **90
 unitarias + 49 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
 tiene 9 pruebas y la UI 83 (corpus, preferencias, lectura simulada, autosave,
-búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 52 flujos E2E
+búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 55 flujos E2E
 de navegador y 2 escenarios de escritorio con Tauri/WebDriver (`Ctrl+S` y cierre
 de ventana).
 
@@ -135,7 +135,7 @@ pnpm dev            # Tauri + Vite
 pnpm typecheck      # comprobación TypeScript
 pnpm ui:test        # corpus Markdown, compatibilidad y autosave
 pnpm e2e:install    # Chromium de Playwright (una vez)
-pnpm e2e            # 9 flujos de la demo
+pnpm e2e            # 55 flujos de la demo
 pnpm e2e:tauri      # E2E real Linux (tauri-driver + WebKitWebDriver)
 pnpm ui:build       # build estático de la UI
 pnpm check          # Tauri build --no-bundle

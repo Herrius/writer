@@ -145,6 +145,7 @@ export function Inicio({
   const [colecciones, setColecciones] = useState<Coleccion[]>(() => leerColecciones());
   const [coleccionActiva, setColeccionActiva] = useState<string | null>(null);
   const [modalColeccion, setModalColeccion] = useState(false);
+  const [proyectoOrigenColeccion, setProyectoOrigenColeccion] = useState<Reciente | null>(null);
   const [gestionColecciones, setGestionColecciones] = useState(false);
   const [accionesProyecto, setAccionesProyecto] = useState<Reciente | null>(null);
   const [modalPlantilla, setModalPlantilla] = useState(false);
@@ -154,6 +155,8 @@ export function Inicio({
   const [proyectoAPapelera, setProyectoAPapelera] = useState<Reciente | null>(null);
   const [papeleraAEliminar, setPapeleraAEliminar] = useState<EntradaPapelera | null>(null);
   const [errorPapelera, setErrorPapelera] = useState<string | null>(null);
+  const [procesandoPapelera, setProcesandoPapelera] = useState(false);
+  const [errorOrganizacion, setErrorOrganizacion] = useState<string | null>(null);
   const [vistaInicio, setVistaInicio] = useState<'activo' | 'plantillas' | 'papelera'>('activo');
   const [vista, setVista] = useState<'cuadricula' | 'lista'>('cuadricula');
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -201,7 +204,12 @@ export function Inicio({
   useEffect(() => {
     listarPlantillas()
       .then(setPlantillas)
-      .catch(() => setPlantillas([]));
+      .catch((fallo: unknown) => {
+        setPlantillas([]);
+        setErrorPlantillas(
+          `No se pudieron leer las plantillas: ${errorDe(fallo).mensaje}`,
+        );
+      });
   }, []);
 
   const autores = useMemo(() => autoresRecientes(recientes), [recientes]);
@@ -222,12 +230,26 @@ export function Inicio({
     [coleccionActiva, colecciones, consulta, filtros, recientes],
   );
   const cantidadFiltros = filtrosActivos(filtros);
+  const coleccionSinRutas =
+    coleccionActiva !== null && (rutasColeccionActiva?.length ?? 0) === 0;
   const guardarListaColecciones = (siguiente: Coleccion[]) => {
     setColecciones(siguiente);
     guardarColecciones(siguiente);
   };
-  const guardarAsignacion = (ruta: string, ids: string[]) => {
+  const guardarAsignacion = (ruta: string, ids: string[]): boolean => {
     const seleccionadas = new Set(ids);
+    const excedida = colecciones.find(
+      (coleccion) =>
+        seleccionadas.has(coleccion.id) &&
+        !coleccion.rutas.includes(ruta) &&
+        coleccion.rutas.length >= 1000,
+    );
+    if (excedida) {
+      setErrorOrganizacion(
+        `La colección «${excedida.nombre}» ya tiene 1.000 proyectos.`,
+      );
+      return false;
+    }
     guardarListaColecciones(
       colecciones.map((coleccion) => ({
         ...coleccion,
@@ -237,10 +259,32 @@ export function Inicio({
       })),
     );
     setAccionesProyecto(null);
+    setErrorOrganizacion(null);
     setExito('Colecciones del proyecto actualizadas.');
+    return true;
   };
+  const enfocarOpcionesProyecto = (titulo: string) => {
+    window.setTimeout(() => {
+      const boton = Array.from(document.querySelectorAll<HTMLElement>('.tarjeta-menu')).find(
+        (elemento) => elemento.getAttribute('aria-label') === `Opciones de ${titulo}`,
+      );
+      boton?.focus();
+    }, 50);
+  };
+
+  const enfocarPestanaActiva = () => {
+    window.setTimeout(() => {
+      (document.querySelector('.tabs-inicio [aria-selected="true"]') as HTMLElement | null)?.focus();
+    }, 50);
+  };
+
   const moverAPapelera = async (reciente: Reciente) => {
     setErrorPapelera(null);
+    if (papelera.length >= 100) {
+      setErrorPapelera('La papelera ya tiene 100 proyectos. Restaura o elimina alguno.');
+      return;
+    }
+    setProcesandoPapelera(true);
     try {
       const entrada = await moverProyectoAPapelera(
         reciente.ruta,
@@ -261,13 +305,20 @@ export function Inicio({
       onQuitarReciente(reciente.ruta);
       setProyectoAPapelera(null);
       setExito(`Proyecto «${reciente.titulo}» movido a la papelera.`);
+      enfocarPestanaActiva();
     } catch (fallo) {
       setErrorPapelera(errorDe(fallo).mensaje);
+    } finally {
+      setProcesandoPapelera(false);
     }
   };
 
   const restaurarPapelera = async (entrada: EntradaPapelera) => {
+    if (procesandoPapelera) {
+      return;
+    }
     setErrorPapelera(null);
+    setProcesandoPapelera(true);
     try {
       const ruta = await restaurarProyectoDePapelera(entrada.rutaPapelera);
       const siguiente = papelera.filter((item) => item.rutaPapelera !== entrada.rutaPapelera);
@@ -282,13 +333,17 @@ export function Inicio({
         modificado: new Date().toISOString(),
       });
       setExito(`Proyecto «${entrada.titulo}» restaurado en Mis Proyectos.`);
+      enfocarPestanaActiva();
     } catch (fallo) {
       setErrorPapelera(errorDe(fallo).mensaje);
+    } finally {
+      setProcesandoPapelera(false);
     }
   };
 
   const purgarPapelera = async (entrada: EntradaPapelera) => {
     setErrorPapelera(null);
+    setProcesandoPapelera(true);
     try {
       await purgarProyectoDePapelera(entrada.rutaPapelera);
       const siguiente = papelera.filter((item) => item.rutaPapelera !== entrada.rutaPapelera);
@@ -296,8 +351,11 @@ export function Inicio({
       guardarPapelera(siguiente);
       setPapeleraAEliminar(null);
       setExito(`Proyecto «${entrada.titulo}» eliminado definitivamente.`);
+      enfocarPestanaActiva();
     } catch (fallo) {
       setErrorPapelera(errorDe(fallo).mensaje);
+    } finally {
+      setProcesandoPapelera(false);
     }
   };
 
@@ -505,7 +563,10 @@ export function Inicio({
           </button>
           <button
             className="boton-inicio"
-            onClick={() => setModalColeccion(true)}
+            onClick={() => {
+              setProyectoOrigenColeccion(null);
+              setModalColeccion(true);
+            }}
             title="Crear una colección local de proyectos"
           >
             + Agregar una colección
@@ -635,6 +696,12 @@ export function Inicio({
               </div>
             )}
 
+            {errorOrganizacion && (
+              <p className="dabble-error colecciones-error" role="alert">
+                {errorOrganizacion}
+              </p>
+            )}
+
             {!plegado && (
               <>
             <div className={`proyectos ${vista === 'lista' ? 'proyectos-lista' : ''}`}>
@@ -701,7 +768,10 @@ export function Inicio({
                     className="tarjeta-menu"
                     aria-label={`Opciones de ${reciente.titulo}`}
                     title="Opciones del proyecto"
-                    onClick={() => setAccionesProyecto(reciente)}
+                    onClick={() => {
+                      setErrorOrganizacion(null);
+                      setAccionesProyecto(reciente);
+                    }}
                   >
                     ⋯
                   </button>
@@ -709,31 +779,41 @@ export function Inicio({
               ))}
               {filtrados.length === 0 && (
                 <div className="proyectos-vacio">
-                  <strong>{consulta ? 'Sin coincidencias' : 'No proyectos'}</strong>
+                  <strong>
+                    {consulta
+                      ? 'Sin coincidencias'
+                      : cantidadFiltros > 0
+                        ? 'Ningún proyecto coincide'
+                        : coleccionSinRutas
+                          ? 'Esta colección está vacía'
+                          : 'No proyectos'}
+                  </strong>
                   <p>
-                    {consulta || cantidadFiltros > 0
-                      ? 'Prueba con otra búsqueda o limpia los filtros.'
+                    {consulta || cantidadFiltros > 0 || coleccionActiva
+                      ? 'Prueba con otra búsqueda, colección o limpia los filtros.'
                       : 'Crea tu primer proyecto y comienza a escribir tu obra maestra.'}
                   </p>
-                  {(consulta || cantidadFiltros > 0) && (
+                  {(consulta || cantidadFiltros > 0 || coleccionActiva) && (
                     <button
                       className="boton-inicio"
                       onClick={() => {
                         setConsulta('');
+                        setColeccionActiva(null);
                         const limpios = {
                           ...filtros,
                           autor: '',
                           periodo: 'todos' as const,
                           minimoPalabras: 0,
+                          orden: 'recientes' as const,
                         };
                         setFiltros(limpios);
                         guardarFiltros(limpios);
                       }}
                     >
-                      Limpiar búsqueda y filtros
+                      Ver todos los proyectos
                     </button>
                   )}
-                  {!consulta && (
+                  {!consulta && !coleccionActiva && (
                     <button className="boton-inicio" onClick={onAbrir}>
                       Abrir proyecto existente
                     </button>
@@ -808,9 +888,15 @@ export function Inicio({
                                   actual.filter((item) => item.slug !== opcion.slug),
                                 );
                                 setExito(`Plantilla «${opcion.nombre}» eliminada.`);
+                                enfocarPestanaActiva();
                               })
                               .catch((fallo: unknown) => setErrorPlantillas(errorDe(fallo).mensaje));
                           }}
+                          aria-label={
+                            plantillaAEliminar === opcion.slug
+                              ? `Confirmar eliminación de ${opcion.nombre}`
+                              : `Eliminar plantilla ${opcion.nombre}`
+                          }
                         >
                           {plantillaAEliminar === opcion.slug ? 'Confirmar' : 'Eliminar'}
                         </button>
@@ -828,7 +914,7 @@ export function Inicio({
                   <p>Proyectos retirados de Mis Proyectos. Se pueden restaurar.</p>
                 </div>
               </header>
-              {errorPapelera && (
+              {errorPapelera && !papeleraAEliminar && !proyectoAPapelera && (
                 <p className="dabble-error" role="alert">{errorPapelera}</p>
               )}
               {papelera.length === 0 ? (
@@ -850,13 +936,20 @@ export function Inicio({
                       <div className="papelera-acciones">
                         <button
                           className="dabble-boton-primario"
+                          disabled={procesandoPapelera}
+                          aria-label={`Restaurar «${entrada.titulo}»`}
                           onClick={() => void restaurarPapelera(entrada)}
                         >
                           Restaurar
                         </button>
                         <button
                           className="dabble-boton peligro"
-                          onClick={() => setPapeleraAEliminar(entrada)}
+                          disabled={procesandoPapelera}
+                          aria-label={`Eliminar definitivamente «${entrada.titulo}»`}
+                          onClick={() => {
+                            setErrorPapelera(null);
+                            setPapeleraAEliminar(entrada);
+                          }}
                         >
                           Eliminar definitivamente
                         </button>
@@ -893,13 +986,26 @@ export function Inicio({
 
       {modalColeccion && (
         <ModalColeccion
+          limiteAlcanzado={colecciones.length >= 50}
           onCrear={(nombre, color) => {
             const coleccion = nuevaColeccion(nombre, color);
             guardarListaColecciones([...colecciones, coleccion]);
             setModalColeccion(false);
+            const origen = proyectoOrigenColeccion;
+            setProyectoOrigenColeccion(null);
+            if (origen) {
+              enfocarOpcionesProyecto(origen.titulo);
+            }
             setExito(`Colección «${coleccion.nombre}» creada.`);
           }}
-          onCerrar={() => setModalColeccion(false)}
+          onCerrar={() => {
+            const origen = proyectoOrigenColeccion;
+            setModalColeccion(false);
+            setProyectoOrigenColeccion(null);
+            if (origen) {
+              enfocarOpcionesProyecto(origen.titulo);
+            }
+          }}
         />
       )}
 
@@ -909,6 +1015,9 @@ export function Inicio({
           onGuardar={(siguiente) => {
             guardarListaColecciones(siguiente);
             setGestionColecciones(false);
+            if (siguiente.length === 0) {
+              enfocarPestanaActiva();
+            }
             setExito('Colecciones actualizadas.');
           }}
           onCerrar={() => setGestionColecciones(false)}
@@ -922,12 +1031,15 @@ export function Inicio({
           onCerrar={() => setAccionesProyecto(null)}
           onAbrir={() => onAbrirReciente(accionesProyecto.ruta)}
           onGuardarColecciones={(ids) => guardarAsignacion(accionesProyecto.ruta, ids)}
+          error={errorOrganizacion}
           onCrearColeccion={() => {
             setAccionesProyecto(null);
+            setProyectoOrigenColeccion(accionesProyecto);
             setModalColeccion(true);
           }}
           onMoverPapelera={() => {
             setAccionesProyecto(null);
+            setErrorPapelera(null);
             setProyectoAPapelera(accionesProyecto);
           }}
         />
@@ -938,8 +1050,17 @@ export function Inicio({
           titulo="Mover a la papelera"
           descripcion={`«${proyectoAPapelera.titulo}» se moverá a .writer-papelera y podrá restaurarse después.`}
           confirmar="Mover a la papelera"
+          error={errorPapelera}
+          procesando={procesandoPapelera}
           onConfirmar={() => void moverAPapelera(proyectoAPapelera)}
-          onCerrar={() => setProyectoAPapelera(null)}
+          onCerrar={() => {
+            if (!procesandoPapelera) {
+              const titulo = proyectoAPapelera.titulo;
+              setProyectoAPapelera(null);
+              setErrorPapelera(null);
+              enfocarOpcionesProyecto(titulo);
+            }
+          }}
         />
       )}
 
@@ -949,8 +1070,15 @@ export function Inicio({
           descripcion={`«${papeleraAEliminar.titulo}» se borrará del disco y no se podrá restaurar.`}
           confirmar="Eliminar definitivamente"
           peligro
+          error={errorPapelera}
+          procesando={procesandoPapelera}
           onConfirmar={() => void purgarPapelera(papeleraAEliminar)}
-          onCerrar={() => setPapeleraAEliminar(null)}
+          onCerrar={() => {
+            if (!procesandoPapelera) {
+              setPapeleraAEliminar(null);
+              setErrorPapelera(null);
+            }
+          }}
         />
       )}
 
@@ -1151,14 +1279,20 @@ export function Inicio({
                           }`
                         : 'Elige la carpeta donde se creará el proyecto.'}
                     </p>
-                    <label className="modal-check">
-                      <input
-                        type="checkbox"
-                        checked={notasIniciales}
-                        onChange={(evento) => setNotasIniciales(evento.target.checked)}
-                      />
-                      Crear notas iniciales de personajes, tramas y lugares
-                    </label>
+                    {plantilla ? (
+                      <p className="nota-campo">
+                        Las notas iniciales las define la plantilla seleccionada.
+                      </p>
+                    ) : (
+                      <label className="modal-check">
+                        <input
+                          type="checkbox"
+                          checked={notasIniciales}
+                          onChange={(evento) => setNotasIniciales(evento.target.checked)}
+                        />
+                        Crear notas iniciales de personajes, tramas y lugares
+                      </label>
+                    )}
                     {plantillas.length > 0 && (
                       <label className="campo-carpeta">
                         <span>Plantilla (opcional)</span>

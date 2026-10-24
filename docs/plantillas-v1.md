@@ -45,9 +45,9 @@ descarga y sin red.
 - `nombre` no vacío y ≤ 200 caracteres.
 - `idioma` es un código corto (`es`, `en`).
 - `estructura` usa enteros entre 1 y 999 y el producto total no puede superar
-  10.000 escenas.
+  500 escenas.
 - `notas_iniciales` solo admite tipos de nota válidos.
-- Un manifiesto inválido no se ofrece en la UI.
+- Un manifiesto inválido no se ofrece en la UI; se puede eliminar por slug desde la API aunque no aparezca listado.
 
 ## 4. Creación desde plantilla
 
@@ -62,12 +62,15 @@ descarga y sin red.
 ## 5. Seguridad
 
 - La plantilla no puede contener rutas absolutas, `..`, enlaces simbólicos ni
-  nombres reservados de Windows.
+  nombres reservados de Windows. Se validan también las raíces `manuscrito/` y
+  `notas/`; los FIFOs y entradas que no son archivos regulares se ignoran.
+- Se copian como máximo 500 archivos Markdown, 10 MiB por archivo y 64 MiB en
+  total. Las notas iniciales se deduplican y están limitadas a 100.
 - No se ejecutan scripts ni macros.
 - No se aceptan imágenes remotas.
-- El contenido se valida como Markdown permitido; lo no soportado se rechaza o
-  se convierte en texto, nunca en HTML crudo.
-- Una plantilla corrupta se ignora con aviso; no bloquea el resto.
+- El contenido se copia como texto Markdown; no se interpreta ni se ejecuta
+  como HTML crudo.
+- Una plantilla corrupta se ignora en el listado; no bloquea el resto. La API permite eliminarla.
 
 ## 6. UI
 
@@ -89,7 +92,9 @@ descarga y sin red.
 - Proyecto parcial se limpia si falla la creación.
 - Guardar, listar y eliminar una plantilla local.
 - Rechazar un directorio que no tenga `plantilla.json` al intentar borrarlo.
-- Rechazar una plantilla que generaría más de 10.000 escenas.
+- Rechazar una plantilla que generaría más de 500 escenas, con archivos de
+  manuscrito extra o con demasiados archivos.
+- Rechazar raíces enlazadas y no bloquearse con un FIFO.
 
 ## 8. Gestión y API
 

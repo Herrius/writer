@@ -107,8 +107,8 @@ test('gestiona plantillas locales y preselecciona una al crear', async ({ page }
   await expect(crear.getByLabel('Plantilla del proyecto')).toHaveValue('cuatro-actos');
   await page.keyboard.press('Escape');
 
-  await tarjeta.getByRole('button', { name: 'Eliminar' }).click();
-  await tarjeta.getByRole('button', { name: 'Confirmar' }).click();
+  await tarjeta.getByRole('button', { name: /Eliminar plantilla/ }).click();
+  await tarjeta.getByRole('button', { name: /Confirmar eliminación/ }).click();
   await expect(page.getByRole('heading', { name: 'Cuatro actos' })).toHaveCount(0);
 });
 
@@ -122,7 +122,7 @@ test('mueve, restaura y purga un proyecto de la papelera', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Papelera' }).click();
   await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
-  await page.getByRole('button', { name: 'Restaurar' }).click();
+  await page.getByRole('button', { name: /^Restaurar/ }).click();
   await expect(page.getByText(/restaurado en Mis Proyectos/)).toBeVisible();
   await page.getByRole('tab', { name: 'Activo' }).click();
   await expect(page.locator('.tarjeta-proyecto')).toHaveCount(2);
@@ -134,8 +134,97 @@ test('mueve, restaura y purga un proyecto de la papelera', async ({ page }) => {
     .getByRole('button', { name: 'Mover a la papelera' })
     .click();
   await page.getByRole('tab', { name: 'Papelera' }).click();
-  await page.getByRole('button', { name: 'Eliminar definitivamente' }).click();
+  await page.locator('.papelera-acciones').getByRole('button', { name: /Eliminar definitivamente/ }).click();
   const purgar = page.getByRole('dialog', { name: 'Eliminar definitivamente' });
   await purgar.getByRole('button', { name: 'Eliminar definitivamente' }).click();
   await expect(page.getByText('La papelera está vacía')).toBeVisible();
+});
+
+test('guarda la colección antes de abrir el proyecto', async ({ page }) => {
+  await abrirPanel(page);
+  await page.getByRole('button', { name: '+ Agregar una colección' }).click();
+  const crear = page.getByRole('dialog', { name: 'Nueva colección' });
+  await crear.getByLabel('Nombre').fill('Al abrir');
+  await crear.getByRole('button', { name: 'Crear colección' }).click();
+
+  await page.getByRole('button', { name: 'Opciones de El umbral' }).click();
+  const acciones = page.getByRole('dialog', { name: 'El umbral' });
+  await acciones.getByRole('checkbox', { name: 'Al abrir' }).check();
+  await acciones.getByRole('button', { name: 'Abrir proyecto' }).click();
+  await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
+  await page.getByRole('button', { name: 'Volver a Proyectos' }).click();
+  await page.getByRole('button', { name: /Al abrir/ }).click();
+  await expect(page.locator('.tarjeta-proyecto')).toHaveCount(1);
+});
+
+test('los modales nuevos restauran el foco y atrapan Tab', async ({ page }) => {
+  await abrirPanel(page);
+  const filtros = page.getByRole('button', { name: 'Filtros' });
+  await filtros.click();
+  const dialogo = page.getByRole('dialog', { name: 'Filtrar proyectos' });
+  for (let i = 0; i < 10; i += 1) {
+    await page.keyboard.press('Tab');
+  }
+  expect(
+    await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]'))),
+  ).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(dialogo).toHaveCount(0);
+  await expect(filtros).toBeFocused();
+
+  const menu = page.getByRole('button', { name: 'Opciones de El umbral' });
+  await menu.click();
+  await expect(page.getByRole('dialog', { name: 'El umbral' })).toBeVisible();
+  await page.keyboard.press('Shift+Tab');
+  expect(
+    await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]'))),
+  ).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeFocused();
+});
+
+test('la papelera no recorta acciones a 960 y 720', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'writer.papelera.v1',
+      JSON.stringify([
+        {
+          id: '01K',
+          titulo:
+            'Un proyecto con un título extremadamente largo para probar el desbordamiento',
+          autor: 'Autora',
+          color: '#6b5747',
+          palabras: 100,
+          rutaOriginal:
+            '/home/enrique/Documentos/software de escritura/proyectos/un-proyecto-con-un-nombre-de-ruta-muy-largo',
+          rutaPapelera:
+            '/home/enrique/Documentos/software de escritura/proyectos/.writer-papelera/01K',
+          eliminado: '2026-10-24T10:00:00Z',
+        },
+      ]),
+    );
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Proyectos', level: 1 })).toBeVisible();
+  await page.getByRole('tab', { name: 'Papelera' }).click();
+  for (const [width, height, font] of [
+    [960, 900, 16],
+    [960, 900, 32],
+    [720, 900, 16],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate((tamano) => {
+      document.documentElement.style.fontSize = `${tamano}px`;
+    }, font);
+    const panel = await page.locator('.panel-papelera').boundingBox();
+    const eliminar = await page
+      .getByRole('button', { name: /Eliminar definitivamente/ })
+      .boundingBox();
+    expect(panel).not.toBeNull();
+    expect(eliminar).not.toBeNull();
+    expect(eliminar!.x + eliminar!.width).toBeLessThanOrEqual(panel!.x + panel!.width + 1);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBe(true);
+  }
 });

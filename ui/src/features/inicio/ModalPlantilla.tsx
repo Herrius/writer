@@ -1,3 +1,4 @@
+import { useTrampaTab } from './useTrampaTab';
 import { useEffect, useRef, useState } from 'react';
 import type { PlantillaDto } from '../../types/PlantillaDto';
 import { slugProyecto } from '../../recientes';
@@ -28,14 +29,16 @@ export function ModalPlantilla({ onGuardar, onCerrar }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const dialogoRef = useRef<HTMLFormElement | null>(null);
-  const anteriorFoco = useRef<HTMLElement | null>(null);
+  const anteriorFoco = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
+  );
   const cerrarRef = useRef(onCerrar);
   cerrarRef.current = onCerrar;
+  useTrampaTab(dialogoRef);
   const guardandoRef = useRef(false);
   guardandoRef.current = guardando;
 
   useEffect(() => {
-    anteriorFoco.current = document.activeElement as HTMLElement | null;
     dialogoRef.current?.querySelector<HTMLInputElement>('input')?.focus();
     const alPulsar = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape' && !guardandoRef.current) {
@@ -47,7 +50,7 @@ export function ModalPlantilla({ onGuardar, onCerrar }: Props) {
     document.addEventListener('keydown', alPulsar);
     return () => {
       document.removeEventListener('keydown', alPulsar);
-      anteriorFoco.current?.focus?.();
+      window.setTimeout(() => anteriorFoco.current?.focus?.(), 50);
     };
   }, []);
 
@@ -58,8 +61,8 @@ export function ModalPlantilla({ onGuardar, onCerrar }: Props) {
       setError('Escribe un nombre para la plantilla.');
       return;
     }
-    if (totalEscenas > 10_000) {
-      setError('La plantilla no puede superar 10.000 escenas.');
+    if (totalEscenas > 500) {
+      setError('La plantilla no puede superar 500 escenas.');
       return;
     }
     const plantilla: PlantillaDto = {
@@ -175,7 +178,7 @@ export function ModalPlantilla({ onGuardar, onCerrar }: Props) {
             ))}
           </div>
           <p className="dabble-nota-pie">
-            {totalEscenas.toLocaleString('es')} escena(s) al crear un proyecto.
+            {totalEscenas.toLocaleString('es')} escena(s) al crear un proyecto (máximo 500).
           </p>
           <fieldset className="modal-plantilla-notas">
             <legend>Notas iniciales</legend>

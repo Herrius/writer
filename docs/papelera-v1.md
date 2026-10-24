@@ -40,7 +40,9 @@ copia intermedia. El proyecto conserva todo su contenido: manuscrito, notas,
 - Las rutas son absolutas.
 - El color es `#rrggbb` si existe.
 - La ruta de papelera debe estar dentro de un directorio llamado
-  `.writer-papelera`.
+  `.writer-papelera`; `ruta_original` debe ser hermana de ese directorio. Se
+  rechazan rutas que apunten dentro del slot o fuera del padre.
+- La metadata está limitada a 64 KiB; el autor a 200 caracteres.
 
 ## 3. Operaciones
 
@@ -49,9 +51,10 @@ copia intermedia. El proyecto conserva todo su contenido: manuscrito, notas,
 1. Se comprueba que la ruta sea un directorio real, no un symlink, y que tenga
    `proyecto.yml`.
 2. Se crea `.writer-papelera/<ULID>/`.
-3. Se renombra el proyecto a `proyecto/`.
-4. Se escribe `papelera.json` de forma atómica.
-5. Si falla la metadata, se intenta devolver el proyecto a su ruta.
+3. Se escribe y valida `papelera.json` antes de tocar el proyecto.
+4. Se renombra el proyecto a `proyecto/`.
+5. Si falla la metadata, el slot solo contiene el manifiesto y se elimina; el
+   proyecto sigue intacto. Si falla el renombrado, el proyecto tampoco se toca.
 
 ### Restaurar
 
@@ -77,6 +80,9 @@ Es la única operación que borra contenido del disco.
 - El índice de entradas se guarda en `localStorage`
   (`writer.papelera.v1`) para poder listar la papelera; los archivos y la
   metadata son la fuente de verdad para restaurar.
+- Se admiten como máximo 100 entradas para añadir. Al llegar al límite, mover
+  muestra un error; las entradas heredadas que ya existan no se ocultan al
+  recargar.
 - Las colecciones que contenían el proyecto pierden su ruta al moverlo.
 
 ## 5. Seguridad y límites

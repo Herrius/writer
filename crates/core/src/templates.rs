@@ -10,10 +10,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::project::Project;
-use crate::ulid;
 
 /// Versión de la extensión de plantillas.
 pub const VERSION: u32 = 1;
+/// Máximo de escenas que puede generar una plantilla.
+pub const MAX_ESCENAS: u64 = 500;
+/// Máximo de notas iniciales declaradas.
+pub const MAX_NOTAS_INICIALES: usize = 100;
+/// Máximo de archivos Markdown que se copian de una plantilla.
+pub const MAX_ARCHIVOS: usize = 500;
+/// Tamaño máximo de un Markdown de plantilla.
+pub const MAX_ARCHIVO: u64 = 10 * 1024 * 1024;
+/// Tamaño máximo del conjunto de Markdown de una plantilla.
+pub const MAX_TOTAL: u64 = 64 * 1024 * 1024;
+const MAX_MANIFIESTO: u64 = 64 * 1024;
 
 /// Manifiesto de plantilla.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,6 +73,11 @@ impl Plantilla {
                 return Err(Error::Schema("idioma de plantilla no válido".to_string()));
             }
         }
+        if self.descripcion.chars().count() > 500 {
+            return Err(Error::Schema(
+                "descripción de plantilla demasiado larga".to_string(),
+            ));
+        }
         for (valor, campo) in [
             (self.estructura.libros, "libros"),
             (self.estructura.capitulos_por_libro, "capitulos_por_libro"),
@@ -75,10 +90,15 @@ impl Plantilla {
         let total = self.estructura.libros as u64
             * self.estructura.capitulos_por_libro as u64
             * self.estructura.escenas_por_capitulo as u64;
-        if total > 10_000 {
-            return Err(Error::Schema(
-                "la plantilla generaría más de 10.000 escenas".to_string(),
-            ));
+        if total > MAX_ESCENAS {
+            return Err(Error::Schema(format!(
+                "la plantilla generaría más de {MAX_ESCENAS} escenas"
+            )));
+        }
+        if self.notas_iniciales.len() > MAX_NOTAS_INICIALES {
+            return Err(Error::Schema(format!(
+                "la plantilla declara más de {MAX_NOTAS_INICIALES} notas iniciales"
+            )));
         }
         for tipo in &self.notas_iniciales {
             if !crate::model::TIPOS_NOTA.contains(&tipo.as_str()) {
@@ -96,16 +116,20 @@ fn validar_slug(slug: &str) -> Result<()> {
         || slug.contains(['/', '\\', '.', ':', '*', '?', '"', '<', '>', '|'])
         || slug.starts_with(' ')
         || slug.ends_with(' ')
-        || slug.len() > 120
+        || slug.chars().count() > 120
     {
         return Err(Error::Input(format!("slug de plantilla no válido: {slug}")));
     }
-    const RESERVADOS: [&str; 9] = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "LPT1", "LPT2", "LPT3",
+    const RESERVADOS: [&str; 22] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
     ];
     if RESERVADOS
         .iter()
         .any(|reservado| slug.eq_ignore_ascii_case(reservado))
+        || ["CONIN$", "CONOUT$", "CLOCK$"]
+            .iter()
+            .any(|reservado| slug.eq_ignore_ascii_case(reservado))
     {
         return Err(Error::Input(format!(
             "slug de plantilla reservado en Windows: {slug}"
@@ -154,12 +178,25 @@ pub fn eliminar_plantilla(directorio: &Path, slug: &str) -> Result<()> {
     if !manifiesto.is_file() {
         return Err(Error::NotFound(format!("plantilla no encontrada: {slug}")));
     }
-    let bytes =
-        std::fs::read(&manifiesto).map_err(|error| Error::Io(error).with_path(&manifiesto))?;
-    let plantilla: Plantilla = serde_json::from_slice(&bytes)
-        .map_err(|error| Error::Json(error).with_path(&manifiesto))?;
-    plantilla.validar()?;
+    let _ = leer_manifiesto(&manifiesto)?;
     std::fs::remove_dir_all(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))
+}
+
+fn leer_manifiesto(ruta: &Path) -> Result<Plantilla> {
+    let canonico = crate::fsutil::archivo_real(ruta)?;
+    let tamano = std::fs::metadata(&canonico)
+        .map_err(|error| Error::Io(error).with_path(&canonico))?
+        .len();
+    if tamano > MAX_MANIFIESTO {
+        return Err(Error::Input(
+            "manifiesto de plantilla demasiado grande".to_string(),
+        ));
+    }
+    let bytes = std::fs::read(&canonico).map_err(|error| Error::Io(error).with_path(&canonico))?;
+    let plantilla: Plantilla =
+        serde_json::from_slice(&bytes).map_err(|error| Error::Json(error).with_path(&canonico))?;
+    plantilla.validar()?;
+    Ok(plantilla)
 }
 
 /// Lista las plantillas válidas de un directorio.
@@ -183,15 +220,10 @@ pub fn listar_plantillas(directorio: &Path) -> Result<Vec<(String, Plantilla)>> 
         if !manifiesto.is_file() {
             continue;
         }
-        let bytes =
-            std::fs::read(&manifiesto).map_err(|error| Error::Io(error).with_path(&manifiesto))?;
-        let plantilla: Plantilla = match serde_json::from_slice(&bytes) {
+        let plantilla = match leer_manifiesto(&manifiesto) {
             Ok(plantilla) => plantilla,
             Err(_) => continue,
         };
-        if plantilla.validar().is_err() {
-            continue;
-        }
         let slug = ruta
             .file_name()
             .and_then(|valor| valor.to_str())
@@ -216,9 +248,6 @@ pub fn crear_desde_plantilla(
     autor: Option<&str>,
     idioma: Option<&str>,
 ) -> Result<PathBuf> {
-    if !ulid::es_valido(&ulid::nuevo()?) {
-        return Err(Error::Other("ULID no válido".to_string()));
-    }
     validar_slug(slug)?;
     let ruta_plantilla = directorio_plantillas.join(slug);
     let metadatos = std::fs::symlink_metadata(&ruta_plantilla)
@@ -233,11 +262,7 @@ pub fn crear_desde_plantilla(
     if manifiesto.exists() {
         crate::fsutil::archivo_real(&manifiesto)?;
     }
-    let bytes =
-        std::fs::read(&manifiesto).map_err(|error| Error::Io(error).with_path(&manifiesto))?;
-    let plantilla: Plantilla = serde_json::from_slice(&bytes)
-        .map_err(|error| Error::Json(error).with_path(&manifiesto))?;
-    plantilla.validar()?;
+    let plantilla = leer_manifiesto(&manifiesto)?;
 
     let proyecto = Project::new(destino);
     proyecto.init(titulo, autor, idioma)?;
@@ -264,15 +289,24 @@ pub fn crear_desde_plantilla(
             }
         }
         let notas_plantilla = ruta_plantilla.join("notas");
-        if !notas_plantilla.is_dir() {
+        if directorio_md(&notas_plantilla)?.is_none() {
             crear_notas_iniciales(&proyecto, &plantilla.notas_iniciales)?;
         }
+        let mut total_bytes = 0;
+        let mut total_archivos = 0;
         copiar_manuscrito(
             &proyecto,
             &ruta_plantilla.join("manuscrito"),
-            &mut escenas_creadas,
+            &escenas_creadas,
+            &mut total_bytes,
+            &mut total_archivos,
         )?;
-        copiar_notas(&proyecto, &notas_plantilla)?;
+        copiar_notas(
+            &proyecto,
+            &notas_plantilla,
+            &mut total_bytes,
+            &mut total_archivos,
+        )?;
         Ok(())
     })();
     if let Err(error) = resultado {
@@ -283,7 +317,11 @@ pub fn crear_desde_plantilla(
 }
 
 fn crear_notas_iniciales(proyecto: &Project, tipos: &[String]) -> Result<()> {
+    let mut vistos = std::collections::HashSet::new();
     for tipo in tipos {
+        if !vistos.insert(tipo.as_str()) {
+            continue;
+        }
         let etiqueta = match tipo.as_str() {
             "personajes" => "Personajes",
             "tramas" => "Tramas",
@@ -299,39 +337,77 @@ fn crear_notas_iniciales(proyecto: &Project, tipos: &[String]) -> Result<()> {
     Ok(())
 }
 
+fn directorio_md(ruta: &Path) -> Result<Option<PathBuf>> {
+    match std::fs::symlink_metadata(ruta) {
+        Ok(metadatos) => {
+            if metadatos.file_type().is_symlink() || !metadatos.is_dir() {
+                return Err(Error::Integrity(format!(
+                    "se esperaba un directorio de plantilla real: {}",
+                    ruta.display()
+                )));
+            }
+            crate::fsutil::directorio_real(ruta).map(Some)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(Error::Io(error).with_path(ruta)),
+    }
+}
+
 fn copiar_manuscrito(
     proyecto: &Project,
     directorio: &Path,
-    escenas: &mut Vec<String>,
+    escenas: &[String],
+    total_bytes: &mut u64,
+    total_archivos: &mut usize,
 ) -> Result<()> {
-    if !directorio.is_dir() {
+    let Some(directorio) = directorio_md(directorio)? else {
         return Ok(());
-    }
+    };
     let mut archivos = Vec::new();
-    recorrer_md(directorio, &mut archivos)?;
+    recorrer_md(
+        &directorio,
+        &mut archivos,
+        MAX_ARCHIVOS,
+        total_bytes,
+        total_archivos,
+    )?;
+    if archivos.len() > escenas.len() {
+        return Err(Error::Schema(format!(
+            "la plantilla tiene {} archivos de manuscrito para {} escenas declaradas",
+            archivos.len(),
+            escenas.len()
+        )));
+    }
     archivos.sort();
     for (indice, archivo) in archivos.iter().enumerate() {
+        let id = escenas.get(indice).ok_or_else(|| {
+            Error::Schema("archivo de manuscrito sin escena declarada".to_string())
+        })?;
         let texto = std::fs::read_to_string(archivo)
             .map_err(|error| Error::Io(error).with_path(archivo))?;
         let cuerpo = crate::import::sin_frontmatter(&texto);
-        if let Some(id) = escenas.get(indice) {
-            proyecto.escribir_cuerpo(id, cuerpo)?;
-        } else {
-            let titulo = titulo_desde_archivo(archivo);
-            let (id, _) = proyecto.crear_escena(&titulo, None, None, None)?;
-            proyecto.escribir_cuerpo(&id, cuerpo)?;
-            escenas.push(id);
-        }
+        proyecto.escribir_cuerpo(id, cuerpo)?;
     }
     Ok(())
 }
 
-fn copiar_notas(proyecto: &Project, directorio: &Path) -> Result<()> {
-    if !directorio.is_dir() {
+fn copiar_notas(
+    proyecto: &Project,
+    directorio: &Path,
+    total_bytes: &mut u64,
+    total_archivos: &mut usize,
+) -> Result<()> {
+    let Some(directorio) = directorio_md(directorio)? else {
         return Ok(());
-    }
+    };
     let mut archivos = Vec::new();
-    recorrer_md(directorio, &mut archivos)?;
+    recorrer_md(
+        &directorio,
+        &mut archivos,
+        MAX_ARCHIVOS,
+        total_bytes,
+        total_archivos,
+    )?;
     archivos.sort();
     for archivo in archivos {
         let Some(tipo) = archivo
@@ -354,7 +430,13 @@ fn copiar_notas(proyecto: &Project, directorio: &Path) -> Result<()> {
     Ok(())
 }
 
-fn recorrer_md(directorio: &Path, archivos: &mut Vec<PathBuf>) -> Result<()> {
+fn recorrer_md(
+    directorio: &Path,
+    archivos: &mut Vec<PathBuf>,
+    maximo: usize,
+    total_bytes: &mut u64,
+    total_archivos: &mut usize,
+) -> Result<()> {
     for entrada in
         std::fs::read_dir(directorio).map_err(|error| Error::Io(error).with_path(directorio))?
     {
@@ -369,10 +451,31 @@ fn recorrer_md(directorio: &Path, archivos: &mut Vec<PathBuf>) -> Result<()> {
             )));
         }
         if metadatos.is_dir() {
-            recorrer_md(&ruta, archivos)?;
-        } else if ruta.extension().and_then(|valor| valor.to_str()) == Some("md") {
-            archivos.push(ruta);
+            recorrer_md(&ruta, archivos, maximo, total_bytes, total_archivos)?;
+            continue;
         }
+        if !metadatos.is_file() || ruta.extension().and_then(|valor| valor.to_str()) != Some("md") {
+            continue;
+        }
+        if metadatos.len() > MAX_ARCHIVO {
+            return Err(Error::Input(format!(
+                "el archivo de plantilla supera {MAX_ARCHIVO} bytes: {}",
+                ruta.display()
+            )));
+        }
+        *total_bytes = total_bytes.saturating_add(metadatos.len());
+        if *total_bytes > MAX_TOTAL {
+            return Err(Error::Input(
+                "la plantilla supera el tamaño máximo de Markdown".to_string(),
+            ));
+        }
+        if *total_archivos >= maximo || archivos.len() >= maximo {
+            return Err(Error::Schema(format!(
+                "la plantilla tiene más de {maximo} archivos Markdown"
+            )));
+        }
+        *total_archivos += 1;
+        archivos.push(ruta);
     }
     Ok(())
 }
@@ -451,6 +554,145 @@ mod tests {
         std::fs::create_dir_all(directorio.join("no-plantilla")).expect("carpeta");
         assert!(eliminar_plantilla(&directorio, "no-plantilla").is_err());
         assert!(directorio.join("no-plantilla").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rechaza_manuscrito_enlazado_en_la_plantilla() {
+        use std::os::unix::fs::symlink;
+
+        let temporal = tempfile::tempdir().expect("temporal");
+        let plantillas = temporal.path().join("plantillas");
+        let plantilla = plantillas.join("enlazada");
+        std::fs::create_dir_all(&plantilla).expect("carpeta");
+        std::fs::write(
+            plantilla.join("plantilla.json"),
+            serde_json::to_vec(&plantilla_valida()).expect("json"),
+        )
+        .expect("manifiesto");
+        let fuera = temporal.path().join("fuera");
+        std::fs::create_dir(&fuera).expect("fuera");
+        std::fs::write(fuera.join("secreto.md"), "SECRETO").expect("secreto");
+        symlink(&fuera, plantilla.join("manuscrito")).expect("symlink");
+        let destino = temporal.path().join("destino-enlazado");
+        assert!(crear_desde_plantilla(
+            &plantillas,
+            "enlazada",
+            &destino,
+            "Novela",
+            None,
+            Some("es")
+        )
+        .is_err());
+        assert!(!destino.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ignora_un_fifo_en_el_manuscrito_sin_colgarse() {
+        let temporal = tempfile::tempdir().expect("temporal");
+        let plantillas = temporal.path().join("plantillas");
+        let plantilla = plantillas.join("fifo");
+        std::fs::create_dir_all(plantilla.join("manuscrito")).expect("carpeta");
+        std::fs::write(
+            plantilla.join("plantilla.json"),
+            serde_json::to_vec(&plantilla_valida()).expect("json"),
+        )
+        .expect("manifiesto");
+        let estado = std::process::Command::new("mkfifo")
+            .arg(plantilla.join("manuscrito").join("bloqueante.md"))
+            .status()
+            .expect("mkfifo");
+        assert!(estado.success());
+        let destino = temporal.path().join("destino-fifo");
+        crear_desde_plantilla(&plantillas, "fifo", &destino, "Novela", None, Some("es"))
+            .expect("la plantilla no se bloquea");
+        assert!(destino.join("proyecto.yml").is_file());
+    }
+
+    #[test]
+    fn acepta_500_escenas_con_un_archivo_de_manuscrito() {
+        let temporal = tempfile::tempdir().expect("temporal");
+        let plantillas = temporal.path().join("plantillas");
+        let plantilla = plantillas.join("limite");
+        std::fs::create_dir_all(plantilla.join("manuscrito")).expect("carpeta");
+        let mut manifiesto = plantilla_valida();
+        manifiesto.estructura = Estructura {
+            libros: 1,
+            capitulos_por_libro: 1,
+            escenas_por_capitulo: 500,
+        };
+        std::fs::write(
+            plantilla.join("plantilla.json"),
+            serde_json::to_vec(&manifiesto).expect("json"),
+        )
+        .expect("manifiesto");
+        std::fs::write(
+            plantilla.join("manuscrito/001.md"),
+            "Contenido de la primera escena",
+        )
+        .expect("archivo");
+        let destino = temporal.path().join("destino-limite");
+        crear_desde_plantilla(&plantillas, "limite", &destino, "Novela", None, Some("es"))
+            .expect("crear en el límite");
+        let escaneo = Project::new(&destino).verificar().expect("verificar");
+        assert_eq!(escaneo.escenas.len(), 500);
+    }
+
+    #[test]
+    fn rechaza_mas_archivos_que_escenas_declaradas() {
+        let temporal = tempfile::tempdir().expect("temporal");
+        let plantillas = temporal.path().join("plantillas");
+        let plantilla = plantillas.join("extras");
+        std::fs::create_dir_all(plantilla.join("manuscrito")).expect("carpeta");
+        let mut manifiesto = plantilla_valida();
+        manifiesto.estructura = Estructura {
+            libros: 1,
+            capitulos_por_libro: 1,
+            escenas_por_capitulo: 1,
+        };
+        std::fs::write(
+            plantilla.join("plantilla.json"),
+            serde_json::to_vec(&manifiesto).expect("json"),
+        )
+        .expect("manifiesto");
+        std::fs::write(plantilla.join("manuscrito/001.md"), "Uno").expect("uno");
+        std::fs::write(plantilla.join("manuscrito/002.md"), "Dos").expect("dos");
+        let destino = temporal.path().join("destino-extras");
+        assert!(
+            crear_desde_plantilla(&plantillas, "extras", &destino, "Novela", None, Some("es"))
+                .is_err()
+        );
+        assert!(!destino.exists());
+    }
+
+    #[test]
+    fn deduplica_notas_iniciales() {
+        let temporal = tempfile::tempdir().expect("temporal");
+        let plantillas = temporal.path().join("plantillas");
+        let plantilla = plantillas.join("duplicadas");
+        std::fs::create_dir_all(&plantilla).expect("carpeta");
+        let mut manifiesto = plantilla_valida();
+        manifiesto.notas_iniciales = vec!["personajes".to_string(), "personajes".to_string()];
+        std::fs::write(
+            plantilla.join("plantilla.json"),
+            serde_json::to_vec(&manifiesto).expect("json"),
+        )
+        .expect("manifiesto");
+        let destino = temporal.path().join("destino-notas");
+        crear_desde_plantilla(
+            &plantillas,
+            "duplicadas",
+            &destino,
+            "Novela",
+            None,
+            Some("es"),
+        )
+        .expect("crear");
+        assert_eq!(
+            Project::new(&destino).listar(true).expect("listar").len(),
+            3
+        );
     }
 
     #[test]
