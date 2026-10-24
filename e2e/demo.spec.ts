@@ -51,6 +51,7 @@ test('la vista de lista es compacta y el modal cabe a 960 y 200 %', async ({ pag
     );
   });
   await page.goto('/');
+  await page.locator('.mis-proyectos-cabecera').hover();
   await page.getByRole('button', { name: 'Vista de lista' }).click();
   const tarjeta = await page.locator('.tarjeta-proyecto').first().boundingBox();
   expect(tarjeta?.height ?? 999).toBeLessThan(120);

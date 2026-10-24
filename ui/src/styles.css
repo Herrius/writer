@@ -1787,20 +1787,6 @@ button.guardar:disabled {
   border-radius: 0.15rem;
 }
 
-.portada strong {
-  position: relative;
-  z-index: 1;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.1rem;
-  line-height: 1.15;
-}
-
-.portada span:not(.portada-linea) {
-  position: relative;
-  z-index: 1;
-  font-size: 0.7rem;
-  opacity: 0.85;
-}
 
 .tarjeta-datos {
   display: flex;
@@ -4184,4 +4170,364 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 
 [data-tema='sepia'] .dabble-vacio {
   color: #5a4b38;
+}
+
+/* Rediseño del panel de Proyectos: portadas ilustradas y tarjetas de libro. */
+.mis-proyectos-cabecera {
+  padding: 0.85rem 1.35rem;
+  border-bottom: 1px solid #e7e5e1;
+  background: #f7f7f5;
+}
+
+.plegar-proyectos {
+  gap: 0.65rem;
+  color: #2f2d29;
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.plegar-proyectos span {
+  font-size: 1.2rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.mis-proyectos-acciones {
+  color: #77736c;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.mis-proyectos:hover .mis-proyectos-acciones,
+.mis-proyectos:focus-within .mis-proyectos-acciones {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.proyectos {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  align-items: start;
+  column-gap: clamp(1.75rem, 7vw, 3.5rem);
+  row-gap: 1.7rem;
+  padding: 2.75rem 2.5rem 5.6rem;
+  min-height: 270px;
+}
+
+.crear-columna {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 180px;
+}
+
+.crear-tarjeta {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 0.61;
+  padding: 0.75rem 0.75rem 3.5rem;
+  border: 2px dashed #c9c9c6;
+  border-radius: 6px;
+  background: #fff;
+  color: #77736c;
+  font-size: 0.76rem;
+  text-align: center;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.crear-tarjeta::after {
+  content: none;
+}
+
+.crear-tarjeta:hover {
+  border-color: #a9a7a1;
+  background: #fcfbf9;
+}
+
+.crear-contenido {
+  position: static;
+  inset: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  white-space: nowrap;
+}
+
+.crear-mas {
+  color: #89867f;
+  font-size: 1.6rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.crear-plantilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6d6962;
+  font: inherit;
+  font-size: 0.76rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.crear-plantilla:hover {
+  color: #37332d;
+  text-decoration: underline;
+}
+
+.icono-plantilla {
+  display: inline-grid;
+  place-items: center;
+  width: 0.88rem;
+  height: 0.88rem;
+  flex: 0 0 auto;
+}
+
+.tarjeta-proyecto {
+  width: 100%;
+  max-width: 180px;
+  gap: 0.55rem;
+}
+
+.portada {
+  display: block;
+  padding: 0;
+  aspect-ratio: 0.61;
+  border-radius: 4px;
+  background: #4a4036;
+  box-shadow: 0 1px 2px rgb(35 27 20 / 22%), 0 10px 20px rgb(35 27 20 / 13%);
+}
+
+.portada-arte {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(0.9) contrast(1.06);
+}
+
+.portada .portada-tinte {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  mix-blend-mode: soft-light;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.portada .portada-velo {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgb(18 13 9 / 16%), transparent 58%),
+    linear-gradient(180deg, rgb(20 15 11 / 18%) 0%, transparent 30%, transparent 52%, rgb(20 15 11 / 64%) 100%);
+}
+
+.portada-linea {
+  inset: 7px;
+  border: 1px solid rgb(255 255 255 / 62%);
+  border-radius: 1px;
+  z-index: 2;
+}
+
+.portada .portada-titulo {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 1.6rem 1rem 5rem;
+  color: #fff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 58%), 0 0 14px rgb(0 0 0 / 25%);
+  overflow-wrap: anywhere;
+}
+
+.portada .portada-autor {
+  position: absolute;
+  right: 1rem;
+  bottom: 1.1rem;
+  left: 1rem;
+  z-index: 3;
+  color: #fff;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 65%);
+}
+
+.portada-compacta .portada .portada-titulo {
+  font-size: 1.45rem;
+}
+
+.tarjeta-proyecto .tarjeta-datos {
+  gap: 0.18rem;
+}
+
+.tarjeta-proyecto .tarjeta-datos strong {
+  color: #35312b;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.tarjeta-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  color: #74706a;
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+
+.tarjeta-proyecto .tarjeta-datos .tarjeta-meta {
+  font-size: 0.7rem;
+  letter-spacing: -0.01em;
+}
+
+.tarjeta-proyecto .tarjeta-datos .tarjeta-meta > span {
+  font-size: 0.7rem;
+}
+
+.tarjeta-meta > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarjeta-mas {
+  flex: 0 0 auto;
+  color: #4f4a43;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 0.8;
+}
+
+.proyectos-vacio {
+  grid-column: 2 / -1;
+}
+
+/* Vista de lista: conserva la portada miniatura y los datos compactos. */
+.proyectos-lista {
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+  padding: 1.5rem 2rem;
+}
+
+.proyectos-lista .crear-columna {
+  max-width: none;
+}
+
+.proyectos-lista .crear-tarjeta {
+  display: block;
+  min-height: 64px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 0.8rem 1rem;
+  text-align: left;
+}
+
+.proyectos-lista .crear-contenido {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.4rem;
+}
+
+.proyectos-lista .crear-mas {
+  font-size: 1.2rem;
+}
+
+.proyectos-lista .crear-plantilla {
+  margin-top: -0.25rem;
+}
+
+.proyectos-lista .tarjeta-proyecto {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.9rem;
+  max-width: none;
+  min-height: 76px;
+  padding: 0.55rem;
+  border: 1px solid #e4ddd3;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.proyectos-lista .tarjeta-proyecto:hover {
+  border-color: #b9ab99;
+  background: #fdfbf7;
+}
+
+.proyectos-lista .portada {
+  width: 54px;
+  min-width: 54px;
+  height: 70px;
+  aspect-ratio: auto;
+  border-radius: 0.2rem;
+}
+
+.proyectos-lista .portada-titulo,
+.proyectos-lista .portada .portada-autor {
+  display: none;
+}
+
+.proyectos-lista .tarjeta-datos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.15rem 1rem;
+  flex: 1;
+  align-items: baseline;
+}
+
+.proyectos-lista .tarjeta-datos strong {
+  grid-column: 1;
+}
+
+.proyectos-lista .tarjeta-meta {
+  grid-column: 1;
+  justify-content: flex-start;
+}
+
+.proyectos-lista .tarjeta-datos .tarjeta-meta {
+  color: #74706a;
+}
+
+.proyectos-lista .tarjeta-mas {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .proyectos {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    column-gap: clamp(1.4rem, 9.5vw, 4.4rem);
+    padding: 2.75rem clamp(1.25rem, 6vw, 2.9rem) 5.6rem;
+  }
+
+  .crear-columna,
+  .crear-tarjeta,
+  .tarjeta-proyecto {
+    max-width: 162px;
+  }
 }

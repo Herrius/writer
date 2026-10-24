@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { elegirCarpetaCreacion, errorDe, listarPlantillas } from './api';
 import type { PlantillaDto } from './types/PlantillaDto';
 import { colorDesdeTitulo, slugProyecto, type Reciente } from './recientes';
+import portadaArbol from './assets/portada-arbol.jpg';
 
 export type DatosNuevoProyecto = {
   ruta: string;
@@ -68,14 +69,31 @@ function Portada({
   return (
     <div
       className={`portada ${compacta ? 'portada-compacta' : ''}`}
-      style={{ background: `linear-gradient(155deg, ${color}, #2f2732)` }}
+      style={{ backgroundColor: color }}
       aria-hidden="true"
     >
+      <img className="portada-arte" src={portadaArbol} alt="" draggable={false} />
+      <span
+        className="portada-tinte"
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      <span className="portada-velo" />
       <span className="portada-linea" />
-      <strong>{titulo || 'Proyecto sin título'}</strong>
-      <span>{autor || 'Sin autor'}</span>
+      <strong className="portada-titulo">{titulo || 'Proyecto sin título'}</strong>
+      <span className="portada-autor">{autor || 'Sin autor'}</span>
     </div>
   );
+}
+
+function fechaModificada(reciente: Reciente): string {
+  const fecha = reciente.modificado ? new Date(reciente.modificado) : new Date();
+  const valida = Number.isNaN(fecha.getTime()) ? new Date() : fecha;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(valida);
 }
 
 export function Inicio({
@@ -411,26 +429,50 @@ export function Inicio({
             {!plegado && (
               <>
             <div className={`proyectos ${vista === 'lista' ? 'proyectos-lista' : ''}`}>
-              <button className="crear-tarjeta" ref={crearRef} onClick={() => abrirModal()}>
-                <span className="crear-medida" aria-hidden="true">
-                  <span className="crear-medida-portada" />
-                  <span className="tarjeta-datos">
-                    <strong>&nbsp;</strong>
-                    <span>&nbsp;</span>
-                    <small>&nbsp;</small>
+              <div className="crear-columna">
+                <button className="crear-tarjeta" ref={crearRef} onClick={() => abrirModal()}>
+                  <span className="crear-contenido">
+                    <span className="crear-mas" aria-hidden="true">
+                      +
+                    </span>
+                    <span>Crear nuevo proyecto</span>
                   </span>
-                </span>
-                <span className="crear-contenido">
-                  <span className="crear-mas" aria-hidden="true">
-                    +
-                  </span>
-                  <span>Crear nuevo proyecto</span>
-                </span>
-              </button>
+                </button>
+                <button
+                  className="crear-plantilla"
+                  onClick={() => abrirModal()}
+                  title="Elige una plantilla en el asistente de creación"
+                >
+                  <svg
+                    className="icono-plantilla"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M3 2.5h5l3 3v8H3z"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M8 2.5v3h3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Crear desde plantilla
+                </button>
+              </div>
               {filtrados.map((reciente) => (
                 <button
                   key={reciente.ruta}
                   className="tarjeta-proyecto"
+                  aria-label={`Abrir ${reciente.titulo}${
+                    reciente.autor ? ` de ${reciente.autor}` : ''
+                  }`}
                   onClick={() => onAbrirReciente(reciente.ruta)}
                 >
                   <Portada
@@ -441,11 +483,12 @@ export function Inicio({
                   />
                   <span className="tarjeta-datos">
                     <strong>{reciente.titulo}</strong>
-                    <span>{reciente.autor || 'Sin autor'}</span>
-                    <small>
-                      {(reciente.palabras ?? 0).toLocaleString('es')}{' '}
-                      {(reciente.palabras ?? 0) === 1 ? 'palabra' : 'palabras'}
-                    </small>
+                    <span className="tarjeta-meta">
+                      <span>Modificado el {fechaModificada(reciente)}</span>
+                      <span className="tarjeta-mas" aria-hidden="true">
+                        ⋯
+                      </span>
+                    </span>
                   </span>
                 </button>
               ))}
@@ -466,13 +509,6 @@ export function Inicio({
               )}
             </div>
 
-            <button
-              className="crear-plantilla"
-              disabled
-              title="Las plantillas llegarán en una próxima fase"
-            >
-              ◫ Crear desde plantilla
-            </button>
               </>
             )}
           </section>

@@ -6,6 +6,11 @@
 - **Plan de ejecución:** [`../plan-ejecucion-local-v1.md`](../plan-ejecucion-local-v1.md)
 - **Baseline de código:** `fca190f` (sin cambios de UI desde `773cc2c`)
 
+> **Actualización 2026-10-24:** el contrato vigente de portadas y tarjetas es
+> [`31-rediseno-portadas.md`](31-rediseno-portadas.md). La portada pasó de 2:3
+> a 0,61 (≈5:8) y la tarjeta de creación iguala la portada, no la tarjeta
+> completa. Este documento se conserva como histórico de la Fase 1.
+
 ## F1.0 — Contrato visual y línea base
 
 ### Objetivo

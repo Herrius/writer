@@ -11,6 +11,9 @@
   Windows requiere una máquina real (MSVC, WebView2, instalador y E2E nativo).
 - **Rama:** `main`, sin remoto ni CI remoto. Repositorio inicial `1c9f3c6`.
 - **Fase 3 congelada:** `347adcb`, tag local `fase-3-congelado`; QA/seguridad r4 y UX r3 aprobaron.
+- **Corrección visual 2026-10-24:** portadas ilustradas, tarjetas de libro y
+  cabecera limpia en el panel de Proyectos; validada con `e2e/fase-1-panel`
+  12/12 y la captura de [`docs/iteraciones/31-rediseno-portadas.md`](docs/iteraciones/31-rediseno-portadas.md).
 
 ## 1. Resumen
 
@@ -129,7 +132,7 @@ cargo test --workspace --all-targets --locked   74 + 49 + 25 + 1 perf
 cargo test desktop                              8/8
 pnpm typecheck                                  OK
 pnpm ui:test                                    77/77
-pnpm e2e                                        48/48
+pnpm e2e                                        47/47
 ci.py calidad                                   OK
 ci.py interfaz                                  OK
 ci.py producto                                  OK
@@ -170,6 +173,8 @@ El release público de `0.2.0` **no** está autorizado. Siguen pendientes:
 
 ## 8. Límites conocidos
 
+- La portada por defecto es un arte fijo; el color la tiñe y aún no hay subida de
+  imagen ni selector de arte.
 - El control de cambios es por documento completo; no hay aceptación por hunk,
   sugerencias inline ni fusión de tres vías.
 - La comparación es por líneas y solo contra revisiones que tocaron el documento.

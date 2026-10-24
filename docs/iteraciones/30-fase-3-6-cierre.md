@@ -38,7 +38,7 @@ cargo test --workspace --all-targets --locked        74 + 49 + 25 + 1 perf
 cargo test desktop                                   8/8
 pnpm typecheck                                       OK
 pnpm ui:test                                         77/77
-pnpm e2e                                             48/48
+pnpm e2e                                             47/47
 ci.py calidad                                        OK
 ci.py interfaz                                       OK
 ci.py producto                                       OK

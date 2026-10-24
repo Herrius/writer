@@ -692,6 +692,7 @@ export default function App() {
           autor: resumen.autor ?? anterior?.autor,
           palabras: palabras ?? anterior?.palabras ?? 0,
           color: color ?? anterior?.color ?? colorDesdeTitulo(resumen.titulo),
+          modificado: new Date().toISOString(),
         },
         ...lista.filter((item) => item.ruta !== resumen.raiz),
       ].slice(0, 8);

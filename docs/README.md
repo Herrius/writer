@@ -102,6 +102,8 @@
   presupuestos de rendimiento.
 - [`iteraciones/30-fase-3-6-cierre.md`](iteraciones/30-fase-3-6-cierre.md) —
   Fase 3.6: integración y cierre funcional local.
+- [`iteraciones/31-rediseno-portadas.md`](iteraciones/31-rediseno-portadas.md) —
+  rediseño de portadas y tarjetas de proyecto.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

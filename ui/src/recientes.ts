@@ -4,6 +4,7 @@ export type Reciente = {
   autor?: string;
   palabras?: number;
   color?: string;
+  modificado?: string;
 };
 
 const CLAVE_RECIENTES = 'writer.recientes.v1';
@@ -55,7 +56,11 @@ export function leerRecientes(): Reciente[] {
             (typeof item.palabras === 'number' &&
               Number.isFinite(item.palabras) &&
               item.palabras >= 0)) &&
-          (item.color === undefined || /^#[0-9a-f]{6}$/i.test(item.color)),
+          (item.color === undefined || /^#[0-9a-f]{6}$/i.test(item.color)) &&
+          (item.modificado === undefined ||
+            (typeof item.modificado === 'string' &&
+              item.modificado.length <= 40 &&
+              !Number.isNaN(Date.parse(item.modificado)))),
       )
       .filter((item) => {
         if (vistos.has(item.ruta)) {
