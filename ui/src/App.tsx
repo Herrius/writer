@@ -12,9 +12,15 @@ import {
   actualizarPersonaje,
   agregarMensajeComentario,
   agregarSesion,
+  aplicarCambio,
   archivarComentario,
   borrarMensajeComentario,
+  compararDocumento,
+  descartarCambio,
   editarMensajeComentario,
+  leerCambio,
+  listarCambios,
+  registrarCambio,
   buscar as buscarEnProyecto,
   cambiarArchivo as cambiarArchivoApi,
   crearBackup as crearBackupApi,
@@ -69,6 +75,9 @@ import {
   sincronizarComentariosHuerfanos,
 } from './api';
 import type { BusquedaDto } from './types/BusquedaDto';
+import type { CambioDetalleDto } from './types/CambioDetalleDto';
+import type { CambioResumenDto } from './types/CambioResumenDto';
+import type { ComparacionDto } from './types/ComparacionDto';
 import type { ComentarioDto } from './types/ComentarioDto';
 import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { DocumentoDto } from './types/DocumentoDto';
@@ -82,6 +91,8 @@ import type { RevisionDto } from './types/RevisionDto';
 import type { SesionDto } from './types/SesionDto';
 import type { TipoError } from './types/TipoError';
 import { EditorMarkdown } from './EditorMarkdown';
+import { PanelCambios } from './features/cambios/PanelCambios';
+import { DiffLineas } from './features/cambios/DiffLineas';
 import { Inicio, type DatosNuevoProyecto } from './Inicio';
 import { analizarCompatibilidad } from './markdown/compatibilidad';
 import { contarPalabras, textoSinMarcas } from './palabras';
@@ -99,6 +110,7 @@ type EstadoGuardado =
   | 'guardado'
   | 'pendiente'
   | 'guardando'
+  | 'sugerencia'
   | 'conflicto'
   | 'recuperacion'
   | 'ocupado'
@@ -197,6 +209,8 @@ function etiquetaGuardado(estado: EstadoGuardado): string {
       return 'cambios sin guardar';
     case 'guardando':
       return 'guardando…';
+    case 'sugerencia':
+      return 'cambio propuesto';
     case 'conflicto':
       return 'conflicto';
     case 'recuperacion':
@@ -272,9 +286,9 @@ export default function App() {
 
   const [consulta, setConsulta] = useState('');
   const [focoArbol, setFocoArbol] = useState<string | null>(null);
-  const [panelDerecho, setPanelDerecho] = useState<'metas' | 'notas' | 'comentarios' | 'plan'>(
-    'metas',
-  );
+  const [panelDerecho, setPanelDerecho] = useState<
+    'metas' | 'notas' | 'comentarios' | 'plan' | 'cambios'
+  >('metas');
   const [comentarios, setComentarios] = useState<ComentarioDto[]>([]);
   const [errorComentarios, setErrorComentarios] = useState<string | null>(null);
   const [textoSticky, setTextoSticky] = useState('');
@@ -282,6 +296,15 @@ export default function App() {
   const [filtroComentarios, setFiltroComentarios] = useState<'todos' | 'abiertos' | 'resueltos' | 'huerfanos'>(
     'todos',
   );
+  const [modoSugerencias, setModoSugerencias] = useState(false);
+  const [cambiosProyecto, setCambiosProyecto] = useState<CambioResumenDto[]>([]);
+  const [cambioActivo, setCambioActivo] = useState<CambioDetalleDto | null>(null);
+  const [cargandoCambios, setCargandoCambios] = useState(false);
+  const [errorCambios, setErrorCambios] = useState<string | null>(null);
+  const [procesandoCambio, setProcesandoCambio] = useState(false);
+  const [comparacion, setComparacion] = useState<ComparacionDto | null>(null);
+  const [comparando, setComparando] = useState(false);
+  const [errorComparacion, setErrorComparacion] = useState<string | null>(null);
   const [comentariosProyecto, setComentariosProyecto] = useState<ComentarioDto[]>([]);
   const [mensajeEditando, setMensajeEditando] = useState<string | null>(null);
   const [textoEdicionMensaje, setTextoEdicionMensaje] = useState('');
@@ -361,6 +384,8 @@ export default function App() {
   const proyectoRef = useRef<ProyectoDto | null>(null);
   const activoRef = useRef<DocumentoDto | null>(null);
   const puedeEditarRef = useRef(false);
+  const modoSugerenciasRef = useRef(false);
+  const cambioActivoRef = useRef<CambioDetalleDto | null>(null);
   const pendienteRef = useRef<Pendiente | null>(null);
   const cuerpoEditorRef = useRef('');
   const drenajeRef = useRef<Promise<boolean> | null>(null);
@@ -518,6 +543,8 @@ export default function App() {
     !bloqueoGuardado &&
     !revirtiendo;
   puedeEditarRef.current = puedeEditar;
+  modoSugerenciasRef.current = modoSugerencias;
+  cambioActivoRef.current = cambioActivo;
 
   const estadoVisible: EstadoGuardado =
     estadoGuardado === 'conflicto' ||
@@ -606,6 +633,35 @@ export default function App() {
     }
   };
 
+  const cargarCambiosDeProyecto = async (ruta: string, documentoId?: string | null) => {
+    setCargandoCambios(true);
+    setErrorCambios(null);
+    try {
+      const lista = await listarCambios(ruta);
+      if (proyectoRef.current?.raiz !== ruta) {
+        return;
+      }
+      setCambiosProyecto(lista);
+      const resumen = lista.find((cambio) => cambio.documento === documentoId);
+      if (!resumen) {
+        setCambioActivo(null);
+        return;
+      }
+      const detalle = await leerCambio(ruta, resumen.id);
+      if (proyectoRef.current?.raiz === ruta) {
+        setCambioActivo(detalle);
+      }
+    } catch (fallo) {
+      if (proyectoRef.current?.raiz === ruta) {
+        setCambiosProyecto([]);
+        setCambioActivo(null);
+        setErrorCambios(errorDe(fallo).mensaje);
+      }
+    } finally {
+      setCargandoCambios(false);
+    }
+  };
+
   const cargar = async (ruta: string, objetivoPreferido?: string | null) => {
     if (cargando.current) {
       return;
@@ -640,6 +696,11 @@ export default function App() {
     detalleSeq.current += 1;
     busquedaSeq.current += 1;
     setConfirmarReversion(null);
+    setCambiosProyecto([]);
+    setCambioActivo(null);
+    setErrorCambios(null);
+    setComparacion(null);
+    setErrorComparacion(null);
     try {
       const resumen = await abrirProyecto(ruta);
       const lista = await listar(ruta, true);
@@ -668,6 +729,7 @@ export default function App() {
         setCuarentena([]);
       }
       await cargarMetas(ruta);
+      await cargarCambiosDeProyecto(ruta, leido?.id);
       setEstado('listo');
     } catch (fallo) {
       const detalle = errorDe(fallo);
@@ -691,9 +753,68 @@ export default function App() {
       );
       return false;
     }
+    const activoActual = activoRef.current;
+    const propuestaActual = cambioActivoRef.current;
+    const enSugerencia =
+      modoSugerenciasRef.current ||
+      (propuestaActual !== null && propuestaActual.documento === pendiente.id);
+    if (enSugerencia) {
+      setEstadoGuardado('guardando');
+      try {
+        const cambio = await registrarCambio(
+          proyectoActual.raiz,
+          pendiente.id,
+          pendiente.cuerpo,
+          proyectoActual.autor?.trim() || 'local',
+        );
+        const cuerpoActual = cuerpoEditorRef.current;
+        if (cuerpoActual === pendiente.cuerpo) {
+          pendienteRef.current = null;
+        } else {
+          pendienteRef.current = { id: pendiente.id, cuerpo: cuerpoActual };
+        }
+        if (cambio) {
+          setCambioActivo(cambio);
+          const resumen: CambioResumenDto = {
+            id: cambio.id,
+            documento: cambio.documento,
+            ruta: cambio.ruta,
+            autor: cambio.autor,
+            ts: cambio.ts,
+            baseRevision: cambio.baseRevision,
+            insertadas: cambio.insertadas,
+            borradas: cambio.borradas,
+          };
+          setCambiosProyecto((lista) => [
+            ...lista.filter((item) => item.documento !== cambio.documento),
+            resumen,
+          ]);
+          setEstadoGuardado(
+            cuerpoActual === pendiente.cuerpo ? 'sugerencia' : 'pendiente',
+          );
+        } else {
+          setCambioActivo(null);
+          setCambiosProyecto((lista) =>
+            lista.filter((item) => item.documento !== pendiente.id),
+          );
+          setEstadoGuardado(
+            cuerpoActual === pendiente.cuerpo ? 'guardado' : 'pendiente',
+          );
+        }
+        setErrorCambios(null);
+        setErrorGuardado(null);
+        setConfirmarRecarga(false);
+        return true;
+      } catch (fallo) {
+        const detalle = errorDe(fallo);
+        setErrorGuardado(detalle.mensaje);
+        setErrorCambios(detalle.mensaje);
+        setEstadoGuardado(estadoDeError(detalle.tipo));
+        return false;
+      }
+    }
     setEstadoGuardado('guardando');
     try {
-      const activoActual = activoRef.current;
       const hashBase =
         activoActual && activoActual.id === pendiente.id ? activoActual.hashArchivo : null;
       const guardado = await escribir(
@@ -906,7 +1027,7 @@ export default function App() {
     // cuerpo coincida con la última versión de `activo`: el disco todavía puede
     // recibir una versión intermedia. Se deja pendiente para que el drenaje la
     // vuelva a escribir después.
-    if (cuerpo === actual.cuerpo && drenajeRef.current === null) {
+    if (cuerpo === actual.cuerpo && !cambioActivoRef.current && drenajeRef.current === null) {
       pendienteRef.current = null;
       setEstadoGuardado('guardado');
       setErrorGuardado(null);
@@ -1669,6 +1790,8 @@ export default function App() {
     setDetalleRevision(null);
     setErrorDetalle(null);
     setConfirmarReversion(null);
+    setComparacion(null);
+    setErrorComparacion(null);
     setCargandoDetalle(true);
     try {
       const detalle = await pedirRevision(raiz, revision);
@@ -1790,6 +1913,120 @@ export default function App() {
       const detalle = errorDe(fallo);
       setErrorGuardado(detalle.mensaje);
       setEstadoGuardado(estadoDeError(detalle.tipo));
+    }
+  };
+
+  const leerCambioDePanel = async (id: string) => {
+    const proyectoActual = proyectoRef.current;
+    if (!proyectoActual) {
+      return;
+    }
+    setCargandoCambios(true);
+    setErrorCambios(null);
+    try {
+      const detalle = await leerCambio(proyectoActual.raiz, id);
+      setCambioActivo(detalle);
+    } catch (fallo) {
+      setErrorCambios(errorDe(fallo).mensaje);
+      setCambioActivo(null);
+    } finally {
+      setCargandoCambios(false);
+    }
+  };
+
+  const abrirDocumentoDeCambio = (id: string) => {
+    const documento = documentos.find((candidato) => candidato.id === id);
+    if (documento) {
+      void seleccionar(documento);
+    }
+  };
+
+  const aceptarCambioActivo = async () => {
+    const actual = proyectoRef.current;
+    const cambio = cambioActivoRef.current;
+    if (!actual || !cambio || procesandoCambio) {
+      return;
+    }
+    setProcesandoCambio(true);
+    setErrorCambios(null);
+    try {
+      const guardado = await aplicarCambio(actual.raiz, cambio.id);
+      const cuerpo = cambio.propuesta.replace(/\n$/, '');
+      fijarProyecto({ ...actual, revision: guardado.revision });
+      setDocumentos((lista) =>
+        lista.map((documento) =>
+          documento.id === cambio.documento
+            ? { ...documento, cuerpo, hashArchivo: guardado.hashArchivo }
+            : documento,
+        ),
+      );
+      const documentoActivo = activoRef.current;
+      if (documentoActivo?.id === cambio.documento) {
+        fijarActivo({
+          ...documentoActivo,
+          cuerpo,
+          hashArchivo: guardado.hashArchivo,
+        });
+        cuerpoEditorRef.current = cuerpo;
+        setRevisionEditor((valor) => valor + 1);
+      }
+      limpiarPendiente();
+      setCambioActivo(null);
+      setCambiosProyecto((lista) =>
+        lista.filter((item) => item.id !== cambio.id),
+      );
+      setEstadoGuardado('guardado');
+      setErrorGuardado(null);
+      setMensaje(`Cambio aceptado en la revisión ${guardado.revision}.`);
+    } catch (fallo) {
+      setErrorCambios(errorDe(fallo).mensaje);
+    } finally {
+      setProcesandoCambio(false);
+    }
+  };
+
+  const descartarCambioActivo = async () => {
+    const actual = proyectoRef.current;
+    const cambio = cambioActivoRef.current;
+    if (!actual || !cambio || procesandoCambio) {
+      return;
+    }
+    setProcesandoCambio(true);
+    setErrorCambios(null);
+    try {
+      await descartarCambio(actual.raiz, cambio.id);
+      setCambiosProyecto((lista) => lista.filter((item) => item.id !== cambio.id));
+      setCambioActivo(null);
+      limpiarPendiente();
+      const documentoActivo = activoRef.current;
+      if (documentoActivo?.id === cambio.documento) {
+        cuerpoEditorRef.current = documentoActivo.cuerpo;
+        setRevisionEditor((valor) => valor + 1);
+      }
+      setEstadoGuardado('guardado');
+      setMensaje('Cambio rechazado; el documento conserva su versión anterior.');
+    } catch (fallo) {
+      setErrorCambios(errorDe(fallo).mensaje);
+    } finally {
+      setProcesandoCambio(false);
+    }
+  };
+
+  const compararConActual = async (rutaDocumento: string, revision: number) => {
+    const actual = proyectoRef.current;
+    if (!actual || comparando) {
+      return;
+    }
+    setComparando(true);
+    setComparacion(null);
+    setErrorComparacion(null);
+    try {
+      const resultado = await compararDocumento(actual.raiz, rutaDocumento, revision);
+      setComparacion(resultado);
+    } catch (fallo) {
+      setErrorComparacion(errorDe(fallo).mensaje);
+    } finally {
+      setComparando(false);
     }
   };
 
@@ -2179,6 +2416,42 @@ export default function App() {
 
   useEffect(() => {
     const actual = proyectoRef.current;
+    const documento = activoRef.current;
+    if (!actual || !documento) {
+      setCambioActivo(null);
+      return;
+    }
+    const resumen = cambiosProyecto.find(
+      (cambio) => cambio.documento === documento.id,
+    );
+    if (!resumen) {
+      setCambioActivo(null);
+      return;
+    }
+    if (cambioActivoRef.current?.id === resumen.id) {
+      return;
+    }
+    let cancelado = false;
+    void leerCambio(actual.raiz, resumen.id)
+      .then((detalle) => {
+        if (!cancelado) {
+          setCambioActivo(detalle);
+          setErrorCambios(null);
+        }
+      })
+      .catch((fallo) => {
+        if (!cancelado) {
+          setCambioActivo(null);
+          setErrorCambios(errorDe(fallo).mensaje);
+        }
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [activo?.id, proyecto?.raiz, cambiosProyecto]);
+
+  useEffect(() => {
+    const actual = proyectoRef.current;
     if (!actual || !activo) {
       setComentarios([]);
       return;
@@ -2234,10 +2507,12 @@ export default function App() {
     }
   }, [errorGuardado]);
 
+  const propuestaVisible =
+    activo && cambioActivo?.documento === activo.id ? cambioActivo.propuesta : null;
   const cuerpoVisible =
     activo && pendienteRef.current?.id === activo.id
       ? pendienteRef.current.cuerpo
-      : (activo?.cuerpo ?? '');
+      : (propuestaVisible ?? activo?.cuerpo ?? '');
   const palabrasDocumento = contarPalabras(textoSinMarcas(cuerpoVisible));
   const comentariosVisibles = comentarios.filter((comentario) => {
     if (filtroComentarios === 'abiertos') {
@@ -2438,6 +2713,25 @@ export default function App() {
             }}
           >
             ◷
+          </button>
+          <button
+            className={`icono-dabble ${
+              panelDerecho === 'cambios' ? 'activo' : ''
+            } ${cambiosProyecto.length > 0 ? 'con-badge' : ''}`}
+            aria-label={`Control de cambios${
+              cambiosProyecto.length > 0
+                ? `: ${cambiosProyecto.length} pendiente(s)`
+                : ''
+            }`}
+            title="Control de cambios"
+            onClick={() => setPanelDerecho('cambios')}
+          >
+            ±
+            {cambiosProyecto.length > 0 && (
+              <span className="dabble-badge" aria-hidden="true">
+                {cambiosProyecto.length}
+              </span>
+            )}
           </button>
           <button className="icono-dabble" aria-label="Ayuda" title="Ayuda">
             ?
@@ -2790,6 +3084,15 @@ export default function App() {
                         ) : (
                           <p className="vacio">(archivo eliminado)</p>
                         )}
+                        <button
+                          className="dabble-boton"
+                          disabled={comparando}
+                          onClick={() =>
+                            void compararConActual(contenido.ruta, detalleRevision.revision)
+                          }
+                        >
+                          {comparando ? 'Comparando…' : 'Comparar con el documento actual'}
+                        </button>
                         {comentariosProyecto
                           .filter(
                             (comentario) =>
@@ -2809,6 +3112,33 @@ export default function App() {
                           ))}
                       </details>
                     ))}
+                    {errorComparacion && (
+                      <pre className="banner-error" role="alert">
+                        {errorComparacion}
+                      </pre>
+                    )}
+                    {comparacion && (
+                      <div className="dabble-comparacion">
+                        <div className="dabble-version-cabecera">
+                          <h3>Diferencias con la revisión {comparacion.revision}</h3>
+                          <p>
+                            {comparacion.ruta} · +{comparacion.insertadas} / −
+                            {comparacion.borradas}
+                          </p>
+                        </div>
+                        <DiffLineas
+                          lineas={comparacion.lineas}
+                          etiquetaBase={`Revisión ${comparacion.revision}`}
+                          etiquetaPropuesta="Documento actual"
+                        />
+                        <button
+                          className="dabble-boton"
+                          onClick={() => setComparacion(null)}
+                        >
+                          Cerrar comparación
+                        </button>
+                      </div>
+                    )}
                   </>
                 ) : (
                   !cargandoDetalle &&
@@ -3020,6 +3350,14 @@ export default function App() {
                 onClick={() => setPanelDerecho('plan')}
               >
                 Plan
+              </button>
+              <button
+                role="tab"
+                aria-selected={panelDerecho === 'cambios'}
+                className={panelDerecho === 'cambios' ? 'activo' : ''}
+                onClick={() => setPanelDerecho('cambios')}
+              >
+                Cambios
               </button>
             </div>
             {panelDerecho === 'metas' ? (
@@ -3547,7 +3885,7 @@ export default function App() {
                   <p className="dabble-vacio">Abre un documento para ver sus comentarios.</p>
                 )}
               </section>
-            ) : (
+            ) : panelDerecho === 'plan' ? (
               <section className="dabble-plan-panel">
                 <h3>Plot Grid</h3>
                 {errorMetas && (
@@ -3771,6 +4109,24 @@ export default function App() {
                   Restaurar backup
                 </button>
               </section>
+            ) : (
+              <PanelCambios
+                modo={modoSugerencias}
+                cambios={cambiosProyecto}
+                activo={cambioActivo}
+                documentos={documentos}
+                cargando={cargandoCambios}
+                error={errorCambios}
+                procesando={procesandoCambio}
+                onModo={(valor) => {
+                  setModoSugerencias(valor);
+                  modoSugerenciasRef.current = valor;
+                }}
+                onLeer={(id) => void leerCambioDePanel(id)}
+                onAceptar={() => void aceptarCambioActivo()}
+                onDescartar={() => void descartarCambioActivo()}
+                onAbrirDocumento={abrirDocumentoDeCambio}
+              />
             )}
           </aside>
         )}

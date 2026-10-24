@@ -11,7 +11,9 @@
 #![forbid(unsafe_code)]
 
 pub mod blob;
+pub mod changes;
 pub mod comments;
+pub mod diff;
 pub mod docx;
 pub mod error;
 pub mod fault;
@@ -35,8 +37,8 @@ pub mod yaml;
 
 pub use error::{Error, Result};
 pub use project::{
-    Cambio, CuarentenaItem, Project, ResultadoBusqueda, ResultadoGuardado, ResultadoRevertir,
-    RevisionDetalle, SesionEscritura, SesionLectura,
+    Cambio, Comparacion, CuarentenaItem, Project, ResultadoBusqueda, ResultadoGuardado,
+    ResultadoRevertir, RevisionDetalle, SesionEscritura, SesionLectura,
 };
 
 /// Versión de la crate, inyectada por Cargo.

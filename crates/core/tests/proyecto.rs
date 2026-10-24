@@ -33,6 +33,67 @@ fn init_crea_proyecto_verificable() {
 }
 
 #[test]
+fn cambios_locales_se_proponen_aceptan_o_rechazan() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    let documento = proyecto.listar(false).expect("listar").remove(0);
+    let id = documento.id().to_string();
+    let original = documento.cuerpo().to_string();
+
+    let cambio = proyecto
+        .registrar_cambio(&id, "Una propuesta nueva.\n", "Autora")
+        .expect("registrar")
+        .expect("cambio");
+    assert_eq!(cambio.base, original);
+    assert_eq!(proyecto.leer(&id).expect("leer").cuerpo(), original);
+    assert_eq!(proyecto.listar_cambios().expect("cambios").len(), 1);
+
+    let guardado = proyecto.aplicar_cambio(&cambio.id).expect("aplicar");
+    assert_eq!(guardado.revision, 2);
+    assert_eq!(
+        proyecto.leer(&id).expect("leer").cuerpo(),
+        "Una propuesta nueva.\n"
+    );
+    assert!(proyecto.listar_cambios().expect("cambios").is_empty());
+
+    let comparacion = proyecto.comparar_documento(&id, 1).expect("comparar");
+    assert_eq!(comparacion.revision, 1);
+    assert!(comparacion.diferencias.insertadas > 0);
+
+    let segundo = proyecto
+        .registrar_cambio(&id, "Otra propuesta.\n", "Autora")
+        .expect("registrar")
+        .expect("cambio");
+    proyecto
+        .descartar_cambio(&segundo.id)
+        .expect("descartar cambio");
+    assert_eq!(
+        proyecto.leer(&id).expect("leer").cuerpo(),
+        "Una propuesta nueva.\n"
+    );
+    assert!(proyecto.listar_cambios().expect("cambios").is_empty());
+}
+
+#[test]
+fn un_cambio_obsoleto_por_hash_no_se_aplica() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    let documento = proyecto.listar(false).expect("listar").remove(0);
+    let id = documento.id().to_string();
+    let cambio = proyecto
+        .registrar_cambio(&id, "Propuesta.\n", "Autora")
+        .expect("registrar")
+        .expect("cambio");
+    proyecto
+        .escribir_cuerpo(&id, "Cambio externo.\n")
+        .expect("escribir");
+    let error = proyecto.aplicar_cambio(&cambio.id).expect_err("conflicto");
+    assert!(matches!(error, Error::Conflict(_)));
+}
+
+#[test]
 fn crear_escribir_mover_y_revertir() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));

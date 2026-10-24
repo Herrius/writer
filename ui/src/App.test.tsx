@@ -5,11 +5,14 @@ import {
   abrirProyecto,
   agregarMensajeComentario,
   agregarSesion,
+  aplicarCambio,
   buscar,
+  compararDocumento,
   crearComentario,
   crearProyecto,
   crearSticky,
   cuarentena,
+  descartarCambio,
   descartarCuarentena,
   duplicar,
   elegirCarpetaCreacion,
@@ -19,11 +22,14 @@ import {
   guardarMetas,
   historial,
   leer,
+  leerCambio,
+  listarCambios,
   leerMetas,
   leerSesiones,
   listar,
   listarComentarios,
   mostrar,
+  registrarCambio,
   renombrar,
   resolverComentario,
   revertir,
@@ -65,6 +71,12 @@ vi.mock('./api', () => ({
   historial: vi.fn(),
   mostrar: vi.fn(),
   revertir: vi.fn(),
+  listarCambios: vi.fn(),
+  leerCambio: vi.fn(),
+  registrarCambio: vi.fn(),
+  aplicarCambio: vi.fn(),
+  descartarCambio: vi.fn(),
+  compararDocumento: vi.fn(),
   elegirDestinoDocx: vi.fn(),
   elegirDestinoPdf: vi.fn(),
   exportarPdf: vi.fn(),
@@ -113,6 +125,12 @@ const buscarMock = vi.mocked(buscar);
 const historialMock = vi.mocked(historial);
 const mostrarMock = vi.mocked(mostrar);
 const revertirMock = vi.mocked(revertir);
+const listarCambiosMock = vi.mocked(listarCambios);
+const leerCambioMock = vi.mocked(leerCambio);
+const registrarCambioMock = vi.mocked(registrarCambio);
+const aplicarCambioMock = vi.mocked(aplicarCambio);
+const descartarCambioMock = vi.mocked(descartarCambio);
+const compararDocumentoMock = vi.mocked(compararDocumento);
 const elegirDestinoDocxMock = vi.mocked(elegirDestinoDocx);
 const exportarDocxMock = vi.mocked(exportarDocx);
 const cuarentenaMock = vi.mocked(cuarentena);
@@ -238,6 +256,32 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
     ],
   }));
   revertirMock.mockResolvedValue({ revision: 3, erroresPendientes: [] });
+  listarCambiosMock.mockResolvedValue([]);
+  leerCambioMock.mockRejectedValue({ tipo: 'no-encontrado', mensaje: 'sin cambios' });
+  registrarCambioMock.mockResolvedValue(null);
+  aplicarCambioMock.mockResolvedValue({ revision: 2, hashArchivo: 'blake3:propuesta' });
+  descartarCambioMock.mockResolvedValue();
+  compararDocumentoMock.mockResolvedValue({
+    revision: 1,
+    ruta: documentoActivo.ruta,
+    baseExiste: true,
+    insertadas: 1,
+    borradas: 0,
+    lineas: [
+      {
+        tipo: 'igual',
+        numeroBase: 1,
+        numeroPropuesta: 1,
+        texto: 'Texto original.',
+      },
+      {
+        tipo: 'insertada',
+        numeroBase: null,
+        numeroPropuesta: 2,
+        texto: 'Texto nuevo.',
+      },
+    ],
+  });
   elegirDestinoDocxMock.mockResolvedValue('/tmp/salida.docx');
   exportarDocxMock.mockResolvedValue('/tmp/salida.docx');
   cuarentenaMock.mockResolvedValue([]);
@@ -420,6 +464,83 @@ describe('autosave de la interfaz', () => {
     );
     await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
     expect(screen.getAllByText('revisión 2').length).toBeGreaterThan(0);
+  });
+
+  it('propone un cambio y lo acepta sin tocar el documento hasta confirmar', async () => {
+    const propuesta = 'Propuesta revisada.\n';
+    const cambio = {
+      id: '01CAMBIO00000000000000000',
+      documento: documento.id,
+      ruta: documento.ruta,
+      autor: 'local',
+      ts: '2026-10-24T10:00:00Z',
+      baseRevision: 1,
+      baseHash: documento.hashArchivo,
+      base: documento.cuerpo,
+      propuesta,
+      insertadas: 1,
+      borradas: 0,
+      lineas: [
+        {
+          tipo: 'igual',
+          numeroBase: 1,
+          numeroPropuesta: 1,
+          texto: 'Texto original.',
+        },
+        {
+          tipo: 'insertada',
+          numeroBase: null,
+          numeroPropuesta: 2,
+          texto: 'Propuesta revisada.',
+        },
+      ],
+    };
+    registrarCambioMock.mockResolvedValue(cambio);
+    const editor = await abrirDemo();
+    fireEvent.click(screen.getByRole('button', { name: 'Control de cambios' }));
+    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.change(editor, { target: { value: propuesta } });
+
+    await waitFor(
+      () => expect(registrarCambioMock).toHaveBeenCalledTimes(1),
+      { timeout: 3000 },
+    );
+    expect(registrarCambioMock).toHaveBeenCalledWith(
+      '/tmp/novela',
+      documento.id,
+      propuesta,
+      'local',
+    );
+    await waitFor(() => expect(estadoGuardado()).toBe('cambio propuesto'));
+    expect(screen.getByRole('button', { name: 'Aceptar cambio' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aceptar cambio' }));
+    await waitFor(() =>
+      expect(aplicarCambioMock).toHaveBeenCalledWith(
+        '/tmp/novela',
+        '01CAMBIO00000000000000000',
+      ),
+    );
+    await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
+    expect(await screen.findByText(/Cambio aceptado en la revisión/)).toBeTruthy();
+  });
+
+  it('compara una revisión con el documento actual', async () => {
+    await abrirDemo();
+    fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
+    expect(await screen.findByRole('heading', { name: 'Revisión 1' })).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Comparar con el documento actual' }),
+    );
+    await waitFor(() =>
+      expect(compararDocumentoMock).toHaveBeenCalledWith(
+        '/tmp/novela',
+        documento.ruta,
+        1,
+      ),
+    );
+    expect(await screen.findByText('Diferencias con la revisión 1')).toBeTruthy();
+    expect(screen.getByText('Texto nuevo.')).toBeTruthy();
   });
 
   it('guarda de inmediato con Ctrl+S', async () => {

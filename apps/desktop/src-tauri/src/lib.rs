@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use ts_rs::TS;
+use writer_core::changes::CambioLocal;
 use writer_core::goals::{Desafio, MetaArchivada, MetaDiaria, MetaLibro, Metas, Pausa, Sesion};
 use writer_core::project::Project;
 use writer_core::verify::{Documento, Escaneo};
@@ -194,6 +195,94 @@ pub struct RevisionDetalleDto {
     pub scope: String,
     /// Contenido de cada archivo afectado.
     pub contenidos: Vec<ContenidoRevisionDto>,
+}
+
+/// Una línea de una diferencia.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct LineaDiffDto {
+    /// `igual`, `insertada` o `borrada`.
+    pub tipo: String,
+    /// Número de línea en la base.
+    pub numero_base: Option<usize>,
+    /// Número de línea en la propuesta o documento actual.
+    pub numero_propuesta: Option<usize>,
+    /// Texto de la línea.
+    pub texto: String,
+}
+
+/// Resumen de un cambio local pendiente.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct CambioResumenDto {
+    /// ULID del cambio.
+    pub id: String,
+    /// ID del documento.
+    pub documento: String,
+    /// Ruta relativa.
+    pub ruta: String,
+    /// Autor.
+    pub autor: String,
+    /// Fecha RFC 3339.
+    pub ts: String,
+    /// Revisión base.
+    pub base_revision: u64,
+    /// Líneas insertadas.
+    pub insertadas: usize,
+    /// Líneas borradas.
+    pub borradas: usize,
+}
+
+/// Detalle de un cambio local.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct CambioDetalleDto {
+    /// ULID del cambio.
+    pub id: String,
+    /// ID del documento.
+    pub documento: String,
+    /// Ruta relativa.
+    pub ruta: String,
+    /// Autor.
+    pub autor: String,
+    /// Fecha RFC 3339.
+    pub ts: String,
+    /// Revisión base.
+    pub base_revision: u64,
+    /// Hash base.
+    pub base_hash: String,
+    /// Cuerpo base.
+    pub base: String,
+    /// Cuerpo propuesto.
+    pub propuesta: String,
+    /// Líneas insertadas.
+    pub insertadas: usize,
+    /// Líneas borradas.
+    pub borradas: usize,
+    /// Diferencia por líneas.
+    pub lineas: Vec<LineaDiffDto>,
+}
+
+/// Comparación de una revisión con el documento actual.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct ComparacionDto {
+    /// Revisión comparada.
+    pub revision: u64,
+    /// Ruta relativa.
+    pub ruta: String,
+    /// Si el documento existía en la revisión.
+    pub base_existe: bool,
+    /// Líneas insertadas.
+    pub insertadas: usize,
+    /// Líneas borradas.
+    pub borradas: usize,
+    /// Diferencia por líneas.
+    pub lineas: Vec<LineaDiffDto>,
 }
 
 /// Resultado de revertir.
@@ -1212,6 +1301,120 @@ fn revertir(ruta: String, revision: u64) -> Result<ReversionDto, ErrorDto> {
     })
 }
 
+fn lineas_diff(cambio: &CambioLocal) -> Vec<LineaDiffDto> {
+    cambio
+        .diferencias()
+        .lineas
+        .into_iter()
+        .map(|linea| LineaDiffDto {
+            tipo: linea.tipo.como_str().to_string(),
+            numero_base: linea.numero_base,
+            numero_propuesta: linea.numero_propuesta,
+            texto: linea.texto,
+        })
+        .collect()
+}
+
+fn cambio_resumen_dto(cambio: &CambioLocal) -> CambioResumenDto {
+    let diferencias = cambio.diferencias();
+    CambioResumenDto {
+        id: cambio.id.clone(),
+        documento: cambio.documento.clone(),
+        ruta: cambio.ruta.clone(),
+        autor: cambio.autor.clone(),
+        ts: cambio.ts.clone(),
+        base_revision: cambio.base_revision,
+        insertadas: diferencias.insertadas,
+        borradas: diferencias.borradas,
+    }
+}
+
+fn cambio_detalle_dto(cambio: &CambioLocal) -> CambioDetalleDto {
+    let diferencias = cambio.diferencias();
+    CambioDetalleDto {
+        id: cambio.id.clone(),
+        documento: cambio.documento.clone(),
+        ruta: cambio.ruta.clone(),
+        autor: cambio.autor.clone(),
+        ts: cambio.ts.clone(),
+        base_revision: cambio.base_revision,
+        base_hash: cambio.base_hash.clone(),
+        base: cambio.base.clone(),
+        propuesta: cambio.propuesta.clone(),
+        insertadas: diferencias.insertadas,
+        borradas: diferencias.borradas,
+        lineas: lineas_diff(cambio),
+    }
+}
+
+#[tauri::command]
+fn listar_cambios(ruta: String) -> Result<Vec<CambioResumenDto>, ErrorDto> {
+    let cambios = Project::new(&ruta).listar_cambios().map_err(error)?;
+    Ok(cambios.iter().map(cambio_resumen_dto).collect())
+}
+
+#[tauri::command]
+fn leer_cambio(ruta: String, id: String) -> Result<CambioDetalleDto, ErrorDto> {
+    let cambio = Project::new(&ruta).leer_cambio(&id).map_err(error)?;
+    Ok(cambio_detalle_dto(&cambio))
+}
+
+#[tauri::command]
+fn registrar_cambio(
+    ruta: String,
+    objetivo: String,
+    cuerpo: String,
+    autor: String,
+) -> Result<Option<CambioDetalleDto>, ErrorDto> {
+    let cambio = Project::new(&ruta)
+        .registrar_cambio(&objetivo, &cuerpo, &autor)
+        .map_err(error)?;
+    Ok(cambio.as_ref().map(cambio_detalle_dto))
+}
+
+#[tauri::command]
+fn aplicar_cambio(ruta: String, id: String) -> Result<GuardadoDto, ErrorDto> {
+    let guardado = Project::new(&ruta).aplicar_cambio(&id).map_err(error)?;
+    Ok(GuardadoDto {
+        revision: guardado.revision,
+        hash_archivo: guardado.hash_archivo,
+    })
+}
+
+#[tauri::command]
+fn descartar_cambio(ruta: String, id: String) -> Result<(), ErrorDto> {
+    Project::new(&ruta).descartar_cambio(&id).map_err(error)
+}
+
+#[tauri::command]
+fn comparar_documento(
+    ruta: String,
+    objetivo: String,
+    revision: u64,
+) -> Result<ComparacionDto, ErrorDto> {
+    let comparacion = Project::new(&ruta)
+        .comparar_documento(&objetivo, revision)
+        .map_err(error)?;
+    Ok(ComparacionDto {
+        revision: comparacion.revision,
+        ruta: comparacion.ruta,
+        base_existe: comparacion.base_existe,
+        insertadas: comparacion.diferencias.insertadas,
+        borradas: comparacion.diferencias.borradas,
+        lineas: comparacion
+            .diferencias
+            .lineas
+            .into_iter()
+            .map(|linea| LineaDiffDto {
+                tipo: linea.tipo.como_str().to_string(),
+                numero_base: linea.numero_base,
+                numero_propuesta: linea.numero_propuesta,
+                texto: linea.texto,
+            })
+            .collect(),
+    })
+}
+
 #[tauri::command]
 fn exportar_docx(
     ruta: String,
@@ -1551,6 +1754,12 @@ pub fn run() {
             exportar_pdf,
             leer_formato_pdf,
             guardar_formato_pdf,
+            listar_cambios,
+            leer_cambio,
+            registrar_cambio,
+            aplicar_cambio,
+            descartar_cambio,
+            comparar_documento,
             cuarentena,
             descartar_cuarentena,
             proyecto_e2e,
@@ -1621,6 +1830,10 @@ mod tests {
         RevisionDto::export_all(&config).expect("exportar RevisionDto");
         ContenidoRevisionDto::export_all(&config).expect("exportar ContenidoRevisionDto");
         RevisionDetalleDto::export_all(&config).expect("exportar RevisionDetalleDto");
+        LineaDiffDto::export_all(&config).expect("exportar LineaDiffDto");
+        CambioResumenDto::export_all(&config).expect("exportar CambioResumenDto");
+        CambioDetalleDto::export_all(&config).expect("exportar CambioDetalleDto");
+        ComparacionDto::export_all(&config).expect("exportar ComparacionDto");
         ReversionDto::export_all(&config).expect("exportar ReversionDto");
         CuarentenaDto::export_all(&config).expect("exportar CuarentenaDto");
         MetaDiariaDto::export_all(&config).expect("exportar MetaDiariaDto");
@@ -1781,6 +1994,42 @@ mod tests {
         .expect_err("id inexistente");
         assert_eq!(fallo.tipo, TipoError::NoEncontrado);
         assert!(fallo.mensaje.contains("no encontrado"));
+    }
+
+    #[test]
+    fn comandos_de_cambios_y_comparacion() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let raiz = directorio.path().join("cambios");
+        let ruta = raiz.display().to_string();
+        crear_proyecto(ruta.clone(), "Cambios".to_string(), None, None, false)
+            .expect("crear proyecto");
+        let escena = listar(ruta.clone(), false).expect("listar").remove(0);
+        let cambio = registrar_cambio(
+            ruta.clone(),
+            escena.id.clone(),
+            "Propuesta de prueba.\n".to_string(),
+            "Autora".to_string(),
+        )
+        .expect("registrar")
+        .expect("cambio");
+        assert!(cambio.insertadas > 0);
+        assert_eq!(
+            listar_cambios(ruta.clone()).expect("listar cambios").len(),
+            1
+        );
+        assert_eq!(
+            leer(ruta.clone(), escena.id.clone()).expect("leer").cuerpo,
+            escena.cuerpo
+        );
+        let guardado = aplicar_cambio(ruta.clone(), cambio.id.clone()).expect("aplicar");
+        assert_eq!(guardado.revision, 2);
+        assert!(listar_cambios(ruta.clone()).expect("cambios").is_empty());
+        let comparacion = comparar_documento(ruta.clone(), escena.id.clone(), 1).expect("comparar");
+        assert!(comparacion.insertadas > 0);
+        assert!(comparacion
+            .lineas
+            .iter()
+            .any(|linea| linea.tipo == "insertada" && linea.texto.contains("Propuesta")));
     }
 
     #[test]

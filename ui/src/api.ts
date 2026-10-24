@@ -2,6 +2,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { BusquedaDto } from './types/BusquedaDto';
+import type { CambioDetalleDto } from './types/CambioDetalleDto';
+import type { CambioResumenDto } from './types/CambioResumenDto';
+import type { ComparacionDto } from './types/ComparacionDto';
 import type { ComentarioDto } from './types/ComentarioDto';
 import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { ErrorDto } from './types/ErrorDto';
@@ -17,6 +20,7 @@ import type { ReversionDto } from './types/ReversionDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
 import type { TipoError } from './types/TipoError';
+import { compararLineas } from './diff';
 
 export const esTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -54,6 +58,8 @@ const sesionesDemo: SesionDto[] = [];
 const comentariosDemo: ComentarioDto[] = [];
 let comentarioDemoSeq = 0;
 let plotGridDemo: PlotGridDto = { version: 1, tramas: [] };
+let cambiosDemo: CambioDetalleDto[] = [];
+let cambioDemoSeq = 0;
 
 const demoCuarentena: CuarentenaDto[] = [
   {
@@ -1124,6 +1130,151 @@ export async function revertir(ruta: string, revision: number): Promise<Reversio
     return { revision: demoProyecto.revision, erroresPendientes: [] };
   }
   return invoke<ReversionDto>('revertir', { ruta, revision });
+}
+
+function normalizarDemo(texto: string): string {
+  const normalizado = texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return normalizado && !normalizado.endsWith('\n') ? `${normalizado}\n` : normalizado;
+}
+
+function resumenCambioDemo(cambio: CambioDetalleDto): CambioResumenDto {
+  return {
+    id: cambio.id,
+    documento: cambio.documento,
+    ruta: cambio.ruta,
+    autor: cambio.autor,
+    ts: cambio.ts,
+    baseRevision: cambio.baseRevision,
+    insertadas: cambio.insertadas,
+    borradas: cambio.borradas,
+  };
+}
+
+export async function listarCambios(ruta: string): Promise<CambioResumenDto[]> {
+  if (!esTauri) {
+    return cambiosDemo.map(resumenCambioDemo);
+  }
+  return invoke<CambioResumenDto[]>('listar_cambios', { ruta });
+}
+
+export async function leerCambio(ruta: string, id: string): Promise<CambioDetalleDto> {
+  if (!esTauri) {
+    const cambio = cambiosDemo.find((item) => item.id === id);
+    if (!cambio) {
+      throw new Error('Cambio de demostración no encontrado.');
+    }
+    return { ...cambio, lineas: [...cambio.lineas] };
+  }
+  return invoke<CambioDetalleDto>('leer_cambio', { ruta, id });
+}
+
+export async function registrarCambio(
+  ruta: string,
+  objetivo: string,
+  cuerpo: string,
+  autor: string,
+): Promise<CambioDetalleDto | null> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (item) => item.id === objetivo || item.ruta === objetivo,
+    );
+    if (!documento) {
+      throw new Error('Documento de demostración no encontrado.');
+    }
+    const propuesta = normalizarDemo(cuerpo);
+    const existente = cambiosDemo.find((item) => item.documento === documento.id);
+    if (propuesta === normalizarDemo(documento.cuerpo)) {
+      cambiosDemo = cambiosDemo.filter((item) => item.documento !== documento.id);
+      return null;
+    }
+    const base = normalizarDemo(existente?.base ?? documento.cuerpo);
+    const diff = compararLineas(base, propuesta);
+    const cambio: CambioDetalleDto = {
+      id: existente?.id ?? `demo-cambio-${++cambioDemoSeq}`,
+      documento: documento.id,
+      ruta: documento.ruta,
+      autor,
+      ts: new Date().toISOString(),
+      baseRevision: existente?.baseRevision ?? demoProyecto.revision,
+      baseHash: existente?.baseHash ?? documento.hashArchivo,
+      base,
+      propuesta,
+      insertadas: diff.insertadas,
+      borradas: diff.borradas,
+      lineas: diff.lineas,
+    };
+    cambiosDemo = [...cambiosDemo.filter((item) => item.documento !== documento.id), cambio];
+    return cambio;
+  }
+  return invoke<CambioDetalleDto | null>('registrar_cambio', {
+    ruta,
+    objetivo,
+    cuerpo,
+    autor,
+  });
+}
+
+export async function aplicarCambio(
+  ruta: string,
+  id: string,
+): Promise<GuardadoDto> {
+  if (!esTauri) {
+    const cambio = cambiosDemo.find((item) => item.id === id);
+    if (!cambio) {
+      throw new Error('Cambio de demostración no encontrado.');
+    }
+    const documento = demoDocumentos.find((item) => item.id === cambio.documento);
+    if (documento) {
+      documento.cuerpo = cambio.propuesta.replace(/\n$/, '');
+      documento.hashArchivo = hashDemo(documento.cuerpo);
+    }
+    demoProyecto.revision += 1;
+    cambiosDemo = cambiosDemo.filter((item) => item.id !== id);
+    return {
+      revision: demoProyecto.revision,
+      hashArchivo: documento?.hashArchivo ?? hashDemo(cambio.propuesta),
+    };
+  }
+  return invoke<GuardadoDto>('aplicar_cambio', { ruta, id });
+}
+
+export async function descartarCambio(ruta: string, id: string): Promise<void> {
+  if (!esTauri) {
+    cambiosDemo = cambiosDemo.filter((item) => item.id !== id);
+    return;
+  }
+  await invoke('descartar_cambio', { ruta, id });
+}
+
+export async function compararDocumento(
+  ruta: string,
+  objetivo: string,
+  revision: number,
+): Promise<ComparacionDto> {
+  if (!esTauri) {
+    const documento = demoDocumentos.find(
+      (item) => item.id === objetivo || item.ruta === objetivo,
+    );
+    if (!documento) {
+      throw new Error('Documento de demostración no encontrado.');
+    }
+    const base =
+      revision >= demoProyecto.revision ? documento.cuerpo : '';
+    const diff = compararLineas(base, documento.cuerpo);
+    return {
+      revision,
+      ruta: documento.ruta,
+      baseExiste: revision < demoProyecto.revision,
+      insertadas: diff.insertadas,
+      borradas: diff.borradas,
+      lineas: diff.lineas,
+    };
+  }
+  return invoke<ComparacionDto>('comparar_documento', {
+    ruta,
+    objetivo,
+    revision,
+  });
 }
 
 export async function exportarDocx(

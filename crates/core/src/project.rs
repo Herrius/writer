@@ -5,6 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use crate::blob::BlobStore;
+use crate::changes::{self, CambioLocal};
+use crate::diff::{self, Diferencias};
 use crate::error::{Error, Result};
 use crate::fault;
 use crate::fsutil;
@@ -14,6 +16,7 @@ use crate::lock::ProjectLock;
 use crate::model::{self, Escena, Nota, Proyecto, ESTADOS_ARCHIVO, TIPOS_NOTA};
 use crate::oplog::{Efecto, Entrada, Log, Operacion};
 use crate::recovery;
+use crate::time;
 use crate::ulid;
 use crate::verify::{self, Documento, Escaneo};
 
@@ -161,6 +164,19 @@ pub struct CuarentenaItem {
     pub ts: Option<String>,
     /// Tamaño de la copia en bytes.
     pub tamano: u64,
+}
+
+/// Comparación de un documento actual con una revisión.
+#[derive(Clone, Debug)]
+pub struct Comparacion {
+    /// Revisión comparada.
+    pub revision: u64,
+    /// Ruta relativa del documento.
+    pub ruta: String,
+    /// Si el documento existía al terminar la revisión.
+    pub base_existe: bool,
+    /// Diferencias entre la revisión y el estado actual.
+    pub diferencias: Diferencias,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1081,6 +1097,16 @@ impl Project {
         hash_base: Option<&str>,
     ) -> Result<ResultadoGuardado> {
         let mut sesion = self.escritura()?;
+        self.guardar_cuerpo_en_sesion(&mut sesion, id_o_ruta, cuerpo, hash_base)
+    }
+
+    fn guardar_cuerpo_en_sesion(
+        &self,
+        sesion: &mut SesionEscritura,
+        id_o_ruta: &str,
+        cuerpo: &str,
+        hash_base: Option<&str>,
+    ) -> Result<ResultadoGuardado> {
         let documento = sesion
             .escaneo
             .por_id(id_o_ruta)
@@ -1114,7 +1140,7 @@ impl Project {
         };
         let hash_archivo = crate::hash::hash(&bytes);
         let revision = self.commit_efectos(
-            &mut sesion,
+            sesion,
             vec![Cambio::existente(ruta, bytes)],
             "humano",
             scope,
@@ -1124,6 +1150,170 @@ impl Project {
         Ok(ResultadoGuardado {
             revision,
             hash_archivo,
+        })
+    }
+
+    /// Lista los cambios locales pendientes.
+    pub fn listar_cambios(&self) -> Result<Vec<CambioLocal>> {
+        let _sesion = self.lectura()?;
+        changes::listar(&self.raiz)
+    }
+
+    /// Lee un cambio local por ULID.
+    pub fn leer_cambio(&self, id: &str) -> Result<CambioLocal> {
+        let _sesion = self.lectura()?;
+        changes::leer(&self.raiz, id)
+    }
+
+    /// Registra o actualiza un cambio propuesto sin tocar el documento.
+    ///
+    /// Devuelve `None` cuando la propuesta coincide con el cuerpo actual. En ese
+    /// caso elimina cualquier propuesta anterior del mismo documento.
+    pub fn registrar_cambio(
+        &self,
+        id_o_ruta: &str,
+        cuerpo: &str,
+        autor: &str,
+    ) -> Result<Option<CambioLocal>> {
+        let sesion = self.escritura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let documento_id = documento.id().to_string();
+        let ruta = documento.relativa().to_string();
+        let base_hash = documento.hash().to_string();
+        let base = normalizar_cuerpo(documento.cuerpo());
+        let propuesta = normalizar_cuerpo(cuerpo);
+        let base_revision = sesion
+            .log
+            .operaciones()
+            .last()
+            .map(|operacion| operacion.prepare.target_rev)
+            .unwrap_or(0);
+
+        if propuesta == base {
+            changes::eliminar_para_documento(&self.raiz, &documento_id, &ruta)?;
+            return Ok(None);
+        }
+
+        if let Some(mut existente) = changes::para_documento(&self.raiz, &documento_id, &ruta)? {
+            if existente.base_hash == base_hash && existente.base == base {
+                existente.autor = autor.trim().to_string();
+                existente.ts = time::ahora();
+                existente.base_revision = base_revision;
+                existente.propuesta = propuesta;
+                changes::guardar(&self.raiz, &existente)?;
+                return Ok(Some(existente));
+            }
+            changes::eliminar(&self.raiz, &existente.id)?;
+        }
+
+        let cambio = CambioLocal::nuevo(
+            &documento_id,
+            &ruta,
+            autor,
+            base_revision,
+            &base_hash,
+            &base,
+            &propuesta,
+        )?;
+        changes::guardar(&self.raiz, &cambio)?;
+        Ok(Some(cambio))
+    }
+
+    /// Acepta un cambio: escribe su propuesta como una transacción normal.
+    pub fn aplicar_cambio(&self, id: &str) -> Result<ResultadoGuardado> {
+        let mut sesion = self.escritura()?;
+        let cambio = changes::leer(&self.raiz, id)?;
+        {
+            let documento = sesion
+                .escaneo
+                .por_id(&cambio.documento)
+                .or_else(|| sesion.escaneo.por_ruta(&cambio.ruta))
+                .ok_or_else(|| {
+                    Error::NotFound(format!(
+                        "documento del cambio no encontrado: {}",
+                        cambio.ruta
+                    ))
+                })?;
+            if documento.relativa() != cambio.ruta {
+                return Err(Error::Conflict(
+                    "el cambio pertenece a otro documento".to_string(),
+                ));
+            }
+            if documento.hash() != cambio.base_hash {
+                return Err(Error::Conflict(format!(
+                    "el documento cambió después de proponer el cambio: {}",
+                    cambio.ruta
+                )));
+            }
+        }
+        let resultado = self.guardar_cuerpo_en_sesion(
+            &mut sesion,
+            &cambio.documento,
+            &cambio.propuesta,
+            Some(&cambio.base_hash),
+        )?;
+        if let Err(error) = changes::eliminar(&self.raiz, id) {
+            // El documento ya está confirmado; el sidecar antiguo no debe
+            // impedir que la UI muestre el guardado. Se intentará limpiar en
+            // una operación posterior.
+            let _ = error;
+        }
+        Ok(resultado)
+    }
+
+    /// Descarta un cambio sin tocar el documento.
+    pub fn descartar_cambio(&self, id: &str) -> Result<()> {
+        let _sesion = self.lectura()?;
+        changes::eliminar(&self.raiz, id)
+    }
+
+    /// Compara un documento con el estado que tenía al terminar una revisión.
+    pub fn comparar_documento(&self, id_o_ruta: &str, revision: u64) -> Result<Comparacion> {
+        let sesion = self.lectura()?;
+        let documento = sesion
+            .escaneo
+            .por_id(id_o_ruta)
+            .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
+            .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
+        let log = sesion
+            .log
+            .as_ref()
+            .ok_or_else(|| Error::NotFound("el proyecto no tiene historial".to_string()))?;
+        let operacion = log
+            .operaciones()
+            .into_iter()
+            .find(|operacion| operacion.prepare.target_rev == revision)
+            .ok_or_else(|| Error::NotFound(format!("revisión no encontrada: {revision}")))?;
+        let efecto = operacion
+            .prepare
+            .efectos
+            .iter()
+            .find(|efecto| efecto.ruta == documento.relativa())
+            .ok_or_else(|| {
+                Error::Input(format!(
+                    "la revisión {revision} no modificó {}",
+                    documento.relativa()
+                ))
+            })?;
+        let base_existe = efecto.hash_nuevo.is_some();
+        let base = match &efecto.hash_nuevo {
+            Some(hash) => {
+                let blobs = BlobStore::abrir(&self.ruta_escritor())?;
+                let bytes = blobs.obtener(hash)?;
+                cuerpo_de_archivo(&bytes, documento.relativa())?
+            }
+            None => String::new(),
+        };
+        let diferencias = diff::comparar(&base, documento.cuerpo());
+        Ok(Comparacion {
+            revision,
+            ruta: documento.relativa().to_string(),
+            base_existe,
+            diferencias,
         })
     }
 
@@ -1767,6 +1957,13 @@ fn normalizar_etiquetas(etiquetas: &[String]) -> Result<Option<Vec<String>>> {
     } else {
         Ok(Some(salida))
     }
+}
+
+fn cuerpo_de_archivo(bytes: &[u8], ruta: &str) -> Result<String> {
+    let texto = std::str::from_utf8(bytes)
+        .map_err(|error| Error::Format(format!("{ruta}: el documento no es UTF-8: {error}")))?;
+    let (_, cuerpo) = crate::yaml::parsear_documento(texto, ruta)?;
+    Ok(cuerpo)
 }
 
 fn normalizar_cuerpo(cuerpo: &str) -> String {
