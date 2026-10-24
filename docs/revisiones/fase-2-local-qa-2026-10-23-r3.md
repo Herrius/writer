@@ -326,4 +326,4 @@ Antes de crear este informe, `git status --short` quedó vacío; al cierre solo 
   `escena.orden`, no por ruta. Prueba: tras intercambiar A/B, el PDF muestra B
   antes que A.
 
-Pendiente: repetir los gates y esta verificación sobre el commit de corrección.
+Commit de corrección: `12f38f4`. Gates repetidos en verde sobre ese commit.

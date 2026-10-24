@@ -73,9 +73,10 @@ python scripts/ci.py empaquetado                          OK
 ## 5. Decisión
 
 La funcionalidad principal de la Fase 2 está implementada y los gates están en
-verde en Linux x86_64. La QA independiente detectó ocho P2; todos se corrigieron
-con pruebas (backup, sidecars, DOCX/RTF, exportación v2, temporizador y
-plantillas). No se declara “cerrada con firma” hasta repetir la revisión formal
-y aceptar la deuda de §4.
+verde en Linux x86_64. Las QA independientes detectaron ocho P2 en r1 y un P1 y
+dos P2 en r2/r3; todos se corrigieron con pruebas y los gates se repitieron. La
+deuda restante es de validación externa (Windows, Word/LibreOffice, app
+instalada) y de mantenimiento interno (división de la UI), no de contrato
+funcional local.
 
 Próximo paso: pipeline de revisión de Fase 2 y, después, Fase 3.
