@@ -1495,6 +1495,16 @@ fn un_directorio_de_cambios_enlazado_no_impide_guardar_el_manuscrito() {
         proyecto.leer(documento.id()).expect("leer").cuerpo(),
         "El manuscrito sigue escribiéndose.\n"
     );
+    assert!(
+        proyecto
+            .mover(documento.id(), Some("02-libro"), None, None)
+            .is_err(),
+        "las operaciones destructivas fallan cerradas"
+    );
+    assert!(
+        proyecto.revertir(1).is_err(),
+        "la reversión también falla cerrada"
+    );
 }
 
 #[test]
@@ -1532,4 +1542,18 @@ fn sidecar_de_cambio_enlazado_se_aparta_sin_seguirlo() {
     assert!(proyecto.listar_cambios().expect("listar").is_empty());
     assert!(!enlace.exists());
     assert!(fuera.exists(), "el destino del enlace no se toca");
+}
+
+#[test]
+fn no_se_revierte_mientras_hay_una_propuesta_pendiente() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("cambio-revertir"));
+    proyecto.init("Cambios", None, None).expect("init");
+    let documento = proyecto.listar(false).expect("listar").remove(0);
+    proyecto
+        .registrar_cambio(documento.id(), "Propuesta.\n", "Autora")
+        .expect("registrar");
+    let error = proyecto.revertir(1).expect_err("debe bloquear");
+    assert!(matches!(error, Error::Conflict(_)));
+    assert_eq!(proyecto.listar_cambios().expect("cambios").len(), 1);
 }

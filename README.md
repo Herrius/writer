@@ -36,7 +36,7 @@ sincronización ni servicios online.
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
 exportación Markdown e inyección de fallos. El conjunto Rust acumula **74
-unitarias + 48 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
+unitarias + 49 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
 tiene 8 pruebas y la UI 77 (corpus, preferencias, lectura simulada, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 48 flujos E2E
 de navegador y 2 escenarios de escritorio con Tauri/WebDriver (`Ctrl+S` y cierre

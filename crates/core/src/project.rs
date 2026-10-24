@@ -1129,7 +1129,7 @@ impl Project {
             .por_id(id_o_ruta)
             .or_else(|| sesion.escaneo.por_ruta(id_o_ruta))
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
-        self.exigir_sin_cambio_pendiente(documento.id(), documento.relativa())?;
+        self.exigir_sin_cambio_pendiente_lenient(documento.id(), documento.relativa())?;
         self.guardar_cuerpo_en_sesion(&mut sesion, id_o_ruta, cuerpo, hash_base)
     }
 
@@ -1187,13 +1187,28 @@ impl Project {
     }
 
     /// Rechaza operaciones estructurales mientras haya una propuesta pendiente.
+    ///
+    /// Las operaciones destructivas fallan cerradas: si no se puede verificar
+    /// el almacén de propuestas, no se mueve, borra ni revierte el documento.
     fn exigir_sin_cambio_pendiente(&self, documento: &str, ruta: &str) -> Result<()> {
+        if changes::para_documento(&self.raiz, documento, ruta)?.is_some() {
+            return Err(Error::Conflict(format!(
+                "hay un cambio propuesto pendiente para {ruta}; acéptalo o recházalo antes de modificarlo"
+            )));
+        }
+        Ok(())
+    }
+
+    /// Variante para el guardado normal del manuscrito.
+    ///
+    /// Un almacén de propuestas ilegible no debe impedir escribir el documento;
+    /// el panel de cambios mostrará su propio error. La comprobación estricta se
+    /// usa para mover, borrar, cambiar metadatos y revertir.
+    fn exigir_sin_cambio_pendiente_lenient(&self, documento: &str, ruta: &str) -> Result<()> {
         match changes::para_documento(&self.raiz, documento, ruta) {
             Ok(Some(_)) => Err(Error::Conflict(format!(
                 "hay un cambio propuesto pendiente para {ruta}; acéptalo o recházalo antes de modificarlo"
             ))),
-            // Un almacén de propuestas ilegible no debe impedir guardar el
-            // manuscrito. El panel de cambios mostrará su propio error.
             Ok(None) | Err(_) => Ok(()),
         }
     }
@@ -1489,10 +1504,7 @@ impl Project {
     /// errores que queden después.
     pub fn revertir(&self, revision: u64) -> Result<ResultadoRevertir> {
         let mut sesion = self.escritura_con(true)?;
-        let hay_cambios = changes::listar(&self.raiz)
-            .map(|cambios| !cambios.is_empty())
-            .unwrap_or(false);
-        if hay_cambios {
+        if !changes::listar(&self.raiz)?.is_empty() {
             return Err(Error::Conflict(
                 "hay cambios propuestos pendientes; acéptalos o recházalos antes de revertir"
                     .to_string(),

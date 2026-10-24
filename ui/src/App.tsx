@@ -896,6 +896,7 @@ export default function App() {
         }
         if (cambio) {
           setCambioActivo(cambio);
+          cambioActivoRef.current = cambio;
           const resumen: CambioResumenDto = {
             id: cambio.id,
             documento: cambio.documento,
@@ -915,6 +916,7 @@ export default function App() {
           );
         } else {
           setCambioActivo(null);
+          cambioActivoRef.current = null;
           setCambiosProyecto((lista) =>
             lista.filter((item) => item.documento !== pendiente.id),
           );
@@ -2083,9 +2085,12 @@ export default function App() {
         try {
           cambio = await leerCambio(actual.raiz, id);
         } catch {
-          setCambioActivo(null);
-          setEstadoGuardado('guardado');
-          return;
+          cambio = cambioActivoRef.current;
+          if (!cambio) {
+            setCambioActivo(null);
+            setEstadoGuardado('guardado');
+            return;
+          }
         }
       }
       if (!cambio) {

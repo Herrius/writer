@@ -34,7 +34,7 @@
 ```text
 cargo fmt --all --check                              OK
 cargo clippy --workspace --all-targets --all-features  OK
-cargo test --workspace --all-targets --locked        74 + 48 + 25 + 1 perf
+cargo test --workspace --all-targets --locked        74 + 49 + 25 + 1 perf
 cargo test desktop                                   8/8
 pnpm typecheck                                       OK
 pnpm ui:test                                         77/77
@@ -104,10 +104,10 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
   `procesandoCambio` antes del primer `await`; el editor queda deshabilitado y
   `limpiarPendienteDe` solo borra el pendiente del documento aplicado. Prueba
   de regresión en `ui/src/App.test.tsx`.
-- **P2 `.escritor/cambios` inválido:** `exigir_sin_cambio_pendiente` y
-  `revertir` tratan un almacén de propuestas ilegible como “sin propuesta
-  verificable”; el manuscrito se sigue pudiendo guardar. Prueba con symlink en
-  `crates/core/tests/proyecto.rs`.
+- **P2 `.escritor/cambios` inválido:** el guardado normal del manuscrito usa una
+  comprobación tolerante; mover, eliminar, metadatos, reordenar y revertir usan
+  una comprobación estricta y fallan cerrados si no pueden leer el almacén.
+  Prueba con symlink en `crates/core/tests/proyecto.rs`.
 - **P1 instaladores:** `ci.py empaquetado` reconstruyó `.deb` y `.rpm` desde el
   código corregido; el binario embebe el asset JS actual.
 - **P2 foco del drawer:** al abrir se enfoca el cierre; al cerrar vuelve al
@@ -116,4 +116,16 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
 - **P3 responsive:** tabs con salto de línea en vez de elipsis, diff con ancho
   mínimo y pruebas de foco/geometría a 720/960 px.
 - **P3 documentación:** README, HANDOFF, e2e, empaquetado y conteos
-  actualizados a 74 + 48 + 25 + 1, 77 UI y 48 E2E.
+  actualizados a 74 + 49 + 25 + 1, 77 UI y 48 E2E.
+
+## 8. Correcciones de la revisión r3
+
+- **P2 fail-open del almacén de propuestas:** el guardado normal del manuscrito
+  sigue siendo tolerante a un `.escritor/cambios` ilegible, pero mover, eliminar,
+  renombrar, cambiar metadatos, reordenar y revertir usan la comprobación
+  estricta y fallan cerrados. Pruebas con symlink y con propuesta pendiente.
+- **P3 cambio con id nuevo:** aceptar usa el cambio devuelto por el guardado
+  previo si el id antiguo ya no existe; no declara guardado en falso.
+- **Instaladores:** `.deb` y `.rpm` reconstruidos desde el commit final; el
+  binario embebe `assets/index-Cwig5QfJ.js` y `assets/index-JJYeyYAq.css`, que
+  coinciden con `ui/dist`.
