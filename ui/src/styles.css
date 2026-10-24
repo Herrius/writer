@@ -3979,3 +3979,87 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 .dabble-derecha-tabs button {
   font-size: 0.7rem;
 }
+
+[data-tema='sepia'] {
+  --papel: #fbf3e3;
+  --papel-2: #f4e8d0;
+  --tinta: #3b3023;
+  --tinta-suave: #786a57;
+  --linea: #ddcdb2;
+  --borde-control: #a89474;
+  --acento: #8b4a2e;
+  --acento-suave: #f0dfd5;
+}
+
+[data-tema='oscuro'] {
+  --papel: #242424;
+  --papel-2: #2c2c2c;
+  --tinta: #eee8de;
+  --tinta-suave: #b8b0a5;
+  --linea: #3b3b3b;
+  --borde-control: #666;
+  --acento: #d38b6f;
+  --acento-suave: #4a2a22;
+  --verde: #8fc49c;
+  --rojo: #e08b80;
+  --ambar: #d8b56a;
+}
+
+[data-tema='oscuro'] .dabble-derecha-tabs button {
+  color: #c9c2b8;
+}
+
+[data-tema='oscuro'] .dabble-derecha-tabs button.activo {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+[data-tema='oscuro'] .cuarentena,
+[data-tema='oscuro'] .diagnostico,
+[data-tema='oscuro'] .banner-info {
+  border-color: #4a4a3d;
+  background: #292821;
+  color: #e8e2d8;
+}
+
+[data-tema='oscuro'] .cuarentena-cabecera p,
+[data-tema='oscuro'] .cuarentena-datos span,
+[data-tema='oscuro'] .dabble-doc-meta,
+[data-tema='oscuro'] .dabble-vacio,
+[data-tema='oscuro'] .dabble-resumen,
+[data-tema='oscuro'] .dabble-nota-pie {
+  color: var(--tinta-suave);
+}
+
+[data-tema='oscuro'] .dabble-hoja .editor-toolbar button,
+[data-tema='oscuro'] .dabble-hoja .editor-toolbar select,
+[data-tema='oscuro'] .dabble-hoja .editor-toolbar input {
+  border-color: #555;
+  background: #303030;
+  color: #e8e2d8;
+}
+
+[data-tema='oscuro'] .dabble-hoja .editor-toolbar button:hover {
+  background: #3b3b3b;
+}
+
+[data-tema='oscuro'] .dabble-hoja .editor-toolbar button.activo {
+  background: #4a2a22;
+  color: #ffd8c7;
+}
+
+[data-tema='oscuro'] .dabble-top-acciones button,
+[data-tema='oscuro'] .dabble-tabs button,
+[data-tema='oscuro'] .dabble-topbar .dabble-home {
+  color: #d8d0c5;
+}
+
+[data-tema='oscuro'] .dabble-compartir {
+  border-color: #555;
+  background: #303030;
+  color: #eee8de;
+}
+
+[data-tema='oscuro'] .dabble-tab.activo {
+  background: #2a2a2a;
+}

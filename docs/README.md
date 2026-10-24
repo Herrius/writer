@@ -19,6 +19,14 @@
   y backup.
 - [`exportacion-v2.md`](exportacion-v2.md) — Markdown, DOCX, PDF y formato de
   manuscrito.
+- [`cambios-v1.md`](cambios-v1.md) — control de cambios local por sidecar.
+- [`diff-v1.md`](diff-v1.md) — diferencias por líneas y comparación de
+  revisiones.
+- [`formato-v1.md`](formato-v1.md) — preferencias, temas, tipografía, atajos,
+  Quick Open y paleta.
+- [`tts-v1.md`](tts-v1.md) — lectura en voz alta con voces del sistema.
+- [`rendimiento-v1.md`](rendimiento-v1.md) — presupuestos de 1.000 escenas y
+  1.000 marcas.
 - [`protocolo-commit.md`](protocolo-commit.md) — orden de la transacción, CAS,
   recuperación y pruebas de caída.
 - [`markdown-v1.md`](markdown-v1.md) — contrato del editor: esquema aceptado,
@@ -84,6 +92,14 @@
   — Fase 2.6: plantillas locales.
 - [`iteraciones/25-fase-2-7-cierre.md`](iteraciones/25-fase-2-7-cierre.md) —
   Fase 2.7: integración, gates y cierre funcional de la Fase 2.
+- [`iteraciones/26-fase-3-1-2.md`](iteraciones/26-fase-3-1-2.md) — Fase 3.1 y
+  3.2: control de cambios y comparación.
+- [`iteraciones/27-fase-3-3.md`](iteraciones/27-fase-3-3.md) — Fase 3.3:
+  preferencias, temas y paleta.
+- [`iteraciones/28-fase-3-4.md`](iteraciones/28-fase-3-4.md) — Fase 3.4:
+  lectura en voz alta y herramientas.
+- [`iteraciones/29-fase-3-5.md`](iteraciones/29-fase-3-5.md) — Fase 3.5:
+  presupuestos de rendimiento.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura
@@ -92,8 +108,11 @@
   revisión por roles y registro de la Fase 2. Incluye el informe QA que bloqueó
   la primera congelación y el acta r2 con las correcciones.
 
-Pendiente por fase:
+Estado por fase:
 
-- Fase 2: pipeline de revisión por roles y validación externa (AppImage, firma,
-  Windows/macOS y CI remoto).
-- Fase 3: `protocolo-patches.md` y contrato del servidor MCP.
+- **Fase 2:** cerrada funcionalmente en Linux; validación Windows y release
+  público pendientes.
+- **Fase 3 (local avanzado):** cerrada funcionalmente en Linux.
+- **Fase 4 (Windows):** pendiente de una máquina Windows para toolchain MSVC,
+  WebView2, instalador y E2E nativo.
+- **Fase 5 (cierre):** documentación final y aceptación después de Windows.

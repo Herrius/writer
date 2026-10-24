@@ -415,6 +415,7 @@ export default function App() {
   const puedeEditarRef = useRef(false);
   const modoSugerenciasRef = useRef(false);
   const cambioActivoRef = useRef<CambioDetalleDto | null>(null);
+  const lecturaSeq = useRef(0);
   const pendienteRef = useRef<Pendiente | null>(null);
   const cuerpoEditorRef = useRef('');
   const drenajeRef = useRef<Promise<boolean> | null>(null);
@@ -465,6 +466,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    lecturaSeq.current += 1;
     detenerLectura();
     setLeyendo(false);
     setPausadoLectura(false);
@@ -2005,8 +2007,28 @@ export default function App() {
 
   const aceptarCambioActivo = async () => {
     const actual = proyectoRef.current;
-    const cambio = cambioActivoRef.current;
-    if (!actual || !cambio || procesandoCambio) {
+    if (!actual || procesandoCambio) {
+      return;
+    }
+    const id = cambioActivoRef.current?.id;
+    const teniaPendiente = pendienteRef.current !== null;
+    if (teniaPendiente) {
+      const guardadoPendiente = await guardarAhora();
+      if (!guardadoPendiente) {
+        return;
+      }
+    }
+    let cambio = cambioActivoRef.current;
+    if (teniaPendiente && id) {
+      try {
+        cambio = await leerCambio(actual.raiz, id);
+      } catch {
+        setCambioActivo(null);
+        setEstadoGuardado('guardado');
+        return;
+      }
+    }
+    if (!cambio) {
       return;
     }
     setProcesandoCambio(true);
@@ -2518,9 +2540,11 @@ export default function App() {
     );
     if (!resumen) {
       setCambioActivo(null);
+      setEstadoGuardado((valor) => (valor === 'sugerencia' ? 'guardado' : valor));
       return;
     }
     if (cambioActivoRef.current?.id === resumen.id) {
+      setEstadoGuardado((valor) => (valor === 'guardado' ? 'sugerencia' : valor));
       return;
     }
     let cancelado = false;
@@ -2528,6 +2552,9 @@ export default function App() {
       .then((detalle) => {
         if (!cancelado) {
           setCambioActivo(detalle);
+          setEstadoGuardado((valor) =>
+            valor === 'guardado' ? 'sugerencia' : valor,
+          );
           setErrorCambios(null);
         }
       })
@@ -2672,17 +2699,24 @@ export default function App() {
       setErrorLectura('No hay texto para leer.');
       return;
     }
+    const secuencia = lecturaSeq.current + 1;
+    lecturaSeq.current = secuencia;
+    const esActual = () => lecturaSeq.current === secuencia;
     const iniciada = hablar(limpio, {
       voz: vozLectura || undefined,
       velocidad: velocidadLectura,
       onFin: () => {
-        setLeyendo(false);
-        setPausadoLectura(false);
+        if (esActual()) {
+          setLeyendo(false);
+          setPausadoLectura(false);
+        }
       },
       onError: (mensaje) => {
-        setErrorLectura(mensaje);
-        setLeyendo(false);
-        setPausadoLectura(false);
+        if (esActual()) {
+          setErrorLectura(mensaje);
+          setLeyendo(false);
+          setPausadoLectura(false);
+        }
       },
     });
     if (!iniciada) {
@@ -2718,6 +2752,7 @@ export default function App() {
   };
 
   const detenerLecturaActual = () => {
+    lecturaSeq.current += 1;
     detenerLectura();
     setLeyendo(false);
     setPausadoLectura(false);

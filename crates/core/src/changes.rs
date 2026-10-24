@@ -72,7 +72,7 @@ impl CambioLocal {
             return Err(Error::Schema("autor de cambio no válido".to_string()));
         }
         time::parse_rfc3339(&self.ts)?;
-        if !hash::es_hash(&self.base_hash) && !self.base_hash.starts_with("demo:") {
+        if !hash::es_hash(&self.base_hash) {
             return Err(Error::Schema(format!(
                 "hash base de cambio no válido: {}",
                 self.base_hash
@@ -202,8 +202,12 @@ pub fn eliminar_para_documento(raiz: &Path, documento: &str, ruta_documento: &st
 }
 
 fn directorio(raiz: &Path, crear: bool) -> Result<Option<PathBuf>> {
-    let escritor = fsutil::validar_escritor(raiz)?
-        .ok_or_else(|| Error::Project("el proyecto no tiene .escritor".to_string()))?;
+    let Some(escritor) = fsutil::validar_escritor(raiz)? else {
+        if !crear {
+            return Ok(None);
+        }
+        return Err(Error::Project("el proyecto no tiene .escritor".to_string()));
+    };
     let directorio = escritor.join("cambios");
     if !directorio.exists() {
         if !crear {

@@ -1,475 +1,213 @@
 # HANDOFF — estado para retomar
 
-- **Fecha:** 2026-10-23
+- **Fecha:** 2026-10-24
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
-- **Fase actual:** **Fase 2 cerrada funcionalmente en Linux x86_64**, con los
-  P1/P2 de QA corregidos y los gates en verde. Queda la validación externa de
-  Windows/Word y el refactor interno de UI. La Fase 1 del panel sigue aprobada
-  con observaciones en `1857431` (tag `fase-1-congelado-r2`). Las fases 2, 2.1
-  y el Bloque 2.2 anteriores siguen aprobadas con observaciones.
-- **Objetivo de plataforma:** **Windows y Linux**. Estado actual: implementado
-  y validado en Linux x86_64; Windows pendiente de build y pruebas.
-- **Plan general anterior:** **pospuesto de forma permanente hasta nuevo aviso**
-  (2026-10-22). No se inician fases, gates ni releases con él.
-- **Plan activo:** `Plan - Rediseño del panel de Proyectos.md` (interfaz y
-  alcance **local/offline**; Windows y Linux). El backlog online queda en el plan
-  anterior, pospuesto permanentemente.
-- **Plan de ejecución:**
-  [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md) — features,
-  commits, agentes, paralelismo, gates y estimaciones.
-- **Siguiente tarea:** pipeline de revisión de la Fase 2 sobre el commit de
-  cierre y aceptación de la deuda de
-  [`docs/iteraciones/25-fase-2-7-cierre.md`](docs/iteraciones/25-fase-2-7-cierre.md).
-- **Repositorio Git local:** rama `main`, commit inicial `1c9f3c6`; código del
-  Bloque 2.2 congelado en `76b139f`; Fase 1 r1 en `744aaa5` y r2 en `1857431`
-  con tags `fase-1-congelado` y `fase-1-congelado-r2` (sin remoto).
+- **Fase actual:** **Fase 3 — Local avanzado, cerrada funcionalmente en Linux
+  x86_64**. La Fase 2 local también está cerrada; Windows sigue pendiente y pasa
+  a la Fase 4.
+- **Plan activo:** [`docs/plan-ejecucion-local-v1.md`](docs/plan-ejecucion-local-v1.md).
+  Etapa local/offline: sin cuentas, servidor, sincronización ni servicios online.
+- **Objetivo de plataforma:** Windows y Linux. Estado validado: Linux x86_64.
+  Windows requiere una máquina real (MSVC, WebView2, instalador y E2E nativo).
+- **Rama:** `main`, sin remoto ni CI remoto. Repositorio inicial `1c9f3c6`.
 
 ## 1. Resumen
 
-La Fase 1 original (motor + CLI) está cerrada en local Linux:
+La Fase 3 añade sobre el motor y la app existentes:
 
-- motor + CLI completos;
-- escritura atómica, blobs, op log, recuperación, lock, CAS, índice SQLite/FTS5;
-- 94 pruebas de núcleo en verde (34 unitarias + 35 de integración + 25 de CLI);
-- MSRV del núcleo verificada con Rust 1.89.0;
-- `cargo-deny` en verde para el núcleo.
+1. **Control de cambios local:** propuestas en sidecar, aceptar/rechazar con CAS,
+   diff lado a lado.
+2. **Comparación de versiones:** diff por líneas entre una revisión y el
+   documento actual.
+3. **Formato y preferencias:** temas claro/sepia/oscuro, tipografía, tamaño,
+   interlineado, espacio entre párrafos, Quick Open, paleta de comandos, atajos
+   y modo enfoque.
+4. **Lectura en voz alta:** voces del sistema, documento o selección, velocidad,
+   pausa/reanudación/parada.
+5. **Herramientas:** palabras, caracteres, párrafos, tiempo de lectura y
+   selección.
+6. **Rendimiento:** pruebas permanentes con 1.000 escenas y 1.000 marcas.
 
-La Fase 2 tiene seis rebanadas verticales:
+La Fase 3 sigue siendo **local/offline**. El corrector es el nativo del WebView;
+no se empaqueta diccionario, tesauro ni gramática propia. Las voces dependen del
+WebView y del sistema operativo.
 
-1. cáscara Tauri, workspace pnpm, tipos generados, árbol y lectura con Tiptap;
-2. corpus golden Markdown, editor editable, autosave y conflictos por hash;
-3. búsqueda FTS5, línea de tiempo e historial con reversión;
-4. exportación DOCX básica desde CLI y UI;
-5. cuarentena visible y marcas propias (personajes, tramas, comentarios);
-6. **E2E de navegador y escritorio, toolbar/recuento y empaquetado deb/rpm**.
+## 2. Regla obligatoria: pnpm
 
-**La Fase 2 está aprobada con observaciones como hito de producto en Linux
-x86_64.** QA r3, seguridad r3, release r2 y UX r5 cerraron sin P1/P2, y el
-product owner firmó la aceptación. El release público de `0.2.0` **no** está
-autorizado: antes hay que subir versión, revisar seguridad del commit exacto,
-firmar/checksums, decidir AppImage/updater, construir y probar Windows,
-Linux como único soporte, probar la app instalada, validar DOCX en Word y
-publicar CI remoto.
-
-Estado actual de la UI:
-
-- workspace **pnpm** con `ui/` y `apps/desktop/`;
-- cáscara **Tauri 2.12.4** con comandos que llaman a `writer-core`;
-- UI **React 19 + Vite 7 + Tiptap 3**;
-- árbol de escenas por libro/capítulo y notas por tipo;
-- panel con pestañas **Editor** (editable) / **Markdown** (solo lectura) /
-  **Historial**;
-- búsqueda FTS5 en la barra lateral con `Ctrl+F`, fragmento resaltado y salto al
-  documento;
-- exportación DOCX con casilla de notas y diálogo nativo de destino;
-- panel de **Cuarentena** con motivo, ruta original y descarte en dos pasos; la
-  ruta, el informe y las copias se validan contra enlaces simbólicos;
-- toolbar de formato y marcas, con recuento de palabras; aplicar una marca nueva
-  sustituye la anterior y el comentario valida `|`/`]]`;
-- historial por revisión: metadatos, contenido de cada archivo y reversión con
-  confirmación;
-- el borrador sobrevive al cambio de pestaña y la reversión bloquea la edición
-  durante toda la transición;
-- respuestas antiguas del historial se descartan y la confirmación queda ligada
-  a proyecto, revisión y `opId`;
-- si el proyecto queda sin documentos, la pestaña Historial sigue disponible;
-- la búsqueda se repite al cambiar la revisión y el fallback sin `.escritor`
-  usa un índice FTS5 en memoria, con la misma tokenización (Unicode descompuesto
-  y guiones incluidos);
-- autosave a los 900 ms y guardado explícito con `Ctrl+S` / `Cmd+S`;
-- estados: `guardado`, `cambios sin guardar`, `guardando…`, `conflicto`,
-  `modo recuperación`, `proyecto ocupado`, `error al guardar`, `solo lectura`;
-- conflicto real por hash de archivo (`hashBase` → `Error::Conflict`);
-- documentos con HTML, imágenes, tablas, tareas o notas al pie se abren en solo
-  lectura para no perder contenido;
-- 59 pruebas de UI (18 de corpus, 9 de compatibilidad y 32 de autosave, búsqueda,
-  historial, DOCX, cuarentena, marcas, accesibilidad, creación y regresiones);
-- 12 flujos E2E de navegador con Playwright y 2 escenarios E2E de escritorio con
-  Tauri/WebDriver (`Ctrl+S` y cierre de ventana);
-- empaquetado deb/rpm generado y verificado en Linux;
-- 3 pruebas de la cáscara Tauri (comandos, creación con notas y exportación de tipos);
-- gate `python scripts/ci.py interfaz` en verde, además de `e2e` y
-  `empaquetado`.
-
-## 2. Regla obligatoria: pnpm, nunca npm/npx
-
-`npm` y `npx` están **prohibidos** en este proyecto. No regenerar
-`package-lock.json`.
-
-- Gestor: **pnpm 12.14.0** (`packageManager` en `package.json`).
-- Lockfile: `pnpm-lock.yaml` (raíz).
-- Workspace: `pnpm-workspace.yaml` con `ui` y `apps/desktop`.
-- `pnpm-workspace.yaml` autoriza únicamente el build de `esbuild`.
-
-```bash
-curl -fsSL https://get.pnpm.io/install.sh | sh -
-# o instalar el binario oficial de pnpm; no usar npm
-```
-
-Comandos:
+`npm` y `npx` están prohibidos. Usar siempre `pnpm` (12.14.0) y
+`pnpm-lock.yaml`. No regenerar `package-lock.json`.
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm typecheck
-pnpm ui:test      # corpus + compatibilidad + autosave
-pnpm ui:dev       # UI en navegador con demo
-pnpm dev          # Tauri + Vite
+pnpm ui:test
+pnpm e2e
+pnpm e2e:tauri
 pnpm ui:build
-pnpm check        # tauri build --no-bundle
 ```
 
 ## 3. Estructura relevante
 
 ```text
 writer/
-  Cargo.toml                 # workspace Rust: core + CLI
-  package.json               # workspace pnpm y scripts
-  pnpm-workspace.yaml
-  pnpm-lock.yaml
-  crates/core/               # motor
-  crates/cli/                # binario writer
-  apps/desktop/              # Tauri
-    src-tauri/
-      Cargo.toml             # workspace Rust propio (fuera del raíz)
-      Cargo.lock
-      tauri.conf.json
-      capabilities/default.json
-      icons/
-      src/lib.rs             # comandos + DTOs ts-rs
-      src/main.rs
-  ui/
-    src/App.tsx              # árbol, autosave, estados, conflictos
-    src/EditorMarkdown.tsx   # Tiptap editable
-    src/api.ts               # puente Tauri + demo
-    src/editor/extensions.ts # esquema único del editor
-    src/markdown/
-      compatibilidad.ts      # construcciones bloqueadas
-      roundtrip.test.ts      # corpus golden
-      corpus/                # 18 parejas entrada/esperado
-    src/types/               # generado por ts-rs
-    src/styles.css
-  docs/
-    markdown-v1.md           # contrato del editor
-    adr/0001-editor-tiptap.md
-    iteraciones/03-fase-2.md
-    iteraciones/04-fase-2.md
+  crates/core/                 # motor: proyecto, log, blobs, índice, diff, cambios…
+  crates/cli/                  # binario writer
+  apps/desktop/src-tauri/      # cáscara Tauri, comandos y DTOs
+  ui/src/
+    App.tsx                    # shell y coordinación
+    EditorMarkdown.tsx         # Tiptap
+    features/cambios/          # panel y diff de cambios
+    features/preferencias/     # preferencias y modal
+    features/paleta/           # Quick Open y comandos
+    features/lectura/          # TTS y herramientas
+    types/                     # DTOs generados por ts-rs
+  e2e/                         # Playwright sobre la demo
+  docs/                        # contratos, iteraciones y revisiones
 ```
 
-`apps/desktop/src-tauri` está **excluido** del workspace Rust raíz para que
-`cargo test --workspace` no necesite WebKit/WebView2. Tiene su propio
-`Cargo.lock`. El núcleo mantiene MSRV 1.89; la cáscara Tauri requiere Rust 1.90.
+`apps/desktop/src-tauri` tiene su propio workspace Rust para no exigir
+WebKit/WebView2 al ejecutar `cargo test --workspace` del núcleo.
 
-## 4. Qué está implementado
+## 4. Fase 3 implementada
 
-### Núcleo
+### 3.1 Control de cambios
 
-- `Project::escribir_cuerpo_con_base(id, cuerpo, hash_base)`:
-  - compara `hash_base` con el hash del archivo actual dentro de la sesión de
-    escritura;
-  - devuelve `Error::Conflict` y no escribe si cambió;
-  - devuelve `ResultadoGuardado { revision, hash_archivo }`.
-- `Project::escribir_cuerpo` sigue existiendo para la CLI sin comprobación.
-- `Project::exportar_docx(destino, incluir_notas, forzar)` genera OOXML con
-  `pulldown-cmark` y `zip` 9, sin dependencias de extracción de DOCX.
-- `preparar_destino` resuelve enlaces simbólicos y `..` antes de comprobar que el
-  destino queda fuera del proyecto; lo comparten Markdown y DOCX.
-- La exportación DOCX valida los caracteres permitidos por XML 1.0 antes de
-  escribir el destino.
-- `verify::Documento::hash()` expone el hash del archivo escaneado.
-- `goals`: metas y sesiones locales en `.escritor/metas/` y
-  `.escritor/sesiones/`, con validación, escritura atómica, racha y gráfico de
-  7 días. **Implementado; faltan estadísticas históricas.**
-- **Manuscrito:** `renombrar`, `duplicar`, arrastrar/soltar, archivo/papelera,
-  estados, etiquetas, filtros por etiqueta y copiar/pegar documentos.
-  **Implementado; pendiente revisión y reordenar dentro del capítulo.**
-- **Comentarios v2:** sidecar `.escritor/comentarios/`, anclas con ULID,
-  sticky notes, respuestas, resolución, huérfanos y filtros. **Implementado;
-  faltan edición/borrado con historial y previsualización.**
-- **Planificación:** Plot Grid local, notas `cuaderno`/`ideas`, @menciones y
-  rol/alias de personajes. **Implementado; falta la vista gráfica y la
-  conversión de Ideas a proyecto.**
-- **Plantillas:** plantillas locales en el directorio de datos y creación desde
-  plantilla. **Implementado; falta copiar contenido personalizado.**
-- **Importación/backup:** Markdown, DOCX, HTML y RTF con límites, backup ZIP,
-  restauración validada e impresión. **Implementado; faltan PDF nativo,
-  selección parcial y validación en Word/LibreOffice.**
+- `crates/core/src/changes.rs`: sidecars
+  `.escritor/cambios/<ULID>.json` con base, propuesta, autor, fecha, revisión y
+  hash.
+- `Project::registrar_cambio`, `aplicar_cambio`, `descartar_cambio`,
+  `listar_cambios`, `leer_cambio`.
+- La propuesta no toca el Markdown; aceptar crea una transacción normal y
+  conserva el CAS. Un sidecar corrupto va a cuarentena.
+- UI: pestaña **Cambios**, interruptor **Proponer cambios**, diff lado a lado,
+  aceptar/rechazar y badge de pendientes.
+- Contrato: [`docs/cambios-v1.md`](docs/cambios-v1.md).
 
-### Comandos Tauri
+### 3.2 Comparación
 
-En `apps/desktop/src-tauri/src/lib.rs`:
+- `crates/core/src/diff.rs`: diff por líneas con prefijo/sufijo, LCS y fallback
+  para documentos desproporcionados.
+- `Project::comparar_documento` compara el contenido posterior a una revisión
+  con el documento actual.
+- UI: botón **Comparar con el documento actual** en el historial.
+- Contrato: [`docs/diff-v1.md`](docs/diff-v1.md).
 
-- `abrir_proyecto(ruta)`: resumen, revisión, conteos, errores y avisos.
-- `listar(ruta, notas)`: escenas y notas, con `hashArchivo`.
-- `leer(ruta, objetivo)`: cuerpo Markdown, metadatos y `hashArchivo`.
-- `verificar(ruta)`: recuento y diagnósticos.
-- `buscar(ruta, consulta, limite)`: resultados FTS5 con fragmento resaltado.
-- `historial(ruta)`: revisiones con metadatos y rutas afectadas.
-- `mostrar(ruta, revision)`: contenido de los archivos de una revisión.
-- `revertir(ruta, revision)`: crea una revisión nueva y devuelve los errores
-  pendientes.
-- `exportar_docx(ruta, destino, incluirNotas, forzar)`: escribe el DOCX y
-  devuelve la ruta final.
-- `cuarentena(ruta)`: lista copias con motivo, ruta original, fecha y tamaño.
-- `descartar_cuarentena(ruta, archivo)`: elimina solo la copia.
-- `escribir(ruta, objetivo, cuerpo, hashBase)`: devuelve
-  `GuardadoDto { revision, hashArchivo }`.
-- Errores estructurados `ErrorDto { tipo, mensaje }`; `TipoError` distingue
-  `conflicto`, `recuperacion`, `ocupado`, `io`, `esquema`, etc.
+### 3.3 Preferencias y paleta
 
-### UI
+- `ui/src/features/preferencias/`: `localStorage`
+  `writer:preferencias:v1`, normalización, variables CSS y modal accesible.
+- Temas claro/sepia/oscuro, tipografía serif/sans/mono, tamaño 12–32 px,
+  interlineado 1,2–2,6 y espacio entre párrafos 0–2,5 em.
+- `Ctrl+P`: Quick Open; `Ctrl+Shift+P`: paleta de comandos; `Ctrl+Shift+H`:
+  historial; `Alt+Z`: modo enfoque.
+- Contrato: [`docs/formato-v1.md`](docs/formato-v1.md).
 
-- Crear proyecto desde la GUI: asistente con título, autor, idioma, carpeta
-  padre y nombre de carpeta; estructura inicial y notas opcionales; abrir al
-  crear y lista de recientes en `localStorage`.
-- Interfaz de escritura adaptada de Dabble: cabecera de proyecto, árbol por
-  manuscritos/tramas/personajes/cuaderno, página blanca con toolbar, panel
-  Metas/Notas e historial con línea de tiempo inferior.
-- Abrir proyecto con diálogo nativo (`tauri-plugin-dialog`).
-- `Ctrl+O` / `Cmd+O`, `Ctrl+S` / `Cmd+S`, `Ctrl+F` / `Cmd+F` para buscar.
-- Árbol lateral:
-  - manuscrito agrupado por libro/capítulo;
-  - notas agrupadas por tipo.
-- Buscador FTS5: reemplaza el árbol mientras hay consulta, muestra tipo, ruta y
-  fragmento con la coincidencia resaltada; al pulsar un resultado se abre el
-  documento.
-- Pestaña **Historial**:
-  - revisiones del proyecto de más reciente a más antigua;
-  - marca de revisión actual;
-  - detalle con metadatos y contenido de cada archivo afectado;
-  - reversión en dos pasos, con aviso de que crea una revisión nueva.
-- **Exportar DOCX** en la barra superior, con casilla **notas** y diálogo nativo.
-- **Cuarentena** en el panel: copias de archivos inválidos, con descarte en dos
-  pasos; los originales no se tocan.
-- Editor Tiptap editable con el esquema de `ui/src/editor/extensions.ts` y
-  toolbar de formato, marcas y recuento de palabras.
-- Autosave con debounce y cola serializada (si llegan cambios mientras se
-  guarda, se drenan antes de continuar).
-- Cambiar de documento o abrir otro proyecto espera al guardado pendiente.
-- Aviso del navegador al cerrar con cambios sin guardar.
-- Banner de error con **Reintentar**, **Recargar desde disco** y **Copiar mi
-  texto**.
-- Diagnóstico de verificación y de compatibilidad Markdown.
-- Modo demo en navegador con persistencia en memoria.
+### 3.4 Lectura y herramientas
 
-### Tipos
+- `ui/src/features/lectura/lectura.ts`: Web Speech API; sin red.
+- Lee documento o selección, elige voz y velocidad, pausa/reanuda/detiene.
+- Si el WebView no expone `speechSynthesis`, muestra un aviso y desactiva los
+  controles.
+- Panel **Herramientas**: palabras, caracteres, párrafos, minutos de lectura y
+  palabras de la selección.
+- Contrato: [`docs/tts-v1.md`](docs/tts-v1.md).
 
-Los DTOs se exportan a `ui/src/types/`. Regenerar:
+### 3.5 Rendimiento
 
-```bash
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml exportar_tipos_typescript
-```
+- `crates/core/tests/rendimiento.rs`: 1.000 escenas en proyecto temporal;
+  presupuestos de verificación, listado, reindexado y búsqueda.
+- `ui/src/editor/marcas.test.ts`: 1.000 marcas parseadas y serializadas.
+- Contrato: [`docs/rendimiento-v1.md`](docs/rendimiento-v1.md).
 
-Los `i64`/`u64` se exportan como `number` (`with_large_int("number")`).
-
-## 5. Contrato Markdown
-
-- Esquema aceptado: párrafos, títulos ATX, énfasis, negrita, tachado, código,
-  listas, citas, bloques de código, enlaces, separadores, saltos y marcas propias.
-- Corpus: `ui/src/markdown/corpus/` (18 parejas).
-- Prueba: `ui/src/markdown/roundtrip.test.ts`.
-- Normalizaciones aceptadas: setext → ATX, referencias → inline, salto con
-  barra → dos espacios, código indentado → cercado, escapado de literales y
-  entidades.
-- Construcciones bloqueadas: HTML, imágenes, tablas, listas de tareas y notas al
-  pie.
-- Marcas: [`docs/marcas-v1.md`](docs/marcas-v1.md); detalle del editor:
-  [`docs/markdown-v1.md`](docs/markdown-v1.md).
-- Cuarentena: [`docs/cuarentena.md`](docs/cuarentena.md).
-
-## 6. Verificación ejecutada al dejar el proyecto
+## 5. Verificación de la Fase 3
 
 ```text
-python scripts/ci.py calidad      OK
-python scripts/ci.py interfaz     OK
-python scripts/ci.py e2e          OK (12/12, Chromium)
-python scripts/ci.py e2e-tauri    OK (Linux, WebDriver)
-python scripts/ci.py empaquetado  OK (deb/rpm: estructura, permisos, md5/digests)
-python scripts/ci.py producto     OK
-cargo test --workspace --all-targets --locked   94/94
-pnpm ui:test                      59/59
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   3/3
-cargo-deny (núcleo)               OK
-cargo-deny (desktop)              OK
-pnpm check                        OK
-pnpm --version                    12.14.0
+cargo fmt --all --check                         OK
+cargo clippy --workspace --all-targets -D warnings   OK
+cargo test --workspace --all-targets --locked   74 + 41 + 25 + 1 perf
+cargo test desktop                              8/8
+pnpm typecheck                                  OK
+pnpm ui:test                                    75/75
+pnpm e2e                                        43/43
+ci.py calidad                                   OK
+ci.py interfaz                                  OK
+ci.py producto                                  OK
+ci.py seguridad                                 OK
+ci.py e2e-tauri                                 OK (Linux)
+ci.py empaquetado                               OK (deb/rpm)
 ```
 
-### Fase 1 del rediseño del panel (2026-10-22)
+Los números exactos y el detalle por bloque están en las iteraciones 26–29 y en
+[`docs/iteraciones/30-fase-3-6-cierre.md`](docs/iteraciones/30-fase-3-6-cierre.md).
 
-```text
-python scripts/ci.py interfaz       OK
-python scripts/ci.py e2e            OK (25/25, Chromium)
-python scripts/ci.py e2e-tauri      OK (Linux, WebDriver)
-python scripts/ci.py empaquetado    OK (deb/rpm)
-python scripts/ci.py producto       OK
-python scripts/ci.py seguridad      OK
-python scripts/ci.py calidad        OK (94/94)
-pnpm typecheck                       OK
-pnpm ui:test                        60/60
-pnpm ui:build                       OK
-```
+## 6. Pendiente: Fase 4 Windows
 
-La r2 (`1857431`) corrige el foco del buscador y los estados vacíos/contraste
-detectados por UX; repite estos gates y añade 13 pruebas E2E del panel.
+No se puede completar en esta máquina:
 
-### Fase 2 local/offline (2026-10-23)
+- toolchain MSVC y target Windows;
+- WebView2;
+- diálogos nativos, rutas largas/nombres reservados y cierre de ventana en
+  Windows real;
+- instalador MSI/NSIS, firma y prueba en máquina limpia;
+- `tauri-driver` en Windows;
+- validación de DOCX en Word/LibreOffice.
 
-```text
-cargo test --workspace --all-targets --locked   69 + 39 + 25
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   7/7
-pnpm typecheck                       OK
-pnpm ui:test                         63/63
-pnpm e2e                             37/37
-python scripts/ci.py interfaz        OK
-python scripts/ci.py producto        OK
-python scripts/ci.py seguridad       OK
-python scripts/ci.py e2e-tauri       OK
-python scripts/ci.py empaquetado     OK
-```
+La prueba parcial del CLI Windows bajo Wine está en
+[`docs/revisiones/fase-2-wine-2026-10-23.md`](docs/revisiones/fase-2-wine-2026-10-23.md);
+no autoriza declarar Windows soportado.
 
-Cierre funcional y deuda en
-[`docs/iteraciones/25-fase-2-7-cierre.md`](docs/iteraciones/25-fase-2-7-cierre.md).
+## 7. Publicación
 
-`cargo-deny` del desktop tiene una excepción documentada en `deny.toml`:
-`RUSTSEC-2024-0370` (`proc-macro-error`, unmaintained) llega por gtk-rs/Tauri en
-Linux y no tiene reemplazo compatible con Tauri 2.12. No es una vulnerabilidad
-explotable en writer; revisar al actualizar Tauri/gtk-rs.
+El release público de `0.2.0` **no** está autorizado. Siguen pendientes:
 
-El E2E de navegador usa Chromium real sobre la demo. El E2E de escritorio se
-ejecutó en Linux con `tauri-driver`, `WebKitWebDriver`, X11 y `xdotool`; cubre
-`Ctrl+S` y el cierre real de la ventana. No se probó la app instalada desde el
-`.deb`/`.rpm`, ni los diálogos nativos, ni Windows.
+- subir versión y revisar seguridad del commit exacto;
+- checksums/firma y decisión AppImage/updater;
+- probar la app instalada desde `.deb`/`.rpm`;
+- validar DOCX en Word/LibreOffice;
+- CI remoto (`.github/`) y runner Windows;
+- aceptación final de Fase 5.
 
-## 7. Qué falta — orden recomendado
+## 8. Límites conocidos
 
-### Siguiente tarea inmediata
+- El control de cambios es por documento completo; no hay aceptación por hunk,
+  sugerencias inline ni fusión de tres vías.
+- La comparación es por líneas y solo contra revisiones que tocaron el documento.
+- Las preferencias son del perfil del WebView, no del proyecto.
+- El corrector, diccionario de voz y gramática dependen del sistema; no se
+  incluye un motor offline propio.
+- La lectura TTS no está validada en WebViewGTK/WebView2 real; el E2E usa una
+  síntesis simulada.
+- La latencia de tecleo con 1.000 marcas en una sola escena sigue siendo una
+  limitación de experiencia; la prueba detecta degradación extrema.
+- La ventana CAS no es atómica; SMB/NFS no están soportados para escritura.
+- El DOCX/PDF son básicos; no hay TOC, tablas nativas ni imágenes incrustadas.
+- `App.tsx`, `styles.css` y `project.rs` siguen siendo grandes; la separación
+  por features es parcial.
 
-1. **Fase 2 — funcionalidad implementada**: manuscrito, comentarios,
-   planificación, metas, importación/backup y plantillas. El cierre y la deuda
-   están en [`docs/iteraciones/25-fase-2-7-cierre.md`](docs/iteraciones/25-fase-2-7-cierre.md).
-2. **Fase 2.7 — revisión formal**: QA, seguridad, release y UX sobre el commit
-   de cierre; aceptar o corregir la deuda de §4 del cierre.
-3. **Deuda técnica de Fase 2**: dividir `App.tsx`/`styles.css` por feature,
-   completar edición/borrado de comentarios y previsualización, PDF nativo y
-   copia de contenido de plantillas.
-4. **Deuda y publicación de la etapa anterior**: los faltantes de la Fase 2
-   original (SEC-04-B/C, límites, TOCTOU, enlaces duros Windows, versión,
-   checksums/firma, AppImage/updater, app instalada, DOCX en Word/LibreOffice,
-   CI remoto) siguen registrados y no forman parte del alcance de Fase 1.
-7. **Fase 3 (IA/MCP) del plan anterior**: pospuesta. Sus condiciones del
-   product owner siguen vigentes para cuando se retome; no se implementa en la
-   etapa local/offline.
-
-### Deuda de la Fase 2 original
-
-- 15 P3 y 4 P4 de UX (tabs ARIA, historial largo, cuarentena plegable,
-  búsqueda truncada, latencia de 1.000 marcas, onboarding, copy).
-- P3 de release (strip/rpaths, reproducibilidad, toolchain, versión).
-- P3 de seguridad (FIFO en blobs/journal, enlaces duros Windows, límites,
-  TOCTOU).
-- Integrar `interfaz`, `e2e`, `e2e-tauri` y `empaquetado` en CI remoto (hoy no
-  hay `.github/`).
-
-## 8. Pendientes de publicación / entorno
-
-- **Repositorio Git local inicializado** en `main` (commit inicial `1c9f3c6`);
-  no hay remoto ni CI remoto todavía.
-- Falta `.github/` (workflows y Dependabot). `.gitignore`, `.editorconfig` y
-  `.gitattributes` ya existen.
-- `gitleaks` y `zizmor` están instalados en `~/.local/bin`; el gate `seguridad`
-  ejecuta ambos (zizmor se omite si no hay `.github/`).
-- La carpeta está en MEGA; excluir `target/`, `node_modules/` y `ui/dist/` de la
-  sincronización o mover el repo fuera de MEGA.
-- `ui/dist/` está ignorado; si se clona en limpio, ejecutar `pnpm ui:build`
-  antes de `cargo check` del desktop (Tauri embebe la UI).
-- Los instaladores quedan en `apps/desktop/src-tauri/target/release/bundle/`
-  (ignorado). Linux genera deb/rpm; AppImage requiere `linuxdeploy`.
-- Chromium de Playwright se instala fuera del repo con `pnpm e2e:install`.
-- El E2E de Tauri requiere `tauri-driver` 2.0.6, `WebKitWebDriver` y `xdotool`
-  en Linux; no se versionan.
-
-## 9. Limitaciones conocidas
-
-- Ventana CAS no atómica: *last-writer-wins* ante un editor que escriba
-  exactamente entre la comprobación del hash y el reemplazo.
-- Las rutas de efectos se confinan a `manuscrito/` o `notas/` y `.escritor` debe
-  ser real; se rechazan enlaces en componentes existentes. Queda una ventana
-  TOCTOU si un atacante local cambia el enlace después de la validación.
-- El hash base detecta cambios externos anteriores al guardado, no resuelve
-  edición simultánea.
-- SMB/NFS no soportados para escritura.
-- `write` de la CLI cambia el cuerpo, no el frontmatter.
-- El historial no se compacta en v1.
-- El serializador de Tiptap escapa literales y entidades; el significado se
-  conserva, la representación no.
-- El DOCX es básico: listas con prefijo y sangría, sin tablas nativas, TOC ni
-  imágenes incrustadas; el proyecto sigue siendo la fuente de verdad Markdown.
-- Los caracteres de control inválidos para XML 1.0 se rechazan antes de escribir
-  el DOCX; el destino existente no se toca.
-- La comprobación de destino resuelve enlaces y `..`, pero no elimina una carrera
-  TOCTOU con un proceso local que cambie el enlace después de la validación.
-- La búsqueda detecta cambios externos por hash/`mtime`/tamaño y reindexa el
-  archivo; `reindex` reconstruye todo el índice si hace falta.
-- Sin `.escritor`, la búsqueda reconstruye un FTS5 en memoria en cada consulta;
-  es correcto para fixtures y proyectos de solo lectura, no para uso intensivo
-  con miles de escenas.
-- La toolbar cubre formato básico (negrita, cursiva, tachado, H2, cita, listas,
-  código) y marcas; no hay diálogo de enlace.
-- El E2E de escritorio es Linux-only y no prueba diálogos nativos ni la app
-  instalada; AppImage, firma, notarización y updater quedan pendientes.
-- Windows no se probó en este entorno; el objetivo es Windows y Linux.
-- Las marcas no se anidan, el comentario no admite `|` ni `]]` y el texto marcado
-  no admite `]]`; los ULID deben empezar por `0`–`7`. El DOCX limpia solo prosa y
-  conserva código y escapado.
-- Con 1.000 marcas en una sola escena, la latencia de tecleo es ~2,2–2,4× la de
-  un documento sin marcas; no hay bucle ni CPU alta (P3 de la QA r3, pendiente
-  de decisión de UX/rendimiento).
-- Los fixtures generados incluyen comentarios HTML de relleno; el editor los
-  abre en solo lectura. Para probar edición usa la demo o un proyecto real.
-- El panel de Proyectos usa 155,27 px de ancho por tarjeta a 1440; 160 px es la
-  referencia aproximada. La tarjeta de creación iguala la altura de la tarjeta
-  completa y conserva 297 px en estado vacío a 1440. A 960/200 % el mensaje de
-  vacío pasa a una fila completa y la tarjeta mantiene su medida.
-- La vista de lista vacía es compacta y el buscador muestra un anillo de foco
-  visible.
-- La reserva lateral del panel es un bloque vacío sin controles; a 960 sigue la
-  altura del listado y en ≤900 px se oculta al apilarse la barra.
-- El botón «Ayuda» se retiró solo del panel de Proyectos; el botón del editor
-  sigue existiendo. Notificaciones, Filtros, Colección, Plantillas, Papelera,
-  Más opciones y Crear desde plantilla siguen deshabilitados como excepción
-  aprobada por el product owner.
-
-Las garantías completas están en `README.md` y `docs/protocolo-commit.md`.
-
-## 10. Cómo retomar después de mover la carpeta
-
-Las rutas de Tauri son relativas (`../../ui`, `../../../ui/dist`), así que no
-hay que reescribir configuración por mover el proyecto.
+## 9. Cómo retomar
 
 ```bash
 cd writer
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm ui:test
-pnpm e2e:install
 pnpm e2e
-pnpm e2e:tauri
-pnpm ui:build
-pnpm build
-
-# Núcleo
 cargo test --workspace --all-targets --locked
-
-# Interfaz
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+python scripts/ci.py calidad
 python scripts/ci.py interfaz
-python scripts/ci.py e2e
+python scripts/ci.py producto
+python scripts/ci.py seguridad
 python scripts/ci.py e2e-tauri
 python scripts/ci.py empaquetado
-
-# App de escritorio
-pnpm dev
 ```
 
-Si `pnpm` no está en PATH, instalarlo de nuevo con el instalador oficial de
-pnpm. **No usar npm ni npx.**
+Para desarrollo:
+
+```bash
+pnpm ui:dev     # demo en navegador
+pnpm dev        # Tauri + Vite
+```
+
+Si `pnpm` no está en PATH, instalarlo con el instalador oficial. **No usar npm
+ni npx.**
