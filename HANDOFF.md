@@ -314,7 +314,7 @@ detectados por UX; repite estos gates y añade 13 pruebas E2E del panel.
 ### Fase 2 local/offline (2026-10-23)
 
 ```text
-cargo test --workspace --all-targets --locked   69 + 38 + 25
+cargo test --workspace --all-targets --locked   69 + 39 + 25
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked   7/7
 pnpm typecheck                       OK
 pnpm ui:test                         63/63

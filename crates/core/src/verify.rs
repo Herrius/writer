@@ -438,7 +438,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
     let grid = escritor.join("planificacion/plot-grid.json");
     if grid.exists() {
         if let Some(error) = revisar(&grid) {
-            escaneo.errores.push(error);
+            escaneo.avisos.push(error);
         } else {
             match std::fs::read(&grid)
                 .map_err(|error| Error::Io(error).with_path(&grid))
@@ -448,7 +448,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
                 .and_then(|grid| grid.validar())
             {
                 Ok(()) => {}
-                Err(error) => escaneo.errores.push(format!("{}: {error}", grid.display())),
+                Err(error) => escaneo.avisos.push(format!("{}: {error}", grid.display())),
             }
         }
     }
@@ -465,7 +465,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
             }
             let Ok(texto) = std::fs::read_to_string(&ruta) else {
                 escaneo
-                    .errores
+                    .avisos
                     .push(format!("{}: no se puede leer", ruta.display()));
                 continue;
             };
@@ -505,7 +505,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
                 })
                 .and_then(|comentario| comentario.validar());
             if let Err(error) = resultado {
-                escaneo.errores.push(format!("{}: {error}", ruta.display()));
+                escaneo.avisos.push(format!("{}: {error}", ruta.display()));
             }
         }
     }

@@ -164,6 +164,29 @@ fn intercambiar_orden_de_escenas() {
 }
 
 #[test]
+fn sidecar_corrupto_no_bloquea_el_proyecto() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+    std::fs::create_dir_all(directorio.path().join("novela/.escritor/comentarios"))
+        .expect("directorio");
+    std::fs::write(
+        directorio
+            .path()
+            .join("novela/.escritor/comentarios/01ARZ3NDEKTSV4RRFFQ69G5FAV.json"),
+        b"{no es json",
+    )
+    .expect("sidecar");
+    let escaneo = proyecto.verificar().expect("verificar");
+    assert!(escaneo.errores.is_empty(), "errores: {:?}", escaneo.errores);
+    assert!(!escaneo.avisos.is_empty());
+    let (id, _) = proyecto
+        .crear_escena("Nueva", None, None, None)
+        .expect("crear");
+    proyecto.escribir_cuerpo(&id, "ok").expect("escribir");
+}
+
+#[test]
 fn exportar_pdf_genera_documento_local() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));
@@ -174,9 +197,23 @@ fn exportar_pdf_genera_documento_local() {
     let exportado = proyecto
         .exportar_pdf(&destino, false)
         .expect("exportar PDF");
-    let bytes = std::fs::read(exportado).expect("leer PDF");
+    let bytes = std::fs::read(&exportado).expect("leer PDF");
     assert!(bytes.starts_with(b"%PDF-1.4"));
     assert!(bytes.windows(5).any(|ventana| ventana == b"%%EOF"));
+
+    let (b_id, _) = proyecto
+        .crear_escena("ZZZ", None, None, Some(30))
+        .expect("B");
+    let (a_id, _) = proyecto
+        .crear_escena("AAA", None, None, Some(20))
+        .expect("A");
+    proyecto.intercambiar_orden(&a_id, &b_id).expect("orden");
+    let segundo = directorio.path().join("orden.pdf");
+    proyecto.exportar_pdf(&segundo, true).expect("PDF orden");
+    let texto = String::from_utf8_lossy(&std::fs::read(segundo).expect("leer")).to_string();
+    let pos_a = texto.find("AAA").expect("AAA");
+    let pos_b = texto.find("ZZZ").expect("ZZZ");
+    assert!(pos_b < pos_a, "el PDF debe respetar el orden de escena");
 }
 
 #[test]

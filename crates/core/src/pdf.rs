@@ -56,7 +56,14 @@ impl Formato {
 pub fn exportar(escaneo: &Escaneo, destino: &Path, forzar: bool) -> Result<PathBuf> {
     let destino = preparar_destino(&escaneo.raiz, destino, forzar)?;
     let mut escenas: Vec<_> = escaneo.escenas.iter().collect();
-    escenas.sort_by(|a, b| comparar(a.relativa.as_str(), b.relativa.as_str()));
+    escenas.sort_by(|a, b| {
+        let pa: Vec<&str> = a.relativa.split('/').collect();
+        let pb: Vec<&str> = b.relativa.split('/').collect();
+        pa.get(1)
+            .cmp(&pb.get(1))
+            .then(pa.get(2).cmp(&pb.get(2)))
+            .then(a.escena.orden.cmp(&b.escena.orden))
+    });
     let formato = leer_formato(&escaneo.raiz)?;
     let lineas = maquetar(escaneo, &escenas, formato);
     let bytes = generar_pdf(&lineas, formato);
@@ -104,10 +111,6 @@ fn limpiar_markdown(texto: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-fn comparar(a: &str, b: &str) -> std::cmp::Ordering {
-    a.split('/').cmp(b.split('/'))
 }
 
 fn maquetar(

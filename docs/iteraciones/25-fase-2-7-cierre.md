@@ -25,7 +25,7 @@
 ```text
 cargo fmt --all --check                                   OK
 cargo clippy --workspace --all-targets --all-features     OK
-cargo test --workspace --all-targets --locked             69 + 38 + 25
+cargo test --workspace --all-targets --locked             69 + 39 + 25
 cargo test desktop                                        7/7
 pnpm typecheck                                            OK
 pnpm ui:test                                              63/63
