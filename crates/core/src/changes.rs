@@ -128,8 +128,13 @@ impl CambioLocal {
 /// Lee un cambio por ULID.
 pub fn leer(raiz: &Path, id: &str) -> Result<CambioLocal> {
     let ruta = ruta_cambio(raiz, id)?;
-    let metadatos =
-        std::fs::symlink_metadata(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+    let metadatos = match std::fs::symlink_metadata(&ruta) {
+        Ok(metadatos) => metadatos,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Err(Error::NotFound(format!("cambio no encontrado: {id}")));
+        }
+        Err(error) => return Err(Error::Io(error).with_path(&ruta)),
+    };
     if !metadatos.file_type().is_file() || metadatos.file_type().is_symlink() {
         return Err(Error::Integrity(format!(
             "el cambio no es un archivo regular: {}",

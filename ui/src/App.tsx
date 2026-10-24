@@ -2442,7 +2442,13 @@ export default function App() {
 
   useEffect(() => {
     const alPulsar = (evento: KeyboardEvent) => {
-      if (hayDialogoAbierto() || !(evento.ctrlKey || evento.metaKey)) {
+      if (hayDialogoAbierto()) {
+        if (evento.ctrlKey || evento.metaKey) {
+          evento.preventDefault();
+        }
+        return;
+      }
+      if (!(evento.ctrlKey || evento.metaKey)) {
         return;
       }
       if (evento.key.toLowerCase() === 's') {

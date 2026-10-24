@@ -550,7 +550,12 @@ describe('autosave de la interfaz', () => {
     registrarCambioMock
       .mockResolvedValueOnce(inicial)
       .mockReturnValueOnce(enGuardado.promesa);
-    leerCambioMock.mockResolvedValue(actualizada);
+    leerCambioMock.mockImplementation(async (_ruta, id) => {
+      if (id === inicial.id) {
+        throw { tipo: 'no-encontrado', mensaje: 'el sidecar cambió de id' };
+      }
+      return actualizada;
+    });
     aplicarCambioMock.mockResolvedValue({
       revision: 2,
       hashArchivo: 'blake3:actualizada',

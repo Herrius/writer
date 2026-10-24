@@ -63,7 +63,7 @@ ci.py empaquetado                                    OK
 ## 5. Decisión
 
 La Fase 3 está cerrada funcionalmente en Linux x86_64. No queda deuda funcional
-local del alcance 3.1–3.5; los límites anteriores son decisiones de v1 o
+bloqueante del alcance 3.1–3.5; los límites anteriores son decisiones de v1 o
 validaciones externas. El siguiente paso es la Fase 4 en una máquina Windows.
 
 ## 6. Correcciones de la revisión QA/UX r1
@@ -89,8 +89,9 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
   queda bloqueado mientras hay una propuesta pendiente.
 - **P2 modales:** foco inicial, trampa de Tab/Shift+Tab, Escape y bloqueo de
   atajos globales mientras hay un diálogo.
-- **P2 foco y anuncios:** foco al editor tras aceptar/rechazar o Quick Open;
-  banner de éxito con `role=status`.
+- **P2 foco y anuncios:** foco al editor tras aceptar/rechazar o Quick Open; si
+  el drawer está abierto en vista estrecha, el foco va al cierre del drawer.
+  Banner de éxito con `role=status`.
 - **P2 contraste:** estados vacíos y textos secundarios oscurecidos en claro y
   sepia.
 - **P2 demo:** snapshots por revisión para que la comparación no sea ficticia;
@@ -129,3 +130,12 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
 - **Instaladores:** `.deb` y `.rpm` reconstruidos desde el commit final; el
   binario embebe `assets/index-Cwig5QfJ.js` y `assets/index-JJYeyYAq.css`, que
   coinciden con `ui/dist`.
+
+## 9. Ajustes P3 finales
+
+- `leer_cambio` vuelve a clasificar un sidecar desaparecido como
+  `no encontrado`.
+- Con un diálogo modal abierto, los atajos globales con Ctrl/Cmd se cancelan sin
+  ejecutar la acción del navegador.
+- La prueba de aceptación con un id de cambio nuevo cubre el fallback al cambio
+  devuelto por el guardado previo.
