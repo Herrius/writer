@@ -99,6 +99,18 @@ describe('marcas propias', () => {
     expect(ulidValido('71KDVDNBYG20KW71NVRK6P2FHG')).toBe(true);
   });
 
+  it('serializa 1.000 marcas sin bloquear el editor', () => {
+    const markdown = `${Array.from(
+      { length: 1000 },
+      (_, indice) => `[[personaje:${ID}|Marta ${indice}]]`,
+    ).join(' ')}\n`;
+    const inicio = performance.now();
+    const salida = serializar(markdown);
+    const tiempo = performance.now() - inicio;
+    expect(salida).toContain('Marta 999');
+    expect(tiempo).toBeLessThan(5000);
+  });
+
   it('admite formato inline dentro de una marca', () => {
     const markdown = `[[personaje:${ID}|**Marta** y *Lucía*]]\n`;
     expect(serializar(markdown)).toBe(markdown.trimEnd());
