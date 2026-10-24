@@ -131,8 +131,8 @@ test('las portadas muestran arte, título y autor; los datos muestran fecha', as
   await expect(tarjeta.locator('.portada-autor')).toHaveText('Marta Ruiz');
   await expect(tarjeta.locator('.tarjeta-datos strong')).toHaveText('El umbral');
   await expect(tarjeta.getByText('Modificado el Oct 22, 2026')).toBeVisible();
-  await expect(tarjeta.locator('.tarjeta-mas')).toHaveText('⋯');
-  await expect(tarjeta).toHaveAttribute('aria-label', 'Abrir El umbral de Marta Ruiz');
+  await expect(tarjeta.locator('.tarjeta-menu')).toHaveText('⋯');
+  await expect(tarjeta.locator('.tarjeta-abrir')).toHaveAttribute('aria-label', 'Abrir El umbral de Marta Ruiz');
   await expect(tarjeta.getByText('12.345 palabras')).toHaveCount(0);
   const fecha = tarjeta.locator('.tarjeta-meta > span').first();
   expect(

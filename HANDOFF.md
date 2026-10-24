@@ -14,6 +14,9 @@
 - **Corrección visual 2026-10-24:** portadas ilustradas, tarjetas de libro y
   cabecera limpia en el panel de Proyectos; validada con `e2e/fase-1-panel`
   12/12 y la captura de [`docs/iteraciones/31-rediseno-portadas.md`](docs/iteraciones/31-rediseno-portadas.md).
+- **Organización 2026-10-24:** filtros, colecciones, pestaña de plantillas y
+  papelera local de proyectos; ver
+  [`docs/iteraciones/32-organizacion-proyectos.md`](docs/iteraciones/32-organizacion-proyectos.md).
 
 ## 1. Resumen
 
@@ -31,6 +34,8 @@ La Fase 3 añade sobre el motor y la app existentes:
 5. **Herramientas:** palabras, caracteres, párrafos, tiempo de lectura y
    selección.
 6. **Rendimiento:** pruebas permanentes con 1.000 escenas y 1.000 marcas.
+7. **Organización:** filtros, colecciones locales, gestión de plantillas y
+   papelera local de proyectos.
 
 La Fase 3 sigue siendo **local/offline**. El corrector es el nativo del WebView;
 no se empaqueta diccionario, tesauro ni gramática propia. Las voces dependen del
@@ -128,11 +133,11 @@ WebKit/WebView2 al ejecutar `cargo test --workspace` del núcleo.
 ```text
 cargo fmt --all --check                         OK
 cargo clippy --workspace --all-targets -D warnings   OK
-cargo test --workspace --all-targets --locked   74 + 49 + 25 + 1 perf
+cargo test --workspace --all-targets --locked   83 + 49 + 25 + 1 perf
 cargo test desktop                              8/8
 pnpm typecheck                                  OK
-pnpm ui:test                                    77/77
-pnpm e2e                                        47/47
+pnpm ui:test                                    83/83
+pnpm e2e                                        52/52
 ci.py calidad                                   OK
 ci.py interfaz                                  OK
 ci.py producto                                  OK
@@ -175,6 +180,9 @@ El release público de `0.2.0` **no** está autorizado. Siguen pendientes:
 
 - La portada por defecto es un arte fijo; el color la tiñe y aún no hay subida de
   imagen ni selector de arte.
+- Filtros y colecciones son `localStorage`; no viajan con el proyecto.
+- La papelera es `<padre>/.writer-papelera` y no la papelera del sistema; sin
+  purga automática.
 - El control de cambios es por documento completo; no hay aceptación por hunk,
   sugerencias inline ni fusión de tres vías.
 - La comparación es por líneas y solo contra revisiones que tocaron el documento.

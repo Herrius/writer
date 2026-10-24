@@ -1,7 +1,7 @@
 # Plantillas locales v1 — contrato
 
-- **Fecha:** 2026-10-23
-- **Estado:** propuesta normativa para la Fase 2.6.
+- **Fecha:** 2026-10-23; actualizado 2026-10-24.
+- **Estado:** implementado. Incluye creación y eliminación desde la UI.
 - **Base:** [`esquema-v2.md`](esquema-v2.md) §6.
 
 ## 1. Alcance
@@ -44,7 +44,8 @@ descarga y sin red.
 
 - `nombre` no vacío y ≤ 200 caracteres.
 - `idioma` es un código corto (`es`, `en`).
-- `estructura` usa enteros entre 1 y 999.
+- `estructura` usa enteros entre 1 y 999 y el producto total no puede superar
+  10.000 escenas.
 - `notas_iniciales` solo admite tipos de nota válidos.
 - Un manifiesto inválido no se ofrece en la UI.
 
@@ -70,10 +71,14 @@ descarga y sin red.
 
 ## 6. UI
 
-- «Crear desde plantilla» solo aparece cuando hay plantillas válidas.
-- La lista muestra nombre, descripción e idioma; no muestra controles vacíos.
-- El formulario de creación reutiliza el asistente existente.
-- No hay botón de plantilla si no hay ninguna instalada.
+- La pestaña **Plantillas** muestra nombre, descripción, estructura y notas.
+- **Nueva plantilla** abre un formulario para nombre, descripción, idioma,
+  estructura y notas iniciales.
+- **Usar plantilla** abre el asistente con la plantilla preseleccionada.
+- **Eliminar** pide confirmación y borra solo la carpeta de la plantilla, nunca
+  un proyecto.
+- «Crear desde plantilla» abre el asistente; si no hay plantillas, la pestaña
+  ofrece crear la primera.
 
 ## 7. Pruebas
 
@@ -82,3 +87,21 @@ descarga y sin red.
 - Plantilla con `..` o enlace simbólico se rechaza.
 - Plantilla inválida no aparece en la UI.
 - Proyecto parcial se limpia si falla la creación.
+- Guardar, listar y eliminar una plantilla local.
+- Rechazar un directorio que no tenga `plantilla.json` al intentar borrarlo.
+- Rechazar una plantilla que generaría más de 10.000 escenas.
+
+## 8. Gestión y API
+
+Núcleo:
+
+- `templates::guardar_plantilla(directorio, slug, plantilla)`.
+- `templates::eliminar_plantilla(directorio, slug)`.
+- `templates::listar_plantillas`.
+
+Tauri:
+
+- `guardar_plantilla(plantilla)`
+- `eliminar_plantilla(slug)`
+- `listar_plantillas`
+- `crear_desde_plantilla(slug, ruta, titulo, autor, idioma)`

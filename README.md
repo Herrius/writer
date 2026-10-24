@@ -8,7 +8,8 @@ Este repositorio ha cerrado la **Fase 3 (Local avanzado)** en **Linux
 x86_64**. El motor y la CLI (Fase 1), la interfaz y la publicación local (Fase 2)
 y las extensiones locales de la Fase 3 están implementados: control de cambios,
 comparación de versiones, preferencias y temas, lectura en voz alta, Quick Open,
-paleta de comandos y presupuestos de rendimiento. La app se empaqueta en deb/rpm.
+paleta de comandos, filtros, colecciones, plantillas y papelera local de
+proyectos, y presupuestos de rendimiento. La app se empaqueta en deb/rpm.
 
 El **release público no está autorizado** todavía: AppImage, firma, updater,
 Windows, CI remoto y la prueba de la app instalada son condiciones de
@@ -37,8 +38,8 @@ La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
 exportación Markdown e inyección de fallos. El conjunto Rust acumula **74
 unitarias + 49 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
-tiene 8 pruebas y la UI 77 (corpus, preferencias, lectura simulada, autosave,
-búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 47 flujos E2E
+tiene 9 pruebas y la UI 83 (corpus, preferencias, lectura simulada, autosave,
+búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 52 flujos E2E
 de navegador y 2 escenarios de escritorio con Tauri/WebDriver (`Ctrl+S` y cierre
 de ventana).
 

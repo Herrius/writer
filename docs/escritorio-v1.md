@@ -35,5 +35,6 @@
 - El historial muestra contenido por archivo, no una máquina del tiempo con
   tarjetas de escenas y cambios resaltados.
 - “Construcción del mundo” selecciona la primera nota de cuaderno disponible.
-- Plantillas, Archivo, Papelera y Configuración están deshabilitados.
+- Archivo y Configuración siguen deshabilitados; Plantillas y Papelera ya son
+  operativas en el panel de Proyectos.
 - No se copian ilustraciones, portadas ni la marca de Dabble.

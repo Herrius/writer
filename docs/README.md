@@ -13,8 +13,12 @@
 - [`metas-v1.md`](metas-v1.md) — metas, sesiones, rachas y temporizador.
 - [`planificacion-v1.md`](planificacion-v1.md) — Plot Grid, personajes, Story
   Notes, @menciones e Ideas.
-- [`plantillas-v1.md`](plantillas-v1.md) — plantillas locales y creación desde
-  plantilla.
+- [`plantillas-v1.md`](plantillas-v1.md) — plantillas locales, gestión y
+  creación desde plantilla.
+- [`organizacion-v1.md`](organizacion-v1.md) — filtros, orden y colecciones
+  locales de proyectos.
+- [`papelera-v1.md`](papelera-v1.md) — papelera local de proyectos con
+  restauración y purga.
 - [`importacion-v1.md`](importacion-v1.md) — importación DOCX/Markdown/HTML/RTF
   y backup.
 - [`exportacion-v2.md`](exportacion-v2.md) — Markdown, DOCX, PDF y formato de
@@ -104,6 +108,8 @@
   Fase 3.6: integración y cierre funcional local.
 - [`iteraciones/31-rediseno-portadas.md`](iteraciones/31-rediseno-portadas.md) —
   rediseño de portadas y tarjetas de proyecto.
+- [`iteraciones/32-organizacion-proyectos.md`](iteraciones/32-organizacion-proyectos.md)
+  — filtros, colecciones, plantillas y papelera de proyectos.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

@@ -152,8 +152,9 @@ Prueba E2E de F1.2:
 - **Meta diaria, «Proyectos personales» e «Ideas»:** se eliminan del panel.
   La meta y el cuaderno pueden seguir existiendo dentro del proyecto.
 - **«Ayuda»:** se retira solo el botón «Ayuda» del panel de Proyectos.
-- **Resto de controles deshabilitados:** Notificaciones, Filtros, Colección,
-  Plantillas, Papelera, Más opciones y Crear desde plantilla se conservan.
+- **Controles del panel (actualizado 2026-10-24):** Filtros, Colecciones,
+  Plantillas, Papelera y Crear desde plantilla están operativos. Notificaciones,
+  Más opciones y Archivo siguen fuera de alcance.
   Quedan documentados como **excepción aprobada por el product owner** al
   criterio «no hay controles visibles sin acción». Se revisarán en fases
   posteriores.

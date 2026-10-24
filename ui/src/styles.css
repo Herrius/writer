@@ -4531,3 +4531,474 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
     max-width: 162px;
   }
 }
+
+/* Organización local del panel de Proyectos. */
+.boton-inicio.activo {
+  border-color: #9b4a2f;
+  background: #f6e9e2;
+  color: #74311f;
+  font-weight: 600;
+}
+
+.colecciones-barra {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 2.5rem 0.2rem;
+  border-bottom: 1px solid #efede9;
+}
+
+.colecciones-barra > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid #dedbd5;
+  border-radius: 999px;
+  background: #fff;
+  color: #5f5a53;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.colecciones-barra > button.activo {
+  border-color: #8d8172;
+  background: #f3efe8;
+  color: #332e28;
+  font-weight: 600;
+}
+
+.colecciones-barra > button small {
+  color: #8a847b;
+  font-size: 0.65rem;
+}
+
+.colecciones-barra > .gestionar-colecciones {
+  border-color: transparent;
+  background: transparent;
+  color: #7a7369;
+  text-decoration: underline;
+}
+
+.punto-color {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.tarjeta-proyecto {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 162px;
+}
+
+.crear-columna,
+.crear-tarjeta {
+  max-width: 162px;
+}
+
+.tarjeta-abrir {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tarjeta-menu {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 1.35rem;
+  height: 1.1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4f4a43;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 0.8;
+  cursor: pointer;
+}
+
+.tarjeta-menu:hover {
+  color: #1f1b17;
+}
+
+.tarjeta-proyecto .tarjeta-meta {
+  padding-right: 1.15rem;
+}
+
+.proyectos-lista .tarjeta-proyecto {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  max-width: none;
+  min-height: 76px;
+  padding: 0.55rem;
+  border: 1px solid #e4ddd3;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.proyectos-lista .tarjeta-proyecto:hover {
+  border-color: #b9ab99;
+  background: #fdfbf7;
+}
+
+.proyectos-lista .tarjeta-abrir {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.9rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.proyectos-lista .tarjeta-menu {
+  position: static;
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
+}
+
+.modal-inicio {
+  width: min(560px, calc(100vw - 2rem));
+  max-height: min(88vh, 760px);
+  overflow: auto;
+  border-radius: 0.55rem;
+  background: var(--papel);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 30%);
+}
+
+.modal-inicio-cabecera,
+.modal-inicio-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.modal-inicio-pie {
+  justify-content: flex-end;
+  border-top: 1px solid var(--linea);
+  border-bottom: 0;
+}
+
+.modal-inicio-cabecera h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+}
+
+.modal-inicio-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem;
+}
+
+.modal-inicio-cuerpo h3 {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+}
+
+.modal-inicio-colores {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.modal-inicio-colores .tono {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+}
+
+.lista-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fila-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.fila-check input {
+  width: auto;
+}
+
+.fila-coleccion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fila-coleccion input {
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--borde-control);
+  border-radius: 0.3rem;
+  font: inherit;
+}
+
+.fila-coleccion small {
+  color: var(--tinta-suave);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.dabble-boton.peligro {
+  border-color: #b75a4b;
+  color: #8e3b32;
+}
+
+.dabble-boton-primario.peligro {
+  border-color: #8e3b32;
+  background: #8e3b32;
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .colecciones-barra {
+    padding-inline: 1.25rem;
+  }
+
+  .fila-coleccion {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .fila-coleccion small,
+  .fila-coleccion .dabble-boton {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* Pestaña de plantillas. */
+.panel-plantillas-cabecera {
+  align-items: flex-start;
+}
+
+.panel-plantillas-cabecera h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+}
+
+.panel-plantillas-cabecera p {
+  margin: 0.2rem 0 0;
+  color: #756f67;
+  font-size: 0.76rem;
+}
+
+.plantillas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+  padding: 1.3rem 2.5rem 2.2rem;
+}
+
+.plantilla-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid #e4dfd7;
+  border-radius: 0.45rem;
+  background: #fff;
+}
+
+.plantilla-tarjeta header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.plantilla-tarjeta h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+}
+
+.plantilla-tarjeta header small {
+  overflow: hidden;
+  color: #8a8379;
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+}
+
+.plantilla-tarjeta p {
+  margin: 0;
+  color: #6c665e;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.plantilla-tarjeta dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.plantilla-tarjeta dl div {
+  padding: 0.35rem;
+  border-radius: 0.3rem;
+  background: #f7f4ef;
+}
+
+.plantilla-tarjeta dt {
+  color: #8a8379;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+}
+
+.plantilla-tarjeta dd {
+  margin: 0.1rem 0 0;
+  color: #3b3530;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.plantilla-acciones {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: auto;
+}
+
+.plantillas-vacio {
+  width: auto;
+  grid-column: auto;
+  min-height: 240px;
+}
+
+.modal-plantilla {
+  width: min(620px, calc(100vw - 2rem));
+}
+
+.modal-plantilla-estructura {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.modal-plantilla-notas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.9rem;
+  margin: 0;
+  padding: 0.6rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.35rem;
+}
+
+.modal-plantilla-notas legend {
+  padding: 0 0.3rem;
+  color: var(--tinta-suave);
+  font-size: 0.75rem;
+}
+
+.modal-plantilla-notas .fila-check {
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .plantillas-grid {
+    padding: 1.1rem 1.25rem 1.5rem;
+  }
+
+  .modal-plantilla-estructura {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Papelera local de proyectos. */
+.panel-papelera .dabble-error {
+  margin: 1rem 2.5rem 0;
+}
+
+.papelera-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1.2rem 2.5rem 2rem;
+}
+
+.papelera-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #e4dfd7;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.papelera-item h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+}
+
+.papelera-item p {
+  overflow: hidden;
+  margin: 0.15rem 0;
+  color: #756f67;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.papelera-item small {
+  color: #8a8379;
+  font-size: 0.68rem;
+}
+
+.papelera-acciones {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+}
+
+.modal-confirmar {
+  width: min(500px, calc(100vw - 2rem));
+}
+
+.modal-confirmar .modal-inicio-cuerpo p {
+  margin: 0;
+  color: var(--tinta-suave);
+  line-height: 1.45;
+}
+
+@media (max-width: 700px) {
+  .papelera-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .papelera-lista,
+  .panel-papelera .dabble-error {
+    padding-inline: 1.25rem;
+  }
+}

@@ -6,8 +6,15 @@
 
 ## 1. Panel de Proyectos
 
-- Cabecera con marca, buscador de proyectos, filtros/colecciones (deshabilitados
-  hasta una fase posterior) y pestañas Activo / Plantillas / Papelera.
+- Cabecera con marca, buscador, **Filtros** y **+ Agregar una colección**.
+  Pestañas **Activo**, **Plantillas** y **Papelera**, todas operativas.
+- Filtros locales por autor, periodo, palabras mínimas y orden; se combinan con
+  la búsqueda y con la colección activa.
+- Colecciones locales con nombre, color y lista de proyectos. Se crean,
+  asignan desde `⋯`, renombran y eliminan sin mover archivos.
+- La pestaña **Plantillas** lista, crea, usa y elimina plantillas locales.
+- La pestaña **Papelera** permite restaurar o purgar proyectos movidos a
+  `.writer-papelera`.
 - “Mis Proyectos” muestra tarjetas de los proyectos recientes (máximo 8,
   `localStorage`) y una tarjeta “Crear nuevo proyecto”.
 - La cabecera del panel mantiene el recuento, la vista y “Más opciones”
@@ -74,6 +81,9 @@ Al confirmar:
 
 - No hay subida de imágenes ni selector de arte de portada: el arte por
   defecto es fijo y el color solo lo tiñe.
+- La papelera es local, hermana del proyecto y sin purga automática; ver
+  [`papelera-v1.md`](papelera-v1.md).
+- Las colecciones y filtros viven en `localStorage`; no viajan con el proyecto.
 - No hay renombrar, borrar ni mover proyectos desde la GUI.
 - El color de portada es una preferencia local de recientes, no un dato del
   proyecto.

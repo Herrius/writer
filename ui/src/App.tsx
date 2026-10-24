@@ -701,6 +701,25 @@ export default function App() {
     });
   };
 
+  const quitarReciente = (ruta: string) => {
+    setRecientes((lista) => {
+      const siguiente = lista.filter((item) => item.ruta !== ruta);
+      guardarRecientes(siguiente);
+      return siguiente;
+    });
+  };
+
+  const agregarReciente = (reciente: Reciente) => {
+    setRecientes((lista) => {
+      const siguiente = [
+        { ...reciente, modificado: new Date().toISOString() },
+        ...lista.filter((item) => item.ruta !== reciente.ruta),
+      ].slice(0, 8);
+      guardarRecientes(siguiente);
+      return siguiente;
+    });
+  };
+
   const cargarMetas = async (ruta: string) => {
     setErrorMetas(null);
     const [metasResultado, sesionesResultado, gridResultado, formatoResultado] =
@@ -2973,6 +2992,8 @@ export default function App() {
         onAbrir={() => void abrir()}
         onDemo={() => void cargar('(demo)')}
         onAbrirReciente={(ruta) => void cargar(ruta)}
+        onQuitarReciente={quitarReciente}
+        onAgregarReciente={agregarReciente}
         onCrear={crearProyectoDesdeInicio}
       />
     );

@@ -1,7 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { elegirCarpetaCreacion, errorDe, listarPlantillas } from './api';
+import {
+  elegirCarpetaCreacion,
+  eliminarPlantilla,
+  errorDe,
+  guardarPlantilla,
+  listarPlantillas,
+  moverProyectoAPapelera,
+  purgarProyectoDePapelera,
+  restaurarProyectoDePapelera,
+} from './api';
 import type { PlantillaDto } from './types/PlantillaDto';
 import { colorDesdeTitulo, slugProyecto, type Reciente } from './recientes';
+import {
+  autoresRecientes,
+  cargarFiltros,
+  filtrarRecientes,
+  filtrosActivos,
+  guardarColecciones,
+  guardarFiltros,
+  guardarPapelera,
+  leerColecciones,
+  leerPapelera,
+  nuevaColeccion,
+  type Coleccion,
+  type EntradaPapelera,
+  type FiltrosProyectos,
+} from './organizacion';
+import { ModalFiltros } from './features/inicio/ModalFiltros';
+import { ModalColeccion } from './features/inicio/ModalColeccion';
+import { ModalGestionColecciones } from './features/inicio/ModalGestionColecciones';
+import { ModalAccionesProyecto } from './features/inicio/ModalAccionesProyecto';
+import { ModalPlantilla } from './features/inicio/ModalPlantilla';
+import { ModalConfirmar } from './features/inicio/ModalConfirmar';
 import portadaArbol from './assets/portada-arbol.jpg';
 
 export type DatosNuevoProyecto = {
@@ -22,6 +52,8 @@ type Props = {
   onAbrir: () => void;
   onDemo: () => void;
   onAbrirReciente: (ruta: string) => void;
+  onQuitarReciente: (ruta: string) => void;
+  onAgregarReciente: (reciente: Reciente) => void;
   onCrear: (datos: DatosNuevoProyecto, abrir: boolean) => Promise<void>;
 };
 
@@ -103,9 +135,26 @@ export function Inicio({
   onAbrir,
   onDemo,
   onAbrirReciente,
+  onQuitarReciente,
+  onAgregarReciente,
   onCrear,
 }: Props) {
   const [consulta, setConsulta] = useState('');
+  const [filtros, setFiltros] = useState<FiltrosProyectos>(() => cargarFiltros());
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const [colecciones, setColecciones] = useState<Coleccion[]>(() => leerColecciones());
+  const [coleccionActiva, setColeccionActiva] = useState<string | null>(null);
+  const [modalColeccion, setModalColeccion] = useState(false);
+  const [gestionColecciones, setGestionColecciones] = useState(false);
+  const [accionesProyecto, setAccionesProyecto] = useState<Reciente | null>(null);
+  const [modalPlantilla, setModalPlantilla] = useState(false);
+  const [plantillaAEliminar, setPlantillaAEliminar] = useState<string | null>(null);
+  const [errorPlantillas, setErrorPlantillas] = useState<string | null>(null);
+  const [papelera, setPapelera] = useState<EntradaPapelera[]>(() => leerPapelera());
+  const [proyectoAPapelera, setProyectoAPapelera] = useState<Reciente | null>(null);
+  const [papeleraAEliminar, setPapeleraAEliminar] = useState<EntradaPapelera | null>(null);
+  const [errorPapelera, setErrorPapelera] = useState<string | null>(null);
+  const [vistaInicio, setVistaInicio] = useState<'activo' | 'plantillas' | 'papelera'>('activo');
   const [vista, setVista] = useState<'cuadricula' | 'lista'>('cuadricula');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
@@ -127,23 +176,136 @@ export function Inicio({
   const focoPrevioRef = useRef<HTMLElement | null>(null);
   const crearRef = useRef<HTMLButtonElement>(null);
 
+  const hayModalInicio =
+    filtrosAbiertos ||
+    modalColeccion ||
+    gestionColecciones ||
+    Boolean(accionesProyecto) ||
+    modalPlantilla ||
+    Boolean(proyectoAPapelera) ||
+    Boolean(papeleraAEliminar);
+
+  useEffect(() => {
+    const fondo = fondoRef.current;
+    if (!fondo) {
+      return;
+    }
+    if (hayModalInicio) {
+      fondo.inert = true;
+    }
+    return () => {
+      fondo.inert = false;
+    };
+  }, [hayModalInicio]);
+
   useEffect(() => {
     listarPlantillas()
       .then(setPlantillas)
       .catch(() => setPlantillas([]));
   }, []);
 
-  const filtrados = useMemo(() => {
-    const termino = consulta.trim().toLocaleLowerCase();
-    if (!termino) {
-      return recientes;
+  const autores = useMemo(() => autoresRecientes(recientes), [recientes]);
+  const rutasColeccionActiva = useMemo(() => {
+    if (!coleccionActiva) {
+      return null;
     }
-    return recientes.filter(
-      (reciente) =>
-        reciente.titulo.toLocaleLowerCase().includes(termino) ||
-        reciente.ruta.toLocaleLowerCase().includes(termino),
+    return colecciones.find((coleccion) => coleccion.id === coleccionActiva)?.rutas ?? [];
+  }, [coleccionActiva, colecciones]);
+  const filtrados = useMemo(
+    () =>
+      filtrarRecientes(
+        recientes,
+        filtros,
+        consulta,
+        rutasColeccionActiva,
+      ),
+    [coleccionActiva, colecciones, consulta, filtros, recientes],
+  );
+  const cantidadFiltros = filtrosActivos(filtros);
+  const guardarListaColecciones = (siguiente: Coleccion[]) => {
+    setColecciones(siguiente);
+    guardarColecciones(siguiente);
+  };
+  const guardarAsignacion = (ruta: string, ids: string[]) => {
+    const seleccionadas = new Set(ids);
+    guardarListaColecciones(
+      colecciones.map((coleccion) => ({
+        ...coleccion,
+        rutas: seleccionadas.has(coleccion.id)
+          ? Array.from(new Set([...coleccion.rutas, ruta]))
+          : coleccion.rutas.filter((actual) => actual !== ruta),
+      })),
     );
-  }, [consulta, recientes]);
+    setAccionesProyecto(null);
+    setExito('Colecciones del proyecto actualizadas.');
+  };
+  const moverAPapelera = async (reciente: Reciente) => {
+    setErrorPapelera(null);
+    try {
+      const entrada = await moverProyectoAPapelera(
+        reciente.ruta,
+        reciente.titulo,
+        reciente.autor ?? null,
+        reciente.color ?? null,
+        reciente.palabras ?? 0,
+      );
+      const siguiente = [entrada, ...papelera];
+      setPapelera(siguiente);
+      guardarPapelera(siguiente);
+      guardarListaColecciones(
+        colecciones.map((coleccion) => ({
+          ...coleccion,
+          rutas: coleccion.rutas.filter((ruta) => ruta !== reciente.ruta),
+        })),
+      );
+      onQuitarReciente(reciente.ruta);
+      setProyectoAPapelera(null);
+      setExito(`Proyecto «${reciente.titulo}» movido a la papelera.`);
+    } catch (fallo) {
+      setErrorPapelera(errorDe(fallo).mensaje);
+    }
+  };
+
+  const restaurarPapelera = async (entrada: EntradaPapelera) => {
+    setErrorPapelera(null);
+    try {
+      const ruta = await restaurarProyectoDePapelera(entrada.rutaPapelera);
+      const siguiente = papelera.filter((item) => item.rutaPapelera !== entrada.rutaPapelera);
+      setPapelera(siguiente);
+      guardarPapelera(siguiente);
+      onAgregarReciente({
+        ruta,
+        titulo: entrada.titulo,
+        autor: entrada.autor ?? undefined,
+        palabras: entrada.palabras ?? 0,
+        color: entrada.color ?? undefined,
+        modificado: new Date().toISOString(),
+      });
+      setExito(`Proyecto «${entrada.titulo}» restaurado en Mis Proyectos.`);
+    } catch (fallo) {
+      setErrorPapelera(errorDe(fallo).mensaje);
+    }
+  };
+
+  const purgarPapelera = async (entrada: EntradaPapelera) => {
+    setErrorPapelera(null);
+    try {
+      await purgarProyectoDePapelera(entrada.rutaPapelera);
+      const siguiente = papelera.filter((item) => item.rutaPapelera !== entrada.rutaPapelera);
+      setPapelera(siguiente);
+      guardarPapelera(siguiente);
+      setPapeleraAEliminar(null);
+      setExito(`Proyecto «${entrada.titulo}» eliminado definitivamente.`);
+    } catch (fallo) {
+      setErrorPapelera(errorDe(fallo).mensaje);
+    }
+  };
+
+  useEffect(() => {
+    if (coleccionActiva && !colecciones.some((coleccion) => coleccion.id === coleccionActiva)) {
+      setColeccionActiva(null);
+    }
+  }, [coleccionActiva, colecciones]);
 
   const totalPalabras = useMemo(
     () => recientes.reduce((total, reciente) => total + (reciente.palabras ?? 0), 0),
@@ -152,7 +314,7 @@ export function Inicio({
   const autorBienvenida =
     recientes.find((reciente) => reciente.autor?.trim())?.autor?.trim() || 'escritor';
 
-  const abrirModal = (tituloInicial = '') => {
+  const abrirModal = (tituloInicial = '', plantillaSlug = '') => {
     focoPrevioRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : crearRef.current;
     setModalAbierto(true);
@@ -163,7 +325,7 @@ export function Inicio({
     setCarpetaPadre('');
     setColor(colorDesdeTitulo(tituloInicial || 'writer'));
     setNotasIniciales(true);
-    setPlantilla('');
+    setPlantilla(plantillaSlug);
     setNombreEditado(false);
     setError(null);
     setExito(null);
@@ -333,31 +495,43 @@ export function Inicio({
           <button className="boton-inicio" onClick={onAbrir}>
             Abrir proyecto
           </button>
-          <button className="boton-inicio" disabled title="Filtros disponibles próximamente">
-            Filtros
+          <button
+            className={`boton-inicio ${cantidadFiltros > 0 ? 'activo' : ''}`}
+            aria-pressed={cantidadFiltros > 0}
+            title="Filtrar y ordenar proyectos"
+            onClick={() => setFiltrosAbiertos(true)}
+          >
+            Filtros{cantidadFiltros > 0 ? ` (${cantidadFiltros})` : ''}
           </button>
-          <button className="boton-inicio" disabled title="Colecciones disponibles próximamente">
+          <button
+            className="boton-inicio"
+            onClick={() => setModalColeccion(true)}
+            title="Crear una colección local de proyectos"
+          >
             + Agregar una colección
           </button>
           <div className="tabs-inicio" role="tablist" aria-label="Vistas de proyectos">
-            <button className="tab-inicio activo" role="tab" aria-selected="true">
+            <button
+              className={`tab-inicio ${vistaInicio === 'activo' ? 'activo' : ''}`}
+              role="tab"
+              aria-selected={vistaInicio === 'activo'}
+              onClick={() => setVistaInicio('activo')}
+            >
               Activo
             </button>
             <button
-              className="tab-inicio"
+              className={`tab-inicio ${vistaInicio === 'plantillas' ? 'activo' : ''}`}
               role="tab"
-              aria-selected="false"
-              disabled
-              title="Plantillas próximamente"
+              aria-selected={vistaInicio === 'plantillas'}
+              onClick={() => setVistaInicio('plantillas')}
             >
               Plantillas
             </button>
             <button
-              className="tab-inicio"
+              className={`tab-inicio ${vistaInicio === 'papelera' ? 'activo' : ''}`}
               role="tab"
-              aria-selected="false"
-              disabled
-              title="Papelera próximamente"
+              aria-selected={vistaInicio === 'papelera'}
+              onClick={() => setVistaInicio('papelera')}
             >
               Papelera
             </button>
@@ -380,6 +554,7 @@ export function Inicio({
       )}
       <div className="inicio-cuerpo">
         <main className="inicio-proyectos">
+          {vistaInicio === 'activo' ? (
           <section className="mis-proyectos">
             <header className="mis-proyectos-cabecera">
               <button
@@ -426,6 +601,40 @@ export function Inicio({
               </div>
             </header>
 
+            {colecciones.length > 0 && (
+              <div className="colecciones-barra" role="group" aria-label="Colecciones de proyectos">
+                <button
+                  className={coleccionActiva === null ? 'activo' : ''}
+                  aria-pressed={coleccionActiva === null}
+                  onClick={() => setColeccionActiva(null)}
+                >
+                  Todas
+                </button>
+                {colecciones.map((coleccion) => (
+                  <button
+                    key={coleccion.id}
+                    className={coleccionActiva === coleccion.id ? 'activo' : ''}
+                    aria-pressed={coleccionActiva === coleccion.id}
+                    onClick={() => setColeccionActiva(coleccion.id)}
+                  >
+                    <span
+                      className="punto-color"
+                      style={{ background: coleccion.color }}
+                      aria-hidden="true"
+                    />
+                    {coleccion.nombre}
+                    <small>{coleccion.rutas.length}</small>
+                  </button>
+                ))}
+                <button
+                  className="gestionar-colecciones"
+                  onClick={() => setGestionColecciones(true)}
+                >
+                  Gestionar
+                </button>
+              </div>
+            )}
+
             {!plegado && (
               <>
             <div className={`proyectos ${vista === 'lista' ? 'proyectos-lista' : ''}`}>
@@ -467,39 +676,63 @@ export function Inicio({
                 </button>
               </div>
               {filtrados.map((reciente) => (
-                <button
-                  key={reciente.ruta}
-                  className="tarjeta-proyecto"
-                  aria-label={`Abrir ${reciente.titulo}${
-                    reciente.autor ? ` de ${reciente.autor}` : ''
-                  }`}
-                  onClick={() => onAbrirReciente(reciente.ruta)}
-                >
-                  <Portada
-                    color={reciente.color ?? colorDesdeTitulo(reciente.titulo)}
-                    titulo={reciente.titulo}
-                    autor={reciente.autor ?? ''}
-                    compacta
-                  />
-                  <span className="tarjeta-datos">
-                    <strong>{reciente.titulo}</strong>
-                    <span className="tarjeta-meta">
-                      <span>Modificado el {fechaModificada(reciente)}</span>
-                      <span className="tarjeta-mas" aria-hidden="true">
-                        ⋯
+                <div key={reciente.ruta} className="tarjeta-proyecto">
+                  <button
+                    className="tarjeta-abrir"
+                    aria-label={`Abrir ${reciente.titulo}${
+                      reciente.autor ? ` de ${reciente.autor}` : ''
+                    }`}
+                    onClick={() => onAbrirReciente(reciente.ruta)}
+                  >
+                    <Portada
+                      color={reciente.color ?? colorDesdeTitulo(reciente.titulo)}
+                      titulo={reciente.titulo}
+                      autor={reciente.autor ?? ''}
+                      compacta
+                    />
+                    <span className="tarjeta-datos">
+                      <strong>{reciente.titulo}</strong>
+                      <span className="tarjeta-meta">
+                        <span>Modificado el {fechaModificada(reciente)}</span>
                       </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    className="tarjeta-menu"
+                    aria-label={`Opciones de ${reciente.titulo}`}
+                    title="Opciones del proyecto"
+                    onClick={() => setAccionesProyecto(reciente)}
+                  >
+                    ⋯
+                  </button>
+                </div>
               ))}
               {filtrados.length === 0 && (
                 <div className="proyectos-vacio">
                   <strong>{consulta ? 'Sin coincidencias' : 'No proyectos'}</strong>
                   <p>
-                    {consulta
-                      ? 'Prueba con otro título o ruta.'
+                    {consulta || cantidadFiltros > 0
+                      ? 'Prueba con otra búsqueda o limpia los filtros.'
                       : 'Crea tu primer proyecto y comienza a escribir tu obra maestra.'}
                   </p>
+                  {(consulta || cantidadFiltros > 0) && (
+                    <button
+                      className="boton-inicio"
+                      onClick={() => {
+                        setConsulta('');
+                        const limpios = {
+                          ...filtros,
+                          autor: '',
+                          periodo: 'todos' as const,
+                          minimoPalabras: 0,
+                        };
+                        setFiltros(limpios);
+                        guardarFiltros(limpios);
+                      }}
+                    >
+                      Limpiar búsqueda y filtros
+                    </button>
+                  )}
                   {!consulta && (
                     <button className="boton-inicio" onClick={onAbrir}>
                       Abrir proyecto existente
@@ -512,6 +745,128 @@ export function Inicio({
               </>
             )}
           </section>
+          ) : vistaInicio === 'plantillas' ? (
+            <section className="mis-proyectos panel-plantillas">
+              <header className="mis-proyectos-cabecera panel-plantillas-cabecera">
+                <div>
+                  <h2>Plantillas</h2>
+                  <p>Estructuras reutilizables para empezar un proyecto.</p>
+                </div>
+                <button
+                  className="boton-inicio"
+                  onClick={() => setModalPlantilla(true)}
+                >
+                  + Nueva plantilla
+                </button>
+              </header>
+              {errorPlantillas && (
+                <p className="dabble-error" role="alert">
+                  {errorPlantillas}
+                </p>
+              )}
+              {plantillas.length === 0 ? (
+                <div className="proyectos-vacio plantillas-vacio">
+                  <strong>No hay plantillas</strong>
+                  <p>Crea una estructura para reutilizarla en tus próximos proyectos.</p>
+                  <button className="boton-inicio" onClick={() => setModalPlantilla(true)}>
+                    Crear la primera plantilla
+                  </button>
+                </div>
+              ) : (
+                <div className="plantillas-grid">
+                  {plantillas.map((opcion) => (
+                    <article className="plantilla-tarjeta" key={opcion.slug}>
+                      <header>
+                        <h3>{opcion.nombre}</h3>
+                        <small>{opcion.slug}</small>
+                      </header>
+                      <p>{opcion.descripcion || 'Sin descripción.'}</p>
+                      <dl>
+                        <div><dt>Libros</dt><dd>{opcion.estructura.libros}</dd></div>
+                        <div><dt>Caps.</dt><dd>{opcion.estructura.capitulosPorLibro}</dd></div>
+                        <div><dt>Escenas</dt><dd>{opcion.estructura.escenasPorCapitulo}</dd></div>
+                        <div><dt>Notas</dt><dd>{opcion.notasIniciales.length}</dd></div>
+                      </dl>
+                      <div className="plantilla-acciones">
+                        <button
+                          className="dabble-boton-primario"
+                          onClick={() => abrirModal('', opcion.slug)}
+                        >
+                          Usar plantilla
+                        </button>
+                        <button
+                          className={`dabble-boton ${plantillaAEliminar === opcion.slug ? 'peligro' : ''}`}
+                          onClick={() => {
+                            if (plantillaAEliminar !== opcion.slug) {
+                              setPlantillaAEliminar(opcion.slug);
+                              return;
+                            }
+                            setPlantillaAEliminar(null);
+                            void eliminarPlantilla(opcion.slug)
+                              .then(() => {
+                                setPlantillas((actual) =>
+                                  actual.filter((item) => item.slug !== opcion.slug),
+                                );
+                                setExito(`Plantilla «${opcion.nombre}» eliminada.`);
+                              })
+                              .catch((fallo: unknown) => setErrorPlantillas(errorDe(fallo).mensaje));
+                          }}
+                        >
+                          {plantillaAEliminar === opcion.slug ? 'Confirmar' : 'Eliminar'}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : (
+            <section className="mis-proyectos panel-papelera">
+              <header className="mis-proyectos-cabecera panel-plantillas-cabecera">
+                <div>
+                  <h2>Papelera</h2>
+                  <p>Proyectos retirados de Mis Proyectos. Se pueden restaurar.</p>
+                </div>
+              </header>
+              {errorPapelera && (
+                <p className="dabble-error" role="alert">{errorPapelera}</p>
+              )}
+              {papelera.length === 0 ? (
+                <div className="proyectos-vacio plantillas-vacio">
+                  <strong>La papelera está vacía</strong>
+                  <p>Los proyectos que muevas aquí se podrán restaurar.</p>
+                </div>
+              ) : (
+                <div className="papelera-lista">
+                  {papelera.map((entrada) => (
+                    <article className="papelera-item" key={entrada.rutaPapelera}>
+                      <div>
+                        <h3>{entrada.titulo}</h3>
+                        <p>{entrada.rutaOriginal}</p>
+                        <small>
+                          Eliminado el {new Date(entrada.eliminado).toLocaleDateString('es')}
+                        </small>
+                      </div>
+                      <div className="papelera-acciones">
+                        <button
+                          className="dabble-boton-primario"
+                          onClick={() => void restaurarPapelera(entrada)}
+                        >
+                          Restaurar
+                        </button>
+                        <button
+                          className="dabble-boton peligro"
+                          onClick={() => setPapeleraAEliminar(entrada)}
+                        >
+                          Eliminar definitivamente
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </main>
 
         <aside className="inicio-sidebar">
@@ -535,6 +890,94 @@ export function Inicio({
         </aside>
       </div>
       </div>
+
+      {modalColeccion && (
+        <ModalColeccion
+          onCrear={(nombre, color) => {
+            const coleccion = nuevaColeccion(nombre, color);
+            guardarListaColecciones([...colecciones, coleccion]);
+            setModalColeccion(false);
+            setExito(`Colección «${coleccion.nombre}» creada.`);
+          }}
+          onCerrar={() => setModalColeccion(false)}
+        />
+      )}
+
+      {gestionColecciones && (
+        <ModalGestionColecciones
+          colecciones={colecciones}
+          onGuardar={(siguiente) => {
+            guardarListaColecciones(siguiente);
+            setGestionColecciones(false);
+            setExito('Colecciones actualizadas.');
+          }}
+          onCerrar={() => setGestionColecciones(false)}
+        />
+      )}
+
+      {accionesProyecto && (
+        <ModalAccionesProyecto
+          reciente={accionesProyecto}
+          colecciones={colecciones}
+          onCerrar={() => setAccionesProyecto(null)}
+          onAbrir={() => onAbrirReciente(accionesProyecto.ruta)}
+          onGuardarColecciones={(ids) => guardarAsignacion(accionesProyecto.ruta, ids)}
+          onCrearColeccion={() => {
+            setAccionesProyecto(null);
+            setModalColeccion(true);
+          }}
+          onMoverPapelera={() => {
+            setAccionesProyecto(null);
+            setProyectoAPapelera(accionesProyecto);
+          }}
+        />
+      )}
+
+      {proyectoAPapelera && (
+        <ModalConfirmar
+          titulo="Mover a la papelera"
+          descripcion={`«${proyectoAPapelera.titulo}» se moverá a .writer-papelera y podrá restaurarse después.`}
+          confirmar="Mover a la papelera"
+          onConfirmar={() => void moverAPapelera(proyectoAPapelera)}
+          onCerrar={() => setProyectoAPapelera(null)}
+        />
+      )}
+
+      {papeleraAEliminar && (
+        <ModalConfirmar
+          titulo="Eliminar definitivamente"
+          descripcion={`«${papeleraAEliminar.titulo}» se borrará del disco y no se podrá restaurar.`}
+          confirmar="Eliminar definitivamente"
+          peligro
+          onConfirmar={() => void purgarPapelera(papeleraAEliminar)}
+          onCerrar={() => setPapeleraAEliminar(null)}
+        />
+      )}
+
+      {modalPlantilla && (
+        <ModalPlantilla
+          onGuardar={async (nueva) => {
+            const guardada = await guardarPlantilla(nueva);
+            setPlantillas((actual) => [...actual, guardada]);
+            setModalPlantilla(false);
+            setExito(`Plantilla «${guardada.nombre}» creada.`);
+          }}
+          onCerrar={() => setModalPlantilla(false)}
+        />
+      )}
+
+      {filtrosAbiertos && (
+        <ModalFiltros
+          filtros={filtros}
+          autores={autores}
+          onAplicar={(nuevos) => {
+            setFiltros(nuevos);
+            guardarFiltros(nuevos);
+            setFiltrosAbiertos(false);
+          }}
+          onCerrar={() => setFiltrosAbiertos(false)}
+        />
+      )}
 
       {modalAbierto && (
         <div className="modal-fondo">

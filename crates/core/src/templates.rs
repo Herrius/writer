@@ -72,6 +72,14 @@ impl Plantilla {
                 return Err(Error::Schema(format!("{campo} debe estar entre 1 y 999")));
             }
         }
+        let total = self.estructura.libros as u64
+            * self.estructura.capitulos_por_libro as u64
+            * self.estructura.escenas_por_capitulo as u64;
+        if total > 10_000 {
+            return Err(Error::Schema(
+                "la plantilla generaría más de 10.000 escenas".to_string(),
+            ));
+        }
         for tipo in &self.notas_iniciales {
             if !crate::model::TIPOS_NOTA.contains(&tipo.as_str()) {
                 return Err(Error::Schema(format!(
@@ -81,6 +89,77 @@ impl Plantilla {
         }
         Ok(())
     }
+}
+
+fn validar_slug(slug: &str) -> Result<()> {
+    if slug.is_empty()
+        || slug.contains(['/', '\\', '.', ':', '*', '?', '"', '<', '>', '|'])
+        || slug.starts_with(' ')
+        || slug.ends_with(' ')
+        || slug.len() > 120
+    {
+        return Err(Error::Input(format!("slug de plantilla no válido: {slug}")));
+    }
+    const RESERVADOS: [&str; 9] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "LPT1", "LPT2", "LPT3",
+    ];
+    if RESERVADOS
+        .iter()
+        .any(|reservado| slug.eq_ignore_ascii_case(reservado))
+    {
+        return Err(Error::Input(format!(
+            "slug de plantilla reservado en Windows: {slug}"
+        )));
+    }
+    Ok(())
+}
+
+pub fn guardar_plantilla(directorio: &Path, slug: &str, plantilla: &Plantilla) -> Result<()> {
+    validar_slug(slug)?;
+    plantilla.validar()?;
+    if !directorio.exists() {
+        std::fs::create_dir_all(directorio)
+            .map_err(|error| Error::Io(error).with_path(directorio))?;
+    }
+    let directorio = crate::fsutil::directorio_real(directorio)?;
+    let ruta = directorio.join(slug);
+    if ruta.exists() {
+        return Err(Error::Conflict(format!(
+            "ya existe una plantilla con ese slug: {slug}"
+        )));
+    }
+    std::fs::create_dir(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+    let manifiesto = ruta.join("plantilla.json");
+    let bytes = serde_json::to_vec_pretty(plantilla)?;
+    if let Err(error) = crate::fsutil::escribir_atomico(&manifiesto, &bytes) {
+        let _ = std::fs::remove_dir_all(&ruta);
+        return Err(error);
+    }
+    Ok(())
+}
+
+pub fn eliminar_plantilla(directorio: &Path, slug: &str) -> Result<()> {
+    validar_slug(slug)?;
+    let directorio = crate::fsutil::directorio_real(directorio)?;
+    let ruta = directorio.join(slug);
+    let metadatos =
+        std::fs::symlink_metadata(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+    if metadatos.file_type().is_symlink() || !metadatos.is_dir() {
+        return Err(Error::Integrity(format!(
+            "se rechaza una plantilla no regular: {}",
+            ruta.display()
+        )));
+    }
+    let manifiesto = ruta.join("plantilla.json");
+    if !manifiesto.is_file() {
+        return Err(Error::NotFound(format!("plantilla no encontrada: {slug}")));
+    }
+    let bytes =
+        std::fs::read(&manifiesto).map_err(|error| Error::Io(error).with_path(&manifiesto))?;
+    let plantilla: Plantilla = serde_json::from_slice(&bytes)
+        .map_err(|error| Error::Json(error).with_path(&manifiesto))?;
+    plantilla.validar()?;
+    std::fs::remove_dir_all(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))
 }
 
 /// Lista las plantillas válidas de un directorio.
@@ -140,24 +219,7 @@ pub fn crear_desde_plantilla(
     if !ulid::es_valido(&ulid::nuevo()?) {
         return Err(Error::Other("ULID no válido".to_string()));
     }
-    if slug.is_empty()
-        || slug.contains(['/', '\\', '.', ':', '*', '?', '"', '<', '>', '|'])
-        || slug.starts_with(' ')
-        || slug.ends_with(' ')
-    {
-        return Err(Error::Input(format!("slug de plantilla no válido: {slug}")));
-    }
-    const RESERVADOS: [&str; 9] = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "LPT1", "LPT2", "LPT3",
-    ];
-    if RESERVADOS
-        .iter()
-        .any(|reservado| slug.eq_ignore_ascii_case(reservado))
-    {
-        return Err(Error::Input(format!(
-            "slug de plantilla reservado en Windows: {slug}"
-        )));
-    }
+    validar_slug(slug)?;
     let ruta_plantilla = directorio_plantillas.join(slug);
     let metadatos = std::fs::symlink_metadata(&ruta_plantilla)
         .map_err(|error| Error::Io(error).with_path(&ruta_plantilla))?;
@@ -365,6 +427,30 @@ mod tests {
         let lista = listar_plantillas(temporal.path()).expect("listar");
         assert_eq!(lista.len(), 1);
         assert_eq!(lista[0].0, "buena");
+    }
+
+    #[test]
+    fn guarda_lista_y_elimina_plantilla() {
+        let temporal = tempfile::tempdir().expect("temporal");
+        let directorio = temporal.path().join("plantillas");
+        let plantilla = plantilla_valida();
+        guardar_plantilla(&directorio, "tres-actos", &plantilla).expect("guardar");
+        let lista = listar_plantillas(&directorio).expect("listar");
+        assert_eq!(lista.len(), 1);
+        assert_eq!(lista[0].0, "tres-actos");
+        assert!(guardar_plantilla(&directorio, "tres-actos", &plantilla).is_err());
+        eliminar_plantilla(&directorio, "tres-actos").expect("eliminar");
+        assert!(listar_plantillas(&directorio).expect("listar").is_empty());
+        assert!(eliminar_plantilla(&directorio, "tres-actos").is_err());
+    }
+
+    #[test]
+    fn no_elimina_un_directorio_que_no_es_plantilla() {
+        let temporal = tempfile::tempdir().expect("temporal");
+        let directorio = temporal.path().join("plantillas");
+        std::fs::create_dir_all(directorio.join("no-plantilla")).expect("carpeta");
+        assert!(eliminar_plantilla(&directorio, "no-plantilla").is_err());
+        assert!(directorio.join("no-plantilla").exists());
     }
 
     #[test]

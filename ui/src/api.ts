@@ -11,6 +11,7 @@ import type { ErrorDto } from './types/ErrorDto';
 import type { EscaneoDto } from './types/EscaneoDto';
 import type { GuardadoDto } from './types/GuardadoDto';
 import type { MetasDto } from './types/MetasDto';
+import type { PapeleraDto } from './types/PapeleraDto';
 import type { FormatoPdfDto } from './types/FormatoPdfDto';
 import type { PlotGridDto } from './types/PlotGridDto';
 import type { PlantillaDto } from './types/PlantillaDto';
@@ -59,6 +60,7 @@ const comentariosDemo: ComentarioDto[] = [];
 let comentarioDemoSeq = 0;
 let plotGridDemo: PlotGridDto = { version: 1, tramas: [] };
 let cambiosDemo: CambioDetalleDto[] = [];
+let papeleraDemo: PapeleraDto[] = [];
 let cambioDemoSeq = 0;
 
 const demoCuarentena: CuarentenaDto[] = [
@@ -1032,21 +1034,105 @@ export async function restaurarBackup(archivo: string, destino: string): Promise
   await invoke('restaurar_backup', { archivo, destino });
 }
 
+let plantillasDemo: PlantillaDto[] = [
+  {
+    slug: 'tres-actos',
+    version: 1,
+    nombre: 'Novela en tres actos',
+    descripcion: 'Estructura base con tres capítulos y fichas iniciales.',
+    idioma: 'es',
+    estructura: { libros: 1, capitulosPorLibro: 3, escenasPorCapitulo: 1 },
+    notasIniciales: ['personajes', 'tramas', 'lugares'],
+  },
+];
+
 export async function listarPlantillas(): Promise<PlantillaDto[]> {
   if (!esTauri) {
-    return [
-      {
-        slug: 'tres-actos',
-        version: 1,
-        nombre: 'Novela en tres actos',
-        descripcion: 'Estructura base con tres capítulos y fichas iniciales.',
-        idioma: 'es',
-        estructura: { libros: 1, capitulosPorLibro: 3, escenasPorCapitulo: 1 },
-        notasIniciales: ['personajes', 'tramas', 'lugares'],
-      },
-    ];
+    return plantillasDemo.map((plantilla) => ({ ...plantilla, estructura: { ...plantilla.estructura } }));
   }
   return invoke<PlantillaDto[]>('listar_plantillas');
+}
+
+export async function guardarPlantilla(plantilla: PlantillaDto): Promise<PlantillaDto> {
+  if (!esTauri) {
+    if (plantillasDemo.some((item) => item.slug === plantilla.slug)) {
+      throw {
+        tipo: 'conflicto',
+        mensaje: `Ya existe una plantilla con el slug ${plantilla.slug}.`,
+      } satisfies ErrorDto;
+    }
+    plantillasDemo = [...plantillasDemo, plantilla];
+    return plantilla;
+  }
+  return invoke<PlantillaDto>('guardar_plantilla', { plantilla });
+}
+
+export async function eliminarPlantilla(slug: string): Promise<void> {
+  if (!esTauri) {
+    plantillasDemo = plantillasDemo.filter((item) => item.slug !== slug);
+    return;
+  }
+  await invoke('eliminar_plantilla', { slug });
+}
+
+export async function moverProyectoAPapelera(
+  ruta: string,
+  titulo: string,
+  autor: string | null,
+  color: string | null,
+  palabras: number,
+): Promise<PapeleraDto> {
+  if (!esTauri) {
+    const entrada: PapeleraDto = {
+      id: `demo-papelera-${Date.now()}`,
+      titulo,
+      autor,
+      color,
+      palabras,
+      rutaOriginal: ruta,
+      rutaPapelera: `/tmp/.writer-papelera/demo-${Date.now()}`,
+      eliminado: new Date().toISOString(),
+    };
+    papeleraDemo = [entrada, ...papeleraDemo];
+    return entrada;
+  }
+  return invoke<PapeleraDto>('mover_proyecto_a_papelera', {
+    ruta,
+    titulo,
+    autor,
+    color,
+    palabras,
+  });
+}
+
+export async function restaurarProyectoDePapelera(rutaPapelera: string): Promise<string> {
+  if (!esTauri) {
+    let entrada = papeleraDemo.find((item) => item.rutaPapelera === rutaPapelera);
+    if (!entrada) {
+      try {
+        const guardadas = JSON.parse(
+          window.localStorage.getItem('writer.papelera.v1') ?? '[]',
+        ) as PapeleraDto[];
+        entrada = guardadas.find((item) => item.rutaPapelera === rutaPapelera);
+      } catch {
+        entrada = undefined;
+      }
+    }
+    if (!entrada) {
+      throw { tipo: 'no-encontrado', mensaje: 'Proyecto no encontrado en la papelera.' } satisfies ErrorDto;
+    }
+    papeleraDemo = papeleraDemo.filter((item) => item.rutaPapelera !== rutaPapelera);
+    return entrada.rutaOriginal;
+  }
+  return invoke<string>('restaurar_proyecto_de_papelera', { rutaPapelera });
+}
+
+export async function purgarProyectoDePapelera(rutaPapelera: string): Promise<void> {
+  if (!esTauri) {
+    papeleraDemo = papeleraDemo.filter((item) => item.rutaPapelera !== rutaPapelera);
+    return;
+  }
+  await invoke('purgar_proyecto_de_papelera', { rutaPapelera });
 }
 
 export async function crearDesdePlantilla(

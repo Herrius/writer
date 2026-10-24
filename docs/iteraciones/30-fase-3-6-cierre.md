@@ -34,11 +34,11 @@
 ```text
 cargo fmt --all --check                              OK
 cargo clippy --workspace --all-targets --all-features  OK
-cargo test --workspace --all-targets --locked        74 + 49 + 25 + 1 perf
+cargo test --workspace --all-targets --locked        83 + 49 + 25 + 1 perf
 cargo test desktop                                   8/8
 pnpm typecheck                                       OK
-pnpm ui:test                                         77/77
-pnpm e2e                                             47/47
+pnpm ui:test                                         83/83
+pnpm e2e                                             52/52
 ci.py calidad                                        OK
 ci.py interfaz                                       OK
 ci.py producto                                       OK
@@ -117,7 +117,7 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
 - **P3 responsive:** tabs con salto de línea en vez de elipsis, diff con ancho
   mínimo y pruebas de foco/geometría a 720/960 px.
 - **P3 documentación:** README, HANDOFF, e2e, empaquetado y conteos
-  actualizados a 74 + 49 + 25 + 1, 77 UI y 48 E2E.
+  actualizados a 83 + 49 + 25 + 1, 83 UI y 52 E2E.
 
 ## 8. Correcciones de la revisión r3
 

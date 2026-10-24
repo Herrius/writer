@@ -9,6 +9,7 @@ use ts_rs::TS;
 use writer_core::changes::CambioLocal;
 use writer_core::goals::{Desafio, MetaArchivada, MetaDiaria, MetaLibro, Metas, Pausa, Sesion};
 use writer_core::project::Project;
+use writer_core::trash::EntradaPapelera;
 use writer_core::verify::{Documento, Escaneo};
 use writer_core::Error as ErrorNucleo;
 
@@ -578,6 +579,61 @@ impl From<(String, writer_core::templates::Plantilla)> for PlantillaDto {
     }
 }
 
+impl From<PlantillaDto> for writer_core::templates::Plantilla {
+    fn from(valor: PlantillaDto) -> Self {
+        Self {
+            version: valor.version,
+            nombre: valor.nombre,
+            descripcion: valor.descripcion,
+            idioma: valor.idioma,
+            estructura: writer_core::templates::Estructura {
+                libros: valor.estructura.libros,
+                capitulos_por_libro: valor.estructura.capitulos_por_libro,
+                escenas_por_capitulo: valor.estructura.escenas_por_capitulo,
+            },
+            notas_iniciales: valor.notas_iniciales,
+        }
+    }
+}
+
+/// Entrada de la papelera local de proyectos.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct PapeleraDto {
+    /// ULID de la entrada.
+    pub id: String,
+    /// Título del proyecto.
+    pub titulo: String,
+    /// Autor, si existía.
+    pub autor: Option<String>,
+    /// Color de portada, si existía.
+    pub color: Option<String>,
+    /// Palabras, si se conocían.
+    pub palabras: u64,
+    /// Ruta original absoluta.
+    pub ruta_original: String,
+    /// Ruta del contenedor de papelera.
+    pub ruta_papelera: String,
+    /// Fecha de eliminación RFC 3339.
+    pub eliminado: String,
+}
+
+impl From<EntradaPapelera> for PapeleraDto {
+    fn from(valor: EntradaPapelera) -> Self {
+        Self {
+            id: valor.id,
+            titulo: valor.titulo,
+            autor: valor.autor,
+            color: valor.color,
+            palabras: valor.palabras,
+            ruta_original: valor.ruta_original,
+            ruta_papelera: valor.ruta_papelera,
+            eliminado: valor.eliminado,
+        }
+    }
+}
+
 /// Ancla de un comentario.
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -977,6 +1033,24 @@ fn listar_plantillas(app: tauri::AppHandle) -> Result<Vec<PlantillaDto>, ErrorDt
 }
 
 #[tauri::command]
+fn guardar_plantilla(
+    app: tauri::AppHandle,
+    plantilla: PlantillaDto,
+) -> Result<PlantillaDto, ErrorDto> {
+    let directorio = directorio_plantillas(&app)?;
+    let slug = plantilla.slug.clone();
+    writer_core::templates::guardar_plantilla(&directorio, &slug, &plantilla.clone().into())
+        .map_err(error)?;
+    Ok(plantilla)
+}
+
+#[tauri::command]
+fn eliminar_plantilla(app: tauri::AppHandle, slug: String) -> Result<(), ErrorDto> {
+    let directorio = directorio_plantillas(&app)?;
+    writer_core::templates::eliminar_plantilla(&directorio, &slug).map_err(error)
+}
+
+#[tauri::command]
 fn crear_desde_plantilla(
     app: tauri::AppHandle,
     slug: String,
@@ -996,6 +1070,37 @@ fn crear_desde_plantilla(
     )
     .map_err(error)?;
     abrir_proyecto(ruta)
+}
+
+#[tauri::command]
+fn mover_proyecto_a_papelera(
+    ruta: String,
+    titulo: String,
+    autor: Option<String>,
+    color: Option<String>,
+    palabras: u64,
+) -> Result<PapeleraDto, ErrorDto> {
+    writer_core::trash::mover_a_papelera(
+        std::path::Path::new(&ruta),
+        &titulo,
+        autor.as_deref(),
+        color.as_deref(),
+        palabras,
+    )
+    .map(Into::into)
+    .map_err(error)
+}
+
+#[tauri::command]
+fn restaurar_proyecto_de_papelera(ruta_papelera: String) -> Result<String, ErrorDto> {
+    writer_core::trash::restaurar_de_papelera(std::path::Path::new(&ruta_papelera))
+        .map(|ruta| ruta.to_string_lossy().to_string())
+        .map_err(error)
+}
+
+#[tauri::command]
+fn purgar_proyecto_de_papelera(ruta_papelera: String) -> Result<(), ErrorDto> {
+    writer_core::trash::purgar_papelera(std::path::Path::new(&ruta_papelera)).map_err(error)
 }
 
 #[tauri::command]
@@ -1784,7 +1889,12 @@ pub fn run() {
             leer_plot_grid,
             guardar_plot_grid,
             listar_plantillas,
+            guardar_plantilla,
+            eliminar_plantilla,
             crear_desde_plantilla,
+            mover_proyecto_a_papelera,
+            restaurar_proyecto_de_papelera,
+            purgar_proyecto_de_papelera,
             previsualizar_importacion,
             importar_markdown,
             importar_docx,
@@ -1851,6 +1961,7 @@ mod tests {
         PlotGridDto::export_all(&config).expect("exportar PlotGridDto");
         EstructuraDto::export_all(&config).expect("exportar EstructuraDto");
         PlantillaDto::export_all(&config).expect("exportar PlantillaDto");
+        PapeleraDto::export_all(&config).expect("exportar PapeleraDto");
         FormatoPdfDto::export_all(&config).expect("exportar FormatoPdfDto");
     }
 
@@ -2030,6 +2141,40 @@ mod tests {
             .lineas
             .iter()
             .any(|linea| linea.tipo == "insertada" && linea.texto.contains("Propuesta")));
+    }
+
+    #[test]
+    fn papelera_de_proyectos_sobre_un_proyecto_real() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let raiz = directorio.path().join("papelera");
+        Project::new(&raiz)
+            .init("Papelera", Some("Autora"), Some("es"))
+            .expect("init");
+        let entrada = mover_proyecto_a_papelera(
+            raiz.display().to_string(),
+            "Papelera".to_string(),
+            Some("Autora".to_string()),
+            Some("#6b5747".to_string()),
+            10,
+        )
+        .expect("mover");
+        assert_eq!(entrada.titulo, "Papelera");
+        assert!(!raiz.exists());
+        let ruta =
+            restaurar_proyecto_de_papelera(entrada.ruta_papelera.clone()).expect("restaurar");
+        assert_eq!(ruta, raiz.display().to_string());
+        assert!(raiz.join("proyecto.yml").is_file());
+
+        let segunda = mover_proyecto_a_papelera(
+            raiz.display().to_string(),
+            "Papelera".to_string(),
+            None,
+            None,
+            0,
+        )
+        .expect("mover de nuevo");
+        purgar_proyecto_de_papelera(segunda.ruta_papelera).expect("purgar");
+        assert!(!raiz.exists());
     }
 
     #[test]

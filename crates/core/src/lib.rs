@@ -31,6 +31,7 @@ pub mod project;
 pub mod recovery;
 pub mod templates;
 pub mod time;
+pub mod trash;
 pub mod ulid;
 pub mod verify;
 pub mod yaml;
