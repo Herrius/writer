@@ -29,6 +29,7 @@ no sobre las sesiones de un proyecto concreto.
 - Sin meta no se muestran «METAS DIARIAS», el estado del día ni el mensaje de
   bienvenida. Se muestra un estado vacío con gráfico ilustrado, título, texto y
   el botón «Agregar una meta», visible solo al pasar el ratón o al enfocar.
+  La línea azul termina y cae sobre la última barra del gráfico.
 - Con meta se muestra la cabecera «METAS DIARIAS» con el engranaje, el estado
   del día, el progreso y el gráfico real.
 - Se retiró el bloque «Otras metas»; los datos antiguos de libro y desafío se

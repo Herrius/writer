@@ -102,15 +102,15 @@ export function PanelMetaDiaria({
             >
               <line
                 x1="8"
-                y1="94"
-                x2="218"
-                y2="40"
+                y1="96"
+                x2="238"
+                y2="8"
                 stroke="#c59a62"
                 strokeWidth="1.4"
                 strokeDasharray="4 4"
               />
               <polyline
-                points="8,92 32,86 54,78 78,72 102,63 126,57 150,48 176,42 196,34"
+                points="9.7,94 34.3,85 58.8,77 83.3,69 107.8,61 132.3,53 156.8,46 181.3,38 205.8,29 230.3,10"
                 fill="none"
                 stroke="#47769d"
                 strokeWidth="2.5"
@@ -118,14 +118,14 @@ export function PanelMetaDiaria({
                 strokeLinejoin="round"
               />
               <line
-                x1="196"
-                y1="34"
-                x2="196"
+                x1="230.3"
+                y1="10"
+                x2="230.3"
                 y2="100"
                 stroke="#47769d"
                 strokeWidth="2.5"
               />
-              <circle cx="196" cy="34" r="4.5" fill="#47769d" />
+              <circle cx="230.3" cy="10" r="4.5" fill="#47769d" />
             </svg>
             <svg
               className="meta-vacia-trofeo"
