@@ -11,7 +11,6 @@ type Props = {
   libre: boolean;
   dias: Dia[];
   onEditar: () => void;
-  onAgregar: () => void;
 };
 
 export function PanelMetaDiaria({
@@ -23,7 +22,6 @@ export function PanelMetaDiaria({
   libre,
   dias,
   onEditar,
-  onAgregar,
 }: Props) {
   const maximo = Math.max(1, objetivo, ...dias.map((dia) => dia.palabras));
   const alturaObjetivo = objetivo > 0 ? Math.min(100, (objetivo / maximo) * 100) : 0;
@@ -98,23 +96,6 @@ export function PanelMetaDiaria({
           Aún no tienes una meta diaria. Crea una para empezar a medir tu hábito.
         </p>
       )}
-
-      <div className="meta-cta">
-        <div className="meta-cta-ilustracion" aria-hidden="true">
-          <span className="meta-cta-linea" />
-          <span className="meta-cta-punto" />
-          <span className="meta-cta-punto meta-cta-punto-2" />
-        </div>
-        <h3>Establece tus metas de escritura</h3>
-        <p>
-          Sigue tu progreso con hábitos diarios, metas de libro o desafíos de
-          escritura a plazo.
-        </p>
-        <button className="meta-agregar" onClick={meta ? onEditar : onAgregar}>
-          <span aria-hidden="true">+</span>{' '}
-          {meta ? 'Ajustar meta diaria' : 'Agregar una meta'}
-        </button>
-      </div>
     </section>
   );
 }

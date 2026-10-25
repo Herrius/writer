@@ -25,8 +25,10 @@ no sobre las sesiones de un proyecto concreto.
   `localStorage` (`writer.metas-globales.v1`).
 - Migración inicial: si el proyecto abierto tiene una meta diaria antigua y aún
   no hay una global, se adopta esa meta una sola vez.
-- Las metas de **libro** y **desafío** siguen disponibles en «Otras metas» del
-  proyecto; la meta diaria ya no se edita por proyecto.
+- Se retiraron la tarjeta «Establece tus metas de escritura» y el bloque
+  «Otras metas»: la meta se configura desde el engranaje de la cabecera.
+- Los datos antiguos de libro y desafío se conservan en el proyecto por
+  compatibilidad, pero ya no se editan desde este panel.
 - El temporizador de sesión se conserva debajo del panel.
 
 ## 3. Cálculo

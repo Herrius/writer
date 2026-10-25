@@ -386,9 +386,6 @@ export default function App() {
   });
   const [rolPersonaje, setRolPersonaje] = useState('');
   const [aliasPersonaje, setAliasPersonaje] = useState('');
-  const [metaLibro, setMetaLibro] = useState('');
-  const [desafioObjetivo, setDesafioObjetivo] = useState('');
-  const [desafioLimite, setDesafioLimite] = useState('');
   const [preset, setPreset] = useState(5);
   const [restante, setRestante] = useState(5 * 60);
   const [temporizadorActivo, setTemporizadorActivo] = useState(false);
@@ -742,14 +739,8 @@ export default function App() {
     const errores: string[] = [];
     if (metasResultado.status === 'fulfilled') {
       setMetas(metasResultado.value);
-      setMetaLibro(metasResultado.value.libro?.objetivo.toString() ?? '');
-      setDesafioObjetivo(metasResultado.value.desafio?.objetivo.toString() ?? '');
-      setDesafioLimite(metasResultado.value.desafio?.limite ?? '');
     } else {
       setMetas(null);
-      setMetaLibro('');
-      setDesafioObjetivo('');
-      setDesafioLimite('');
       errores.push(`Metas: ${errorDe(metasResultado.reason).mensaje}`);
     }
     if (gridResultado.status === 'fulfilled') {
@@ -1072,45 +1063,6 @@ export default function App() {
       if (drenajeRef.current === promesa) {
         drenajeRef.current = null;
       }
-    }
-  };
-
-  const guardarMetasPanel = async () => {
-    const actual = proyectoRef.current;
-    if (!actual) {
-      return;
-    }
-    if (errorMetas) {
-      setMensaje('No se guardan metas mientras haya un sidecar ilegible.');
-      return;
-    }
-    const numero = (texto: string) => {
-      const limpio = texto.trim();
-      if (!limpio) {
-        return null;
-      }
-      const valor = Number(limpio);
-      return Number.isFinite(valor) && valor >= 0 ? Math.floor(valor) : null;
-    };
-    const libro = numero(metaLibro);
-    const desafio = numero(desafioObjetivo);
-    const nuevo: MetasDto = {
-      version: 1,
-      diaria: metas?.diaria ?? null,
-      libro: libro === null ? null : { objetivo: libro },
-      desafio:
-        desafio === null || !desafioLimite
-          ? null
-          : { objetivo: desafio, limite: desafioLimite },
-      archivadas: metas?.archivadas ?? [],
-    };
-    try {
-      await guardarMetas(actual.raiz, nuevo);
-      setMetas(nuevo);
-      setErrorMetas(null);
-      setMensaje('Metas guardadas.');
-    } catch (fallo) {
-      setErrorMetas(errorDe(fallo).mensaje);
     }
   };
 
@@ -3897,50 +3849,12 @@ export default function App() {
                   libre={diaLibreHoy}
                   dias={diasGlobales}
                   onEditar={() => setModalMetaDiaria(true)}
-                  onAgregar={() => setModalMetaDiaria(true)}
                 />
-                <details className="dabble-otras-metas">
-                  <summary>Otras metas</summary>
-                  <div className="dabble-otras-metas-cuerpo">
-                    <label className="dabble-campo-meta">
-                      <span>Meta del libro (palabras)</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={metaLibro}
-                        onChange={(evento) => setMetaLibro(evento.target.value)}
-                        aria-label="Meta de palabras del libro"
-                      />
-                    </label>
-                    <label className="dabble-campo-meta">
-                      <span>Desafío (palabras)</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={desafioObjetivo}
-                        onChange={(evento) => setDesafioObjetivo(evento.target.value)}
-                        aria-label="Objetivo del desafío"
-                      />
-                    </label>
-                    <label className="dabble-campo-meta">
-                      <span>Fecha límite</span>
-                      <input
-                        type="date"
-                        value={desafioLimite}
-                        onChange={(evento) => setDesafioLimite(evento.target.value)}
-                        aria-label="Fecha límite del desafío"
-                      />
-                    </label>
-                    <button className="dabble-boton" onClick={() => void guardarMetasPanel()}>
-                      Guardar metas del libro
-                    </button>
-                    {errorMetas && (
-                      <p className="dabble-error" role="alert">
-                        {errorMetas}
-                      </p>
-                    )}
-                  </div>
-                </details>
+                {errorMetas && (
+                  <p className="dabble-error" role="alert">
+                    {errorMetas}
+                  </p>
+                )}
                 <section className="dabble-timer">
                   <div className="dabble-timer-cabecera">
                     <strong>{formatearTiempo(restante)}</strong>

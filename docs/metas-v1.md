@@ -55,12 +55,13 @@ global, se migra una sola vez al abrir el proyecto.
 
 ## 6. UI
 
-- Tarjeta **METAS DIARIAS** con engranaje, estado de hoy, progreso, gráfico y
-  llamada para configurar/ajustar la meta.
-- Modal de meta diaria con las opciones de conteo y días libres.
-- «Otras metas» para libro y desafío.
+- Tarjeta **METAS DIARIAS** con engranaje, estado de hoy, progreso y gráfico.
+- El engranaje abre el modal de meta diaria con las opciones de conteo y días
+  libres; no hay tarjeta inferior de llamada a la acción.
 - Temporizador con presets, tiempo restante, iniciar/pausar/finalizar.
-- Estado vacío con «Agregar una meta» y sin controles falsos.
+- Estado vacío con el engranaje para configurar la primera meta.
+- Las metas de libro y desafío se conservan en el archivo del proyecto, pero no
+  se editan en este panel.
 - Los cambios de meta se guardan al confirmar, no en cada tecla.
 - El temporizador sigue funcionando al cambiar de documento; la sesión queda
   asociada al documento activo al iniciar.
