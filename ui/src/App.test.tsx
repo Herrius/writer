@@ -756,12 +756,8 @@ describe('autosave de la interfaz', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Ver demo' }));
 
-    expect(
-      await screen.findByText('Libro 1'),
-    ).toBeTruthy();
-    expect(
-      screen.getByText('Libro 2'),
-    ).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Novela' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Libro 2' })).toBeTruthy();
   });
 
   it('busca en el proyecto y muestra el fragmento resaltado', async () => {

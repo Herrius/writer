@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Archive, BookOpen, FileStack, Globe2, Home, Plus, Search, Settings, Trash2 } from 'lucide-react';
+import { Archive, FileStack, Home, Plus, Search, Settings, Trash2 } from 'lucide-react';
 import {
   abrirProyecto,
   actualizarEscena,
@@ -188,6 +188,45 @@ function formatearTiempo(segundos: number): string {
   const minutos = Math.floor(segundos / 60);
   const resto = segundos % 60;
   return `${minutos}:${resto.toString().padStart(2, '0')}`;
+}
+
+function etiquetaCarpeta(carpeta: string): string {
+  const coincidencia = /^(\d+)[-_](.+)$/.exec(carpeta);
+  const numero = coincidencia?.[1] ? Number(coincidencia[1]) : null;
+  const nombre = (coincidencia?.[2] ?? carpeta)
+    .replace(/[-_]/g, ' ')
+    .replace(/\bcapitulo\b/gi, 'capítulo')
+    .replace(/\blibro\b/gi, 'libro')
+    .replace(/\bseccion\b/gi, 'sección');
+  const capitalizada = nombre
+    .split(' ')
+    .filter(Boolean)
+    .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
+    .join(' ');
+  return numero === null ? capitalizada : `${capitalizada} ${numero}`;
+}
+
+function etiquetaCategoriaNota(clase: string | null): string {
+  const etiquetas: Record<string, string> = {
+    tramas: 'Tramas',
+    personajes: 'Personajes',
+    cuaderno: 'Cuaderno',
+    ideas: 'Cuaderno',
+    lugares: 'Cuaderno',
+    cronologia: 'Cuaderno',
+    objetos: 'Cuaderno',
+  };
+  return etiquetas[clase ?? ''] ?? 'Cuaderno';
+}
+
+function etiquetaRolPersonaje(rol: string | null): string {
+  if (rol === 'principal') {
+    return 'Personajes principales';
+  }
+  if (rol === 'secundario') {
+    return 'Personajes secundarios';
+  }
+  return 'Personajes sin clasificar';
 }
 
 function etiquetaTipo(documento: DocumentoDto): string {
@@ -3153,6 +3192,65 @@ export default function App() {
     }, 50);
   };
 
+  const primerLibro = useMemo(
+    () =>
+      carpetas
+        .filter(
+          (carpeta) =>
+            carpeta.startsWith('manuscrito/') && carpeta.split('/').length === 2,
+        )
+        .sort((a, b) => a.localeCompare(b, 'es'))[0] ?? null,
+    [carpetas],
+  );
+
+  const migas = useMemo(() => {
+    const raiz = proyecto?.titulo?.trim() || 'Proyecto';
+    const base = [{ etiqueta: raiz, especial: false }];
+    if (vistaProyecto === 'archivo') {
+      return [...base, { etiqueta: 'Archivo', especial: true }];
+    }
+    if (vistaProyecto === 'papelera') {
+      return [...base, { etiqueta: 'Papelera', especial: true }];
+    }
+    if (vistaProyecto === 'plantillas') {
+      return [...base, { etiqueta: 'Plantillas', especial: true }];
+    }
+    if (!activo) {
+      return base;
+    }
+    if (activo.tipo === 'escena') {
+      const partes = activo.ruta.split('/').slice(1, -1);
+      const camino: Array<{ etiqueta: string; especial: boolean }> = [];
+      partes.forEach((parte, indice) => {
+        const esPrimerLibro = indice === 0 && `manuscrito/${parte}` === primerLibro;
+        camino.push({
+          etiqueta:
+            esPrimerLibro && /^\d+-libro$/.test(parte) && raiz
+              ? raiz
+              : etiquetaCarpeta(parte),
+          especial: false,
+        });
+      });
+      camino.push({ etiqueta: activo.titulo, especial: false });
+      if (vista === 'historial') {
+        camino.push({ etiqueta: 'Historial', especial: false });
+      }
+      return camino;
+    }
+    const camino = [
+      ...base,
+      { etiqueta: etiquetaCategoriaNota(activo.clase), especial: false },
+    ];
+    if (activo.clase === 'personajes') {
+      camino.push({ etiqueta: etiquetaRolPersonaje(activo.rol), especial: false });
+    }
+    camino.push({ etiqueta: activo.titulo, especial: false });
+    if (vista === 'historial') {
+      camino.push({ etiqueta: 'Historial', especial: false });
+    }
+    return camino;
+  }, [activo, proyecto?.titulo, vista, vistaProyecto, primerLibro]);
+
   const utilidadesSidebar = (
     <>
       <h3 className="dabble-seccion">Utilidades</h3>
@@ -3241,46 +3339,36 @@ export default function App() {
         >
           <Home size={18} strokeWidth={1.7} aria-hidden="true" />
         </button>
-        <div className="dabble-tabs">
-          <button
-            className={`dabble-tab ${vista === 'editor' ? 'activo' : ''}`}
-            onClick={() => {
-              setVista('editor');
-              setVistaProyecto('editor');
-            }}
-          >
-            <span className="dabble-tab-icono" aria-hidden="true"><BookOpen size={15} strokeWidth={1.8} /></span>
-            <strong>{proyecto?.titulo ?? 'Proyecto'}</strong>
-          </button>
-          <button
-            className="dabble-tab"
-            onClick={() => {
-              const nota = notas.find((documento) =>
-                ['lugares', 'cronologia', 'objetos'].includes(documento.clase ?? ''),
-              );
-              if (nota) {
-                void seleccionar(nota);
-              } else {
-                setPanelDerecho('notas');
-              }
-              setVistaProyecto('editor');
-            }}
-          >
-            <span className="dabble-tab-icono" aria-hidden="true"><Globe2 size={15} strokeWidth={1.8} /></span>
-            Construcción del mundo
-          </button>
-          <button
-            className={`dabble-tab ${vista !== 'editor' ? 'activo' : ''}`}
-            aria-label={`Editor: ${activo?.titulo ?? 'sin documento'}`}
-            onClick={() => {
-              setVista('editor');
-              setVistaProyecto('editor');
-            }}
-            disabled={!activo}
-          >
-            {activo?.titulo ?? 'Sin documento'}
-          </button>
-        </div>
+        <nav className="dabble-tabs dabble-breadcrumb" aria-label="Ruta del documento">
+          {migas.map((miga, indice) => {
+            const ultima = indice === migas.length - 1;
+            return (
+              <span className="dabble-miga" key={`${miga.etiqueta}-${indice}`}>
+                {indice > 0 && (
+                  <span className="dabble-miga-separador" aria-hidden="true">
+                    /
+                  </span>
+                )}
+                {ultima && vistaProyecto === 'editor' ? (
+                  <button
+                    className="dabble-miga-boton activo"
+                    aria-label={`Editor: ${activo?.titulo ?? 'sin documento'}`}
+                    onClick={() => {
+                      setVista('editor');
+                      setVistaProyecto('editor');
+                    }}
+                  >
+                    {miga.etiqueta}
+                  </button>
+                ) : (
+                  <span className={`dabble-miga-texto ${ultima ? 'activo' : ''}`}>
+                    {miga.etiqueta}
+                  </span>
+                )}
+              </span>
+            );
+          })}
+        </nav>
         <div className="dabble-top-acciones">
           <span
             className={`estado-guardado estado-${estadoVisible}`}
@@ -3460,6 +3548,7 @@ export default function App() {
                 documentos={documentos}
                 activoId={activo?.id ?? null}
                 filtroEtiqueta={filtroEtiqueta}
+                tituloProyecto={proyecto?.titulo ?? ''}
                 onSeleccionar={(documento) => void seleccionar(documento)}
                 onCrear={crearNodo}
                 onRenombrarCarpeta={renombrarCarpetaNodo}

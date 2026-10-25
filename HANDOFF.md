@@ -21,7 +21,7 @@
   restauración por fila y estados vacíos; ver
   [`docs/iteraciones/34-archivo-papelera-sidebar.md`](docs/iteraciones/34-archivo-papelera-sidebar.md).
 - **Árbol jerárquico 2026-10-25:** iconos Lucide, carpetas anidadas, menús por
-  nodo y páginas de Archivo/Papelera/Plantillas; ver
+  nodo, miga de pan sincronizada y páginas de Archivo/Papelera/Plantillas; ver
   [`docs/iteraciones/35-arbol-jerarquico.md`](docs/iteraciones/35-arbol-jerarquico.md).
 
 ## 1. Resumen
@@ -149,7 +149,7 @@ cargo test --workspace --all-targets --locked   91 + 50 + 25 + 1 perf
 cargo test desktop                              10/10
 pnpm typecheck                                  OK
 pnpm ui:test                                    88/88
-pnpm e2e                                        59/59
+pnpm e2e                                        60/60
 ci.py calidad                                   OK
 ci.py interfaz                                  OK
 ci.py producto                                  OK

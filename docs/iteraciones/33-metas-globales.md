@@ -52,7 +52,7 @@ no sobre las sesiones de un proyecto concreto.
 ```text
 pnpm typecheck                         OK
 pnpm ui:test                           88/88
-pnpm e2e                               59/59 (metas 4/4)
+pnpm e2e                               60/60 (metas 4/4)
 cargo test --workspace                 91 + 50 + 25 + 1
 cargo test desktop                     10/10
 ```

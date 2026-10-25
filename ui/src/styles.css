@@ -5991,3 +5991,63 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
     opacity: 0.7;
   }
 }
+
+/* Ruta de navegación sincronizada en la cabecera. */
+.dabble-breadcrumb {
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.dabble-miga {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.dabble-miga-separador {
+  padding: 0 0.35rem;
+  color: #b4aa9e;
+  font-size: 0.76rem;
+}
+
+.dabble-miga-texto,
+.dabble-miga-boton {
+  max-width: 230px;
+  padding: 0.28rem 0.22rem;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #71685d;
+  font: inherit;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dabble-miga-boton {
+  cursor: pointer;
+}
+
+.dabble-miga-texto.activo,
+.dabble-miga-boton.activo {
+  border-bottom-color: #b33f3f;
+  color: #2f2a24;
+  font-weight: 600;
+}
+
+.dabble-miga-boton:hover {
+  color: #2f2a24;
+}
+
+@media (max-width: 1100px) {
+  .dabble-miga-texto,
+  .dabble-miga-boton {
+    max-width: 150px;
+  }
+}

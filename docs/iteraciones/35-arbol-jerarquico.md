@@ -4,7 +4,8 @@
 - **Estado:** implementado en Linux x86_64.
 - **Capturas:** [`../revisiones/arbol-jerarquico-menu-2026-10-25.png`](../revisiones/arbol-jerarquico-menu-2026-10-25.png),
   [`../revisiones/vista-archivo-2026-10-25.png`](../revisiones/vista-archivo-2026-10-25.png),
-  [`../revisiones/vista-plantillas-2026-10-25.png`](../revisiones/vista-plantillas-2026-10-25.png).
+  [`../revisiones/vista-plantillas-2026-10-25.png`](../revisiones/vista-plantillas-2026-10-25.png),
+  [`../revisiones/cabecera-personajes-2026-10-25.png`](../revisiones/cabecera-personajes-2026-10-25.png).
 
 ## 1. Objetivo
 
@@ -21,8 +22,21 @@ propias para Archivo, Papelera y Plantillas.
 - Tramas, Personajes y Cuaderno conservan sus documentos y su creación rápida.
 - Los documentos activos se pueden arrastrar a capítulos y secciones.
 - Navegación con flechas, `Home` y `End` sobre las escenas.
+- Personajes agrupados por rol para que la ruta superior coincida con el árbol.
 
-## 3. Menús por nodo
+## 3. Cabecera sincronizada
+
+- El primer libro con carpeta genérica (`01-libro`) se muestra con el **título
+  del proyecto**, no como «Libro 1».
+- La cabecera muestra una miga de pan según el nodo activo:
+  - escena: libro → capítulo → sección → escena;
+  - personaje: Personajes → grupo de rol → nombre;
+  - trama/cuaderno: categoría → documento;
+  - Archivo/Papelera/Plantillas: proyecto → vista.
+- Los personajes se agrupan en principales, secundarios y sin clasificar.
+- La última miga devuelve al editor y queda resaltada.
+
+## 4. Menús por nodo
 
 Cada nodo tiene un menú `⋯` adaptado a su nivel:
 
@@ -43,13 +57,13 @@ Cada nodo tiene un menú `⋯` adaptado a su nivel:
   diálogo nativo de guardado.
 - Los portales de notas se crean como documentos de su clase.
 
-## 4. Iconos
+## 5. Iconos
 
 Se incorporó **Lucide React** (`lucide-react@0.468.0`) para el árbol, menús,
 utilidades y cabecera. Ya no se usan glifos `▤`, `◈`, `♙`, `⌂` o `♲` como
 iconos funcionales.
 
-## 5. Páginas de estado
+## 6. Páginas de estado
 
 - **Archivo** y **Papelera** se muestran en el área principal, con el árbol
   siempre visible y el panel derecho oculto, siguiendo la referencia.
@@ -58,7 +72,7 @@ iconos funcionales.
   plantillas de Proyectos.
 - El botón **+** abre el formulario de creación de escena en Plan.
 
-## 6. Backend
+## 7. Backend
 
 Nuevos comandos Tauri:
 
@@ -72,13 +86,13 @@ Nuevos comandos Tauri:
 Validaciones: rutas relativas bajo `manuscrito`/`notas`, sin `..`, sin symlinks,
 sin nombres vacíos, conflicto si el destino existe y reindexado tras renombrar.
 
-## 7. Verificación
+## 8. Verificación
 
 ```text
 Rust:       91 unitarias + 50 integración + 25 CLI + 1 rendimiento
 Desktop:    10/10
 UI:         88/88
-E2E:        59/59
+E2E:        60/60
 calidad     OK
 interfaz    OK
 producto    OK
@@ -86,7 +100,7 @@ seguridad   OK
 empaquetado OK
 ```
 
-## 8. Límites
+## 9. Límites
 
 - El borrado de carpetas es lógico para sus documentos: los archivos permanecen
   en disco hasta que se restauren o se gestione el proyecto desde fuera.

@@ -12,7 +12,7 @@ test('crea la jerarquía, renombra y elimina desde los menús del árbol', async
 
   await page.getByRole('button', { name: 'Acciones de Libro 2' }).click();
   await page.getByRole('menuitem', { name: 'Capítulo' }).click();
-  await expect(page.getByText('Capítulo 1')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Capítulo 1', exact: true })).toHaveCount(2);
 
   await page.getByRole('button', { name: 'Acciones de Capítulo 1' }).last().click();
   await page.getByRole('menuitem', { name: 'Sección' }).click();
@@ -41,4 +41,27 @@ test('crea la jerarquía, renombra y elimina desde los menús del árbol', async
 
   await page.getByRole('button', { name: 'Restaurar Escena sin título' }).click();
   await expect(page.getByRole('button', { name: 'Libro 2', exact: true })).toBeVisible();
+});
+
+test('sincroniza la ruta superior con el árbol y las vistas', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Ver demo' }).click();
+  await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
+  const migas = page.locator('.dabble-breadcrumb');
+  await expect(migas).toContainText('El umbral');
+  await expect(migas).toContainText('Capítulo 1');
+  await expect(migas).toContainText('El umbral');
+
+  await page.locator('.dabble-doc').filter({ hasText: 'Marta' }).click();
+  await expect(migas).toContainText('Personajes');
+  await expect(migas).toContainText('Personajes sin clasificar');
+  await expect(migas).toContainText('Marta');
+
+  await page.getByRole('button', { name: /^Papelera/ }).click();
+  await expect(migas).toContainText('Papelera');
+  await page.getByRole('button', { name: 'Volver al editor' }).click();
+  await expect(migas).toContainText('Marta');
+
+  await page.getByRole('button', { name: /^Archivo/ }).click();
+  await expect(migas).toContainText('Archivo');
 });

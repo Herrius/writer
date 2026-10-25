@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   Users,
+  UserRound,
 } from 'lucide-react';
 import type { DocumentoDto } from '../../types/DocumentoDto';
 import { useTrampaTab } from '../inicio/useTrampaTab';
@@ -37,6 +38,7 @@ type Props = Acciones & {
   documentos: DocumentoDto[];
   activoId: string | null;
   filtroEtiqueta: string;
+  tituloProyecto: string;
   onSeleccionar: (documento: DocumentoDto) => void;
 };
 
@@ -297,6 +299,7 @@ export function ArbolProyecto({
   documentos,
   activoId,
   filtroEtiqueta,
+  tituloProyecto,
   onSeleccionar,
   onMoverDocumento,
   onCrear,
@@ -327,6 +330,18 @@ export function ArbolProyecto({
     () => construirArbol(carpetas, visibles, documentos),
     [carpetas, visibles, documentos],
   );
+  const primerLibro = arbol.hijos[0]?.ruta ?? null;
+  const nombreCarpeta = (nodo: CarpetaNodo) => {
+    if (
+      nodo.nivel === 1 &&
+      nodo.ruta === primerLibro &&
+      /^\d+-libro$/.test(nodo.nombre) &&
+      tituloProyecto.trim()
+    ) {
+      return tituloProyecto.trim();
+    }
+    return etiquetaCarpeta(nodo.nombre);
+  };
   const documentosArbol = useMemo(() => documentosDelArbol(arbol), [arbol]);
   const notas = useMemo(
     () => visibles.filter((documento) => documento.tipo === 'nota' && !documento.archivo),
@@ -462,7 +477,7 @@ export function ArbolProyecto({
           <button
             type="button"
             className="arbol-plegar"
-            aria-label={abierta ? `Plegar ${etiquetaCarpeta(nodo.nombre)}` : `Desplegar ${etiquetaCarpeta(nodo.nombre)}`}
+            aria-label={abierta ? `Plegar ${nombreCarpeta(nodo)}` : `Desplegar ${nombreCarpeta(nodo)}`}
             onClick={() => alternar(nodo.ruta)}
           >
             {nodo.hijos.length + nodo.documentos.length > 0 ? (
@@ -484,10 +499,10 @@ export function ArbolProyecto({
             onClick={() => alternar(nodo.ruta)}
             aria-expanded={abierta}
           >
-            {etiquetaCarpeta(nodo.nombre)}
+            {nombreCarpeta(nodo)}
           </button>
           <BotonMenu
-            etiqueta={etiquetaCarpeta(nodo.nombre)}
+            etiqueta={nombreCarpeta(nodo)}
             abierto={menuAbierto === claveMenu}
             onClick={() => setMenuAbierto(menuAbierto === claveMenu ? null : claveMenu)}
           />
@@ -501,10 +516,10 @@ export function ArbolProyecto({
                 setDialogo({
                   tipo: 'eliminar-carpeta',
                   ruta: nodo.ruta,
-                  nombre: etiquetaCarpeta(nodo.nombre),
+                  nombre: nombreCarpeta(nodo),
                 })
               }
-              onExportar={() => onExportarCarpeta(nodo.ruta, etiquetaCarpeta(nodo.nombre))}
+              onExportar={() => onExportarCarpeta(nodo.ruta, nombreCarpeta(nodo))}
             />
           )}
         </div>
@@ -603,6 +618,60 @@ export function ArbolProyecto({
     );
   };
 
+  const renderPersonajes = () => {
+    const grupos = [
+      {
+        titulo: 'Personajes principales',
+        lista: personajes.filter((personaje) => personaje.rol === 'principal'),
+      },
+      {
+        titulo: 'Personajes secundarios',
+        lista: personajes.filter((personaje) => personaje.rol === 'secundario'),
+      },
+      {
+        titulo: 'Personajes sin clasificar',
+        lista: personajes.filter(
+          (personaje) => personaje.rol !== 'principal' && personaje.rol !== 'secundario',
+        ),
+      },
+    ].filter((grupo) => grupo.lista.length > 0);
+    const claveMenu = 'seccion:Personajes';
+    return (
+      <section className="arbol-seccion-notas" key="Personajes">
+        <div className="arbol-fila arbol-carpeta arbol-categoria nivel-1">
+          <span className="arbol-icono">
+            <Users size={15} strokeWidth={1.7} aria-hidden="true" />
+          </span>
+          <span className="arbol-nombre arbol-nombre-estatico">Personajes</span>
+          <BotonMenu
+            etiqueta="Personajes"
+            abierto={menuAbierto === claveMenu}
+            onClick={() => setMenuAbierto(menuAbierto === claveMenu ? null : claveMenu)}
+          />
+          {menuAbierto === claveMenu && (
+            <Menu
+              onCerrar={() => setMenuAbierto(null)}
+              onCrear={() => onCrear('personaje')}
+              tipoFiltro={['personaje']}
+            />
+          )}
+        </div>
+        {grupos.map((grupo) => (
+          <div key={grupo.titulo}>
+            <div className="arbol-fila arbol-personajes-grupo" style={{ paddingLeft: '1.7rem' }}>
+              <span className="arbol-icono">
+                <UserRound size={14} strokeWidth={1.7} aria-hidden="true" />
+              </span>
+              <span className="arbol-nombre arbol-nombre-estatico">{grupo.titulo}</span>
+            </div>
+            {grupo.lista.map((documento) => renderDocumento(documento, 2))}
+          </div>
+        ))}
+        {personajes.length === 0 && <p className="arbol-vacio">Sin personajes.</p>}
+      </section>
+    );
+  };
+
   const renderSeccionNotas = (
     titulo: string,
     icono: React.ReactNode,
@@ -666,12 +735,7 @@ export function ArbolProyecto({
         tramas,
         'trama',
       )}
-      {renderSeccionNotas(
-        'Personajes',
-        <Users size={15} strokeWidth={1.7} aria-hidden="true" />,
-        personajes,
-        'personaje',
-      )}
+      {renderPersonajes()}
       {renderSeccionNotas(
         'Cuaderno',
         <NotebookPen size={15} strokeWidth={1.7} aria-hidden="true" />,
