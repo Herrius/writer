@@ -1,25 +1,25 @@
 # Metas y temporizador v1 — contrato local
 
-- **Fecha:** 2026-10-23
-- **Estado:** propuesta normativa para la Fase 2.4.
-- **Base:** [`esquema-v2.md`](esquema-v2.md) §4.
+- **Fecha:** 2026-10-23; actualizado 2026-10-24.
+- **Estado:** implementado. La meta diaria es global; libro y desafío siguen
+  siendo por proyecto.
+- **Base:** [`esquema-v2.md`](esquema-v2.md) §4 y
+  [`metas-globales-v1.md`](metas-globales-v1.md).
 
 ## 1. Alcance
 
-Metas diarias, de libro y desafíos con fecha; estadísticas, rachas y
-temporizador. Todo local, por proyecto, sin cuenta ni red.
+Meta diaria global, metas de libro y desafíos con fecha; estadísticas, rachas y
+temporizador. Todo local, sin cuenta ni red.
 
 ## 2. Metas
 
-` .escritor/metas/metas.json` con el esquema de `esquema-v2.md` §4.1.
+- **Diaria:** global, en `writer.metas-globales.v1`; ver
+  [`metas-globales-v1.md`](metas-globales-v1.md). Se aplica a todos los libros.
+- **Libro y desafío:** en `.escritor/metas/metas.json` del proyecto.
+- **Archivadas:** metas terminadas o canceladas del proyecto.
 
-- **Diaria:** palabras objetivo por día y fecha de inicio.
-- **Libro:** palabras objetivo para el proyecto.
-- **Desafío:** palabras objetivo y fecha límite.
-- **Archivadas:** metas terminadas o canceladas, con motivo.
-
-Una meta puede estar ausente. No se muestran tarjetas de metas en el panel de
-Proyectos; las metas viven dentro del proyecto.
+El campo `diaria` de `metas.json` se conserva por compatibilidad; si no hay meta
+global, se migra una sola vez al abrir el proyecto.
 
 ## 3. Sesiones
 
@@ -35,42 +35,49 @@ Proyectos; las metas viven dentro del proyecto.
 
 ## 4. Estadísticas y rachas
 
-- Palabras por día, por semana y por proyecto.
-- Racha actual y mejor racha, calculadas desde las sesiones y el historial de
-  palabras.
-- Gráfico de progreso de los últimos 30 días.
-- Una racha se rompe si un día no alcanza la meta diaria; la definición exacta
-  se fija en la UI y se prueba con fechas controladas.
-- No se guardan agregados como verdad: se derivan de sesiones y manuscrito.
+- La meta diaria usa la actividad global por fecha.
+- Libro y desafío usan el proyecto activo.
+- Racha global: días consecutivos con la meta cumplida, contando los días
+  libres como válidos.
+- Gráfico de 14 días en la tarjeta diaria.
+- La actividad se actualiza con el delta de palabras del editor; no se guarda
+  como verdad duplicada del manuscrito.
 
 ## 5. Persistencia
 
 - `metas.json` se escribe con reemplazo atómico y `fsync`.
 - Las sesiones se append con `fsync`; el archivo se rota por mes.
+- La meta diaria global y su actividad se guardan en `localStorage`.
 - Si un archivo está corrupto, se aparta a `.escritor/cuarentena/` y se avisa.
-- El backup incluye `metas/` y `sesiones/`.
+- El backup incluye `metas/` y `sesiones/`; no incluye las preferencias globales
+  del WebView.
 - Las metas no se guardan en `proyecto.yml`.
 
 ## 6. UI
 
-- Panel «Metas» del editor con pestañas o secciones: diaria, libro, desafío,
-  estadísticas.
-- Temporizador visible con presets, tiempo restante, iniciar/pausar/finalizar.
-- Estado vacío con «Configurar meta» y sin controles falsos.
+- Tarjeta **METAS DIARIAS** con engranaje, estado de hoy, progreso, gráfico y
+  llamada para configurar/ajustar la meta.
+- Modal de meta diaria con las opciones de conteo y días libres.
+- «Otras metas» para libro y desafío.
+- Temporizador con presets, tiempo restante, iniciar/pausar/finalizar.
+- Estado vacío con «Agregar una meta» y sin controles falsos.
 - Los cambios de meta se guardan al confirmar, no en cada tecla.
 - El temporizador sigue funcionando al cambiar de documento; la sesión queda
   asociada al documento activo al iniciar.
 
 ## 7. Límites
 
-- Sin metas compartidas, ligas, cuentas ni notificaciones.
+- Sin metas compartidas, ligas, cuentas ni correos.
 - Sin sincronización entre dispositivos.
 - Sin sonidos remotos; el chime usa el sistema o un tono local.
-- Sin estadísticas de otros proyectos fuera de los abiertos.
+- La meta diaria es global por perfil; libro y desafío son por proyecto.
+- El recordatorio es un aviso local, no una notificación del sistema.
 
 ## 8. Pruebas
 
-- Crear, editar y archivar metas.
+- Configurar, editar y eliminar la meta diaria global.
+- Verificar progreso global al escribir y persistencia al recargar.
+- Días libres y opciones de conteo.
 - Iniciar/pausar/finalizar una sesión y verificar palabras/tiempo.
 - Limpiar una sesión no deja registro.
 - Rachas con fechas controladas y cambio de mes.

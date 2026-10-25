@@ -11,6 +11,8 @@
 - [`comentarios-v2.md`](comentarios-v2.md) — anclas, hilos, huérfanos y sticky
   notes.
 - [`metas-v1.md`](metas-v1.md) — metas, sesiones, rachas y temporizador.
+- [`metas-globales-v1.md`](metas-globales-v1.md) — meta diaria global,
+  actividad por fecha y opciones de conteo.
 - [`planificacion-v1.md`](planificacion-v1.md) — Plot Grid, personajes, Story
   Notes, @menciones e Ideas.
 - [`plantillas-v1.md`](plantillas-v1.md) — plantillas locales, gestión y
@@ -110,6 +112,8 @@
   rediseño de portadas y tarjetas de proyecto.
 - [`iteraciones/32-organizacion-proyectos.md`](iteraciones/32-organizacion-proyectos.md)
   — filtros, colecciones, plantillas y papelera de proyectos.
+- [`iteraciones/33-metas-globales.md`](iteraciones/33-metas-globales.md) — meta
+  diaria global y rediseño del panel de metas.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

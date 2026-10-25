@@ -2285,7 +2285,7 @@ button.guardar:disabled {
 
 .dabble-workspace {
   display: grid;
-  grid-template-columns: 262px minmax(0, 1fr) 250px;
+  grid-template-columns: 262px minmax(0, 1fr) 300px;
   min-height: 0;
   flex: 1 1 auto;
 }
@@ -5083,5 +5083,441 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   .colecciones-error {
     padding-inline: 1.25rem;
     margin-inline: 0;
+  }
+}
+
+/* Metas globales y modal de meta diaria. */
+.dabble-metas-global {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1rem 0.9rem;
+}
+
+.metas-global-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #7b7369;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.meta-config {
+  padding: 0 0.15rem;
+  border: 0;
+  background: transparent;
+  color: #948b7f;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.meta-hoy {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.35rem;
+  background: #f3f1ec;
+  color: #6d665c;
+  font-size: 0.73rem;
+}
+
+.meta-hoy.libre {
+  background: #f2f0eb;
+}
+
+.meta-icono-calendario {
+  color: #8f877c;
+  font-size: 1rem;
+}
+
+.meta-info {
+  margin-left: auto;
+  color: #9d958a;
+  font-size: 0.8rem;
+}
+
+.meta-progreso {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.meta-etiqueta {
+  color: #81786d;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.meta-progreso-numero {
+  display: flex;
+  align-items: baseline;
+  gap: 0.32rem;
+  color: #6f675e;
+  font-size: 0.76rem;
+}
+
+.meta-progreso-numero strong {
+  color: #2d2a25;
+  font-size: 1.45rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.meta-progreso-numero b {
+  margin-left: auto;
+  color: #5c6d7a;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.meta-barra {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9e6e0;
+}
+
+.meta-barra span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #3f74a0;
+}
+
+.meta-progreso small {
+  color: #8a8278;
+  font-size: 0.67rem;
+}
+
+.meta-sin-meta {
+  margin: 0;
+  padding: 0.8rem;
+  border-radius: 0.35rem;
+  background: #f7f4ef;
+  color: #776e64;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.meta-grafico {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.18rem;
+  height: 92px;
+  margin-top: 0.15rem;
+  padding: 0.2rem 0.1rem 0;
+  border-bottom: 1px solid #e9e5de;
+  border-left: 1px solid #f0ede8;
+}
+
+.meta-barra-dia {
+  flex: 1;
+  min-width: 2px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, #d9d5ce, #e9e6e0);
+}
+
+.meta-linea-objetivo {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 2px dashed #d19564;
+  pointer-events: none;
+}
+
+.meta-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.9rem 0.2rem 0.2rem;
+  border-top: 1px solid #e9e5de;
+  text-align: center;
+}
+
+.meta-cta-ilustracion {
+  position: relative;
+  width: 150px;
+  height: 58px;
+  margin-bottom: 0.2rem;
+  background:
+    linear-gradient(180deg, transparent 48%, #d8d4cc 49%, #d8d4cc 50%, transparent 51%),
+    linear-gradient(180deg, transparent 74%, #e5e1da 75%, #e5e1da 76%, transparent 77%);
+  opacity: 0.9;
+}
+
+.meta-cta-linea {
+  position: absolute;
+  right: 10px;
+  bottom: 17px;
+  left: 10px;
+  border-top: 2px solid #47769d;
+  transform: rotate(-4deg);
+  transform-origin: left center;
+}
+
+.meta-cta-punto {
+  position: absolute;
+  right: 13px;
+  bottom: 25px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #47769d;
+}
+
+.meta-cta-punto-2 {
+  right: 55px;
+  bottom: 14px;
+  background: #db9b65;
+}
+
+.meta-cta h3 {
+  margin: 0;
+  color: #3f3932;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.03rem;
+  font-weight: 600;
+}
+
+.meta-cta p {
+  margin: 0;
+  color: #776e64;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.meta-agregar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem;
+  border: 0;
+  background: transparent;
+  color: #5c6f80;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.meta-agregar span {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.dabble-otras-metas {
+  margin: 0 1rem 1rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #e6e1d9;
+  border-radius: 0.35rem;
+  color: #6f675e;
+  font-size: 0.74rem;
+}
+
+.dabble-otras-metas summary {
+  cursor: pointer;
+}
+
+.dabble-otras-metas-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.5rem;
+}
+
+.modal-meta-diaria {
+  width: min(360px, calc(100vw - 2rem));
+  max-height: min(90vh, 820px);
+  overflow: auto;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+}
+
+.modal-meta-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.7rem;
+  background: #fff;
+}
+
+.modal-meta-cabecera h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.modal-meta-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0 1.25rem 1rem;
+}
+
+.modal-meta-intro {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.35rem;
+  background: #f4f3ef;
+  color: #6d655b;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.modal-meta-objetivo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #4c4740;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.modal-meta-input {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #cfc9c0;
+  border-radius: 0.3rem;
+  color: #6e665c;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.modal-meta-input input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #332e28;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.modal-meta-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.modal-meta-grupo legend {
+  padding: 0;
+  color: #514b43;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.modal-meta-grupo legend small {
+  margin-left: 0.25rem;
+  color: #8c8479;
+  font-size: 0.6rem;
+  font-weight: 400;
+}
+
+.modal-meta-ayuda {
+  margin: 0;
+  color: #81786e;
+  font-size: 0.7rem;
+}
+
+.modal-meta-grupo .fila-check {
+  color: #514b43;
+  font-size: 0.76rem;
+}
+
+.dias-libres {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.dias-libres button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #cfc9c0;
+  border-radius: 0.28rem;
+  background: #fff;
+  color: #6f675d;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.dias-libres button.activo {
+  border-color: #7c9ab3;
+  background: #eaf1f7;
+  color: #41627b;
+}
+
+.dias-calendario {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin-left: 0.1rem;
+  border: 1px solid #e0dbd3;
+  border-radius: 0.28rem;
+  color: #9a9186;
+}
+
+.modal-meta-pie {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1.25rem 1.1rem;
+  border-top: 1px solid #e9e4dc;
+}
+
+.modal-meta-pie .dabble-boton-primario {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 0.3rem;
+}
+
+.modal-meta-pie .dabble-boton-primario:disabled {
+  border-color: #b9b6b0;
+  background: #b9b6b0;
+  cursor: not-allowed;
+}
+
+.boton-eliminar-meta {
+  align-self: center;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: #9b4a2f;
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .dabble-workspace {
+    grid-template-columns: 230px minmax(0, 1fr) 280px;
+  }
+}
+
+@media (max-width: 900px) {
+  .modal-meta-diaria {
+    width: min(460px, calc(100vw - 2rem));
   }
 }

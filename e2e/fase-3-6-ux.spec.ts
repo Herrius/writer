@@ -12,7 +12,7 @@ test('el panel lateral y el diff siguen accesibles en ventana estrecha', async (
   await page.locator('.dabble-panel-cerrar').click();
 
   const editor = page.locator('.ProseMirror');
-  await editor.click();
+  await editor.focus();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('Propuesta para revisar el diff.');
   await page.getByRole('button', { name: 'Abrir panel lateral' }).click();

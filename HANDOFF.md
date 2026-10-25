@@ -36,6 +36,8 @@ La Fase 3 añade sobre el motor y la app existentes:
 6. **Rendimiento:** pruebas permanentes con 1.000 escenas y 1.000 marcas.
 7. **Organización:** filtros, colecciones locales, gestión de plantillas y
    papelera local de proyectos.
+8. **Meta diaria global:** objetivo y actividad compartidos por todos los
+   libros, con días libres, opciones de conteo y recordatorio local.
 
 La Fase 3 sigue siendo **local/offline**. El corrector es el nativo del WebView;
 no se empaqueta diccionario, tesauro ni gramática propia. Las voces dependen del
@@ -136,8 +138,8 @@ cargo clippy --workspace --all-targets -D warnings   OK
 cargo test --workspace --all-targets --locked   91 + 49 + 25 + 1 perf
 cargo test desktop                              9/9
 pnpm typecheck                                  OK
-pnpm ui:test                                    83/83
-pnpm e2e                                        55/55
+pnpm ui:test                                    88/88
+pnpm e2e                                        57/57
 ci.py calidad                                   OK
 ci.py interfaz                                  OK
 ci.py producto                                  OK
@@ -181,6 +183,8 @@ El release público de `0.2.0` **no** está autorizado. Siguen pendientes:
 - La portada por defecto es un arte fijo; el color la tiñe y aún no hay subida de
   imagen ni selector de arte.
 - Filtros y colecciones son `localStorage`; no viajan con el proyecto.
+- La meta diaria global también vive en `localStorage`
+  (`writer.metas-globales.v1`); libro y desafío siguen en el proyecto.
 - La papelera es `<padre>/.writer-papelera` y no la papelera del sistema; sin
   purga automática.
 - El control de cambios es por documento completo; no hay aceptación por hunk,

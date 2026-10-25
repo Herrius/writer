@@ -180,6 +180,10 @@ Vive en el mismo directorio. No se imprime en DOCX.
 ```
 
 - Todos los campos son opcionales; un archivo ausente equivale a “sin metas”.
+- **Actualización 2026-10-24:** la meta diaria activa es global y vive en
+  `writer.metas-globales.v1` (ver [`metas-globales-v1.md`](metas-globales-v1.md)).
+  `diaria` en este manifiesto se conserva para migración; libro y desafío siguen
+  siendo del proyecto.
 - `objetivo` es un entero ≥ 0; `desde` y `limite` son fechas ISO (`YYYY-MM-DD`).
 - Las metas archivadas se guardan en `archivadas` con `tipo`, `objetivo`,
   `desde`, `hasta` y `motivo`.

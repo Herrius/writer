@@ -57,8 +57,12 @@ async function esperarProyecto(navegador) {
 
 async function escribirEnEditor(navegador, contenido) {
   for (let intento = 0; intento < 4; intento += 1) {
-    const editor = await navegador.$('.ProseMirror');
-    await editor.click();
+    await navegador.execute(() => {
+      const editor = document.querySelector('.ProseMirror');
+      if (editor instanceof HTMLElement) {
+        editor.focus();
+      }
+    });
     await navegador.pause(200);
     await navegador.keys(['Control', 'a']);
     await navegador.keys(contenido);

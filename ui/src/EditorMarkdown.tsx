@@ -21,6 +21,7 @@ type Props = {
   onComentario?: (texto: string, textoMarcado: string) => Promise<string | null>;
   ancla?: string | null;
   corrector?: boolean;
+  onPegar?: (palabras: number) => void;
 };
 
 export function EditorMarkdown({
@@ -32,6 +33,7 @@ export function EditorMarkdown({
   onComentario,
   ancla,
   corrector = true,
+  onPegar,
 }: Props) {  const alCambiar = useRef(onCambio);
   alCambiar.current = onCambio;
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
@@ -71,6 +73,21 @@ export function EditorMarkdown({
   useEffect(() => {
     editor?.view.dom.setAttribute('spellcheck', corrector ? 'true' : 'false');
   }, [editor, corrector]);
+
+  useEffect(() => {
+    if (!editor || !onPegar) {
+      return;
+    }
+    const dom = editor.view.dom;
+    const alPegar = (evento: ClipboardEvent) => {
+      const texto = evento.clipboardData?.getData('text/plain') ?? '';
+      if (texto.trim()) {
+        onPegar(texto.trim().split(/\s+/u).filter(Boolean).length);
+      }
+    };
+    dom.addEventListener('paste', alPegar);
+    return () => dom.removeEventListener('paste', alPegar);
+  }, [editor, onPegar]);
 
   useEffect(() => {
     if (!ancla || ancla === ultimaAncla.current) {

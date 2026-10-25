@@ -60,7 +60,6 @@ import {
   leerFormatoPdf,
   leerMetas,
   leerPlotGrid,
-  listarSesiones,
   listar,
   listarComentarios,
   mostrar as pedirRevision,
@@ -82,13 +81,13 @@ import type { ComentarioDto } from './types/ComentarioDto';
 import type { CuarentenaDto } from './types/CuarentenaDto';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { MetasDto } from './types/MetasDto';
+import type { SesionDto } from './types/SesionDto';
 import type { PausaDto } from './types/PausaDto';
 import type { FormatoPdfDto } from './types/FormatoPdfDto';
 import type { PlotGridDto } from './types/PlotGridDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
-import type { SesionDto } from './types/SesionDto';
 import type { TipoError } from './types/TipoError';
 import { EditorMarkdown } from './EditorMarkdown';
 import { PanelCambios } from './features/cambios/PanelCambios';
@@ -114,6 +113,18 @@ import {
   type VozSistema,
 } from './features/lectura/lectura';
 import { Inicio, type DatosNuevoProyecto } from './Inicio';
+import { PanelMetaDiaria } from './features/metas/PanelMetaDiaria';
+import { ModalMetaDiaria } from './features/metas/ModalMetaDiaria';
+import {
+  cargarMetasGlobales,
+  diasRecientes,
+  esDiaLibre,
+  fechaLocal,
+  guardarMetasGlobales,
+  progresoDelDia,
+  registrarActividad,
+  type MetasGlobales,
+} from './metasGlobales';
 import { analizarCompatibilidad } from './markdown/compatibilidad';
 import { contarPalabras, textoSinMarcas } from './palabras';
 import {
@@ -149,10 +160,6 @@ type ConfirmacionReversion = {
 };
 
 const RETARDO_AUTOGUARDADO = 900;
-
-function fechaHoy(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function esVistaEstrecha(): boolean {
   return (
@@ -350,7 +357,8 @@ export default function App() {
     texto: string;
   } | null>(null);
   const [metas, setMetas] = useState<MetasDto | null>(null);
-  const [sesiones, setSesiones] = useState<SesionDto[]>([]);
+  const [metasGlobales, setMetasGlobales] = useState<MetasGlobales>(() => cargarMetasGlobales());
+  const [modalMetaDiaria, setModalMetaDiaria] = useState(false);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
   const [tituloEdicion, setTituloEdicion] = useState('');
   const [destinoArrastre, setDestinoArrastre] = useState<string | null>(null);
@@ -378,7 +386,6 @@ export default function App() {
   });
   const [rolPersonaje, setRolPersonaje] = useState('');
   const [aliasPersonaje, setAliasPersonaje] = useState('');
-  const [metaDiaria, setMetaDiaria] = useState('');
   const [metaLibro, setMetaLibro] = useState('');
   const [desafioObjetivo, setDesafioObjetivo] = useState('');
   const [desafioLimite, setDesafioLimite] = useState('');
@@ -442,6 +449,10 @@ export default function App() {
   const inicioSesionRef = useRef<string | null>(null);
   const documentoInicioRef = useRef<{ id: string; ruta: string; palabras: number } | null>(null);
   const palabrasInicioRef = useRef(0);
+  const metasGlobalesRef = useRef(metasGlobales);
+  const conteoPorDocumentoRef = useRef(new Map<string, number>());
+  const palabrasPegadasPendientesRef = useRef(0);
+  const recordatorioGlobalRef = useRef<string | null>(null);
   const pausasRef = useRef<PausaDto[]>([]);
   const pausaInicioRef = useRef<string | null>(null);
   const accionesRef = useRef<{ guardar: () => Promise<boolean>; abrir: () => Promise<void> } | null>(
@@ -662,6 +673,7 @@ export default function App() {
     !revirtiendo &&
     !procesandoCambio;
   puedeEditarRef.current = puedeEditar;
+  metasGlobalesRef.current = metasGlobales;
   modoSugerenciasRef.current = modoSugerencias;
   cambioActivoRef.current = cambioActivo;
 
@@ -722,33 +734,23 @@ export default function App() {
 
   const cargarMetas = async (ruta: string) => {
     setErrorMetas(null);
-    const [metasResultado, sesionesResultado, gridResultado, formatoResultado] =
-      await Promise.allSettled([
-        leerMetas(ruta),
-        listarSesiones(ruta),
-        leerPlotGrid(ruta),
-        leerFormatoPdf(ruta),
-      ]);
+    const [metasResultado, gridResultado, formatoResultado] = await Promise.allSettled([
+      leerMetas(ruta),
+      leerPlotGrid(ruta),
+      leerFormatoPdf(ruta),
+    ]);
     const errores: string[] = [];
     if (metasResultado.status === 'fulfilled') {
       setMetas(metasResultado.value);
-      setMetaDiaria(metasResultado.value.diaria?.objetivo.toString() ?? '');
       setMetaLibro(metasResultado.value.libro?.objetivo.toString() ?? '');
       setDesafioObjetivo(metasResultado.value.desafio?.objetivo.toString() ?? '');
       setDesafioLimite(metasResultado.value.desafio?.limite ?? '');
     } else {
       setMetas(null);
-      setMetaDiaria('');
       setMetaLibro('');
       setDesafioObjetivo('');
       setDesafioLimite('');
       errores.push(`Metas: ${errorDe(metasResultado.reason).mensaje}`);
-    }
-    if (sesionesResultado.status === 'fulfilled') {
-      setSesiones(sesionesResultado.value);
-    } else {
-      setSesiones([]);
-      errores.push(`Sesiones: ${errorDe(sesionesResultado.reason).mensaje}`);
     }
     if (gridResultado.status === 'fulfilled') {
       setPlotGrid(gridResultado.value);
@@ -810,7 +812,6 @@ export default function App() {
     setTemporizadorActivo(false);
     setTemporizadorPausado(false);
     setMetas(null);
-    setSesiones([]);
     setPlotGrid({ version: 1, tramas: [] });
     setTramaSeleccionada('');
     setErrorMetas(null);
@@ -881,6 +882,43 @@ export default function App() {
     }
   };
 
+  const registrarActividadDeGuardado = (cuerpo: string) => {
+    const documento = activoRef.current;
+    if (!documento) {
+      return;
+    }
+    const palabrasNuevas = contarPalabras(textoSinMarcas(cuerpo));
+    const palabrasAnteriores = conteoPorDocumentoRef.current.get(documento.id);
+    if (palabrasAnteriores === undefined) {
+      conteoPorDocumentoRef.current.set(documento.id, palabrasNuevas);
+      return;
+    }
+    if (palabrasAnteriores === palabrasNuevas) {
+      return;
+    }
+    conteoPorDocumentoRef.current.set(documento.id, palabrasNuevas);
+    const meta = metasGlobalesRef.current.diaria;
+    if (meta?.contarSoloManuscrito && documento.tipo !== 'escena') {
+      palabrasPegadasPendientesRef.current = 0;
+      return;
+    }
+    let delta = palabrasNuevas - palabrasAnteriores;
+    const pegadas = Math.min(
+      palabrasPegadasPendientesRef.current,
+      Math.max(0, delta),
+    );
+    palabrasPegadasPendientesRef.current -= pegadas;
+    if (meta && !meta.contarPegadas) {
+      delta -= pegadas;
+    }
+    if (meta && !meta.contarEliminaciones && delta < 0) {
+      delta = 0;
+    }
+    if (delta !== 0) {
+      setMetasGlobales((valor) => registrarActividad(valor, fechaLocal(), delta));
+    }
+  };
+
   const guardarUnaVez = async (): Promise<boolean> => {
     const pendiente = pendienteRef.current;
     const proyectoActual = proyectoRef.current;
@@ -908,6 +946,7 @@ export default function App() {
           pendiente.cuerpo,
           proyectoActual.autor?.trim() || 'local',
         );
+        registrarActividadDeGuardado(pendiente.cuerpo);
         const cuerpoActual = cuerpoEditorRef.current;
         if (cuerpoActual === pendiente.cuerpo) {
           pendienteRef.current = null;
@@ -966,6 +1005,7 @@ export default function App() {
         pendiente.cuerpo,
         hashBase,
       );
+      registrarActividadDeGuardado(pendiente.cuerpo);
       fijarProyecto({ ...proyectoActual, revision: guardado.revision });
       setDocumentos((lista) =>
         lista.map((documento) =>
@@ -1052,12 +1092,11 @@ export default function App() {
       const valor = Number(limpio);
       return Number.isFinite(valor) && valor >= 0 ? Math.floor(valor) : null;
     };
-    const diaria = numero(metaDiaria);
     const libro = numero(metaLibro);
     const desafio = numero(desafioObjetivo);
     const nuevo: MetasDto = {
       version: 1,
-      diaria: diaria === null ? null : { objetivo: diaria, desde: metas?.diaria?.desde ?? fechaHoy() },
+      diaria: metas?.diaria ?? null,
       libro: libro === null ? null : { objetivo: libro },
       desafio:
         desafio === null || !desafioLimite
@@ -1146,7 +1185,6 @@ export default function App() {
     };
     try {
       await agregarSesion(actual.raiz, sesion);
-      setSesiones(await listarSesiones(actual.raiz));
       setMensaje(`Sesión de ${preset} min registrada.`);
       setErrorMetas(null);
     } catch (fallo) {
@@ -2762,44 +2800,78 @@ export default function App() {
     }
     return true;
   });
-  const palabrasHoy = sesiones
-    .filter((sesion) => sesion.inicio.startsWith(fechaHoy()))
-    .reduce((total, sesion) => total + sesion.palabras, 0);
-  const ultimosDias = useMemo(() => {
-    const dias: Array<{ fecha: string; palabras: number }> = [];
-    for (let atras = 29; atras >= 0; atras -= 1) {
-      const fecha = new Date();
-      fecha.setDate(fecha.getDate() - atras);
-      const clave = fecha.toISOString().slice(0, 10);
-      dias.push({
-        fecha: clave,
-        palabras: sesiones
-          .filter((sesion) => sesion.inicio.startsWith(clave))
-          .reduce((total, sesion) => total + sesion.palabras, 0),
-      });
+  const metaDiariaGlobal = metasGlobales.diaria;
+  const progresoGlobal = progresoDelDia(metasGlobales);
+  const diaLibreHoy = esDiaLibre(metaDiariaGlobal);
+  const diasGlobales = diasRecientes(metasGlobales, 14);
+  const palabrasHoy = progresoGlobal.hechas;
+
+  useEffect(() => {
+    guardarMetasGlobales(metasGlobales);
+  }, [metasGlobales]);
+
+  useEffect(() => {
+    if (!metas?.diaria || metasGlobales.diaria) {
+      return;
     }
-    return dias;
-  }, [sesiones, metas?.diaria?.objetivo]);
-  const maximoDia = Math.max(1, ...ultimosDias.map((dia) => dia.palabras));
-  const racha = useMemo(() => {
-    let total = 0;
-    for (let atras = 0; atras < 365; atras += 1) {
-      const fecha = new Date();
-      fecha.setDate(fecha.getDate() - atras);
-      const clave = fecha.toISOString().slice(0, 10);
-      const palabras = sesiones
-        .filter((sesion) => sesion.inicio.startsWith(clave))
-        .reduce((suma, sesion) => suma + sesion.palabras, 0);
-      const objetivo = metas?.diaria?.objetivo ?? 0;
-      const cumple = objetivo > 0 ? palabras >= objetivo : palabras > 0;
-      if (cumple) {
-        total += 1;
-      } else {
-        break;
+    const legada = metas.diaria;
+    setMetasGlobales((actual) => {
+      if (actual.diaria) {
+        return actual;
       }
+      return {
+        ...actual,
+        diaria: {
+          objetivo: legada.objetivo,
+          desde: legada.desde || fechaLocal(),
+          diasLibres: [],
+          contarSoloManuscrito: true,
+          contarPegadas: true,
+          contarEliminaciones: true,
+          recordatorio: false,
+        },
+      };
+    });
+    const raiz = proyectoRef.current?.raiz;
+    if (raiz) {
+      const sinDiaria: MetasDto = { ...metas, diaria: null };
+      void guardarMetas(raiz, sinDiaria)
+        .then(() => setMetas(sinDiaria))
+        .catch(() => {});
     }
-    return total;
-  }, [sesiones]);
+  }, [metas, metasGlobales.diaria]);
+
+  useEffect(() => {
+    if (!activo) {
+      return;
+    }
+    conteoPorDocumentoRef.current.set(activo.id, palabrasDocumento);
+    palabrasPegadasPendientesRef.current = 0;
+  }, [activo?.id]);
+
+  useEffect(() => {
+    if (!proyecto || !metaDiariaGlobal?.recordatorio) {
+      return;
+    }
+    const hoy = fechaLocal();
+    if (recordatorioGlobalRef.current === hoy) {
+      return;
+    }
+    if (diaLibreHoy || progresoGlobal.hechas >= metaDiariaGlobal.objetivo) {
+      return;
+    }
+    recordatorioGlobalRef.current = hoy;
+    setMensaje(
+      `Recordatorio: te faltan ${progresoGlobal.restantes.toLocaleString('es')} palabras para tu meta de hoy.`,
+    );
+  }, [proyecto?.raiz, metaDiariaGlobal, diaLibreHoy, progresoGlobal.hechas, progresoGlobal.restantes]);
+
+  const alPegar = (palabras: number) => {
+    if (palabras > 0) {
+      palabrasPegadasPendientesRef.current += palabras;
+    }
+  };
+
   const modoBusqueda = consulta.trim().length >= 2;
   const lecturaDisponible = soportaLectura();
   const textoVisible = textoSinMarcas(cuerpoVisible);
@@ -3640,6 +3712,7 @@ export default function App() {
                     onCambio={alCambiar}
                     ancla={anclaComentario}
                     corrector={preferencias.corrector}
+                    onPegar={alPegar}
                     onComentario={async (texto, textoMarcado) => {
                       const actual = proyectoRef.current;
                       const documento = activoRef.current;
@@ -3815,77 +3888,59 @@ export default function App() {
             </div>
             {panelDerecho === 'metas' ? (
               <>
-                <section className="dabble-metas">
-                  <h3>Tus metas</h3>
-                  <p>Sigue tu progreso con hábitos diarios, metas de libro o desafíos a plazo.</p>
-                  <label className="dabble-campo-meta">
-                    <span>Meta diaria (palabras)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={metaDiaria}
-                      onChange={(evento) => setMetaDiaria(evento.target.value)}
-                      aria-label="Meta diaria de palabras"
-                    />
-                  </label>
-                  <label className="dabble-campo-meta">
-                    <span>Meta del libro (palabras)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={metaLibro}
-                      onChange={(evento) => setMetaLibro(evento.target.value)}
-                      aria-label="Meta de palabras del libro"
-                    />
-                  </label>
-                  <label className="dabble-campo-meta">
-                    <span>Desafío (palabras)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={desafioObjetivo}
-                      onChange={(evento) => setDesafioObjetivo(evento.target.value)}
-                      aria-label="Objetivo del desafío"
-                    />
-                  </label>
-                  <label className="dabble-campo-meta">
-                    <span>Fecha límite</span>
-                    <input
-                      type="date"
-                      value={desafioLimite}
-                      onChange={(evento) => setDesafioLimite(evento.target.value)}
-                      aria-label="Fecha límite del desafío"
-                    />
-                  </label>
-                  <button className="dabble-boton" onClick={() => void guardarMetasPanel()}>
-                    Guardar metas
-                  </button>
-                  {errorMetas && (
-                    <p className="dabble-error" role="alert">
-                      {errorMetas}
-                    </p>
-                  )}
-                  <p className="dabble-resumen">
-                    {palabrasHoy.toLocaleString('es')} palabras hoy ·{' '}
-                    {
-                      sesiones.filter((sesion) =>
-                        sesion.inicio.startsWith(new Date().toISOString().slice(0, 7)),
-                      ).length
-                    }{' '}
-                    sesiones este mes · racha {racha} día{racha === 1 ? '' : 's'}
-                  </p>
-                  <div className="dabble-grafico" aria-hidden="true">
-                    {ultimosDias.map((dia) => (
-                      <span
-                        key={dia.fecha}
-                        style={{
-                          height: `${Math.max(6, Math.round((dia.palabras / maximoDia) * 100))}%`,
-                        }}
-                        title={`${dia.fecha}: ${dia.palabras} palabras`}
+                <PanelMetaDiaria
+                  meta={metaDiariaGlobal}
+                  hechas={progresoGlobal.hechas}
+                  objetivo={progresoGlobal.objetivo}
+                  porcentaje={progresoGlobal.porcentaje}
+                  restantes={progresoGlobal.restantes}
+                  libre={diaLibreHoy}
+                  dias={diasGlobales}
+                  onEditar={() => setModalMetaDiaria(true)}
+                  onAgregar={() => setModalMetaDiaria(true)}
+                />
+                <details className="dabble-otras-metas">
+                  <summary>Otras metas</summary>
+                  <div className="dabble-otras-metas-cuerpo">
+                    <label className="dabble-campo-meta">
+                      <span>Meta del libro (palabras)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={metaLibro}
+                        onChange={(evento) => setMetaLibro(evento.target.value)}
+                        aria-label="Meta de palabras del libro"
                       />
-                    ))}
+                    </label>
+                    <label className="dabble-campo-meta">
+                      <span>Desafío (palabras)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={desafioObjetivo}
+                        onChange={(evento) => setDesafioObjetivo(evento.target.value)}
+                        aria-label="Objetivo del desafío"
+                      />
+                    </label>
+                    <label className="dabble-campo-meta">
+                      <span>Fecha límite</span>
+                      <input
+                        type="date"
+                        value={desafioLimite}
+                        onChange={(evento) => setDesafioLimite(evento.target.value)}
+                        aria-label="Fecha límite del desafío"
+                      />
+                    </label>
+                    <button className="dabble-boton" onClick={() => void guardarMetasPanel()}>
+                      Guardar metas del libro
+                    </button>
+                    {errorMetas && (
+                      <p className="dabble-error" role="alert">
+                        {errorMetas}
+                      </p>
+                    )}
                   </div>
-                </section>
+                </details>
                 <section className="dabble-timer">
                   <div className="dabble-timer-cabecera">
                     <strong>{formatearTiempo(restante)}</strong>
@@ -4675,6 +4730,23 @@ export default function App() {
             </footer>
           </div>
         </div>
+      )}
+
+      {modalMetaDiaria && (
+        <ModalMetaDiaria
+          meta={metaDiariaGlobal}
+          onGuardar={(meta) => {
+            setMetasGlobales((actual) => ({ ...actual, diaria: meta }));
+            setModalMetaDiaria(false);
+            setMensaje('Meta diaria guardada.');
+          }}
+          onEliminar={() => {
+            setMetasGlobales((actual) => ({ ...actual, diaria: null }));
+            setModalMetaDiaria(false);
+            setMensaje('Meta diaria eliminada.');
+          }}
+          onCerrar={() => setModalMetaDiaria(false)}
+        />
       )}
 
       {preferenciasAbiertas && (

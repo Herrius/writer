@@ -1,17 +1,77 @@
 import { expect, test } from '@playwright/test';
 
-test('muestra, guarda y ejecuta metas y temporizador', async ({ page }) => {
+async function abrirDemo(page: import('@playwright/test').Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Ver demo' }).click();
   await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Metas' }).click();
+}
 
-  await expect(page.getByRole('heading', { name: 'Tus metas' })).toBeVisible();
-  const diaria = page.getByLabel('Meta diaria de palabras');
-  await expect(diaria).toHaveValue('500');
-  await diaria.fill('750');
-  await page.getByRole('button', { name: 'Guardar metas' }).click();
-  await expect(page.getByText('Metas guardadas.')).toBeVisible();
+test('configura la meta diaria global y muestra el progreso', async ({ page }) => {
+  await page.addInitScript(() => {
+    const ahora = new Date();
+    const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+    localStorage.setItem(
+      'writer.metas-globales.v1',
+      JSON.stringify({
+        version: 1,
+        diaria: {
+          objetivo: 10,
+          desde: hoy,
+          diasLibres: [],
+          contarSoloManuscrito: true,
+          contarPegadas: true,
+          contarEliminaciones: true,
+          recordatorio: false,
+        },
+        actividad: { [hoy]: 3 },
+      }),
+    );
+  });
+  await abrirDemo(page);
+  await expect(page.getByText('METAS DIARIAS')).toBeVisible();
+  await expect(page.locator('.meta-progreso')).toContainText('3');
+  await expect(page.locator('.meta-progreso')).toContainText('30 %');
 
+  await page.getByRole('button', { name: 'Configurar meta diaria' }).click();
+  const modal = page.getByRole('dialog', { name: 'Meta diaria' });
+  await modal.getByLabel('Palabras por día').fill('20');
+  await modal.getByRole('button', { name: 'Guardar meta' }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.locator('.meta-progreso')).toContainText('/ 20 palabras');
+
+  const guardado = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('writer.metas-globales.v1') ?? 'null'),
+  );
+  expect(guardado.diaria.objetivo).toBe(20);
+  expect(guardado.actividad[Object.keys(guardado.actividad)[0]]).toBe(3);
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Ver demo' }).click();
+  await page.getByRole('tab', { name: 'Metas' }).click();
+  await expect(page.locator('.meta-progreso')).toContainText('3');
+});
+test('marca un día libre y lo conserva al recargar', async ({ page }) => {
+  await abrirDemo(page);
+  await page.getByRole('button', { name: 'Configurar meta diaria' }).click();
+  const modal = page.getByRole('dialog', { name: 'Meta diaria' });
+  const hoy = new Date().getDay();
+  const nombre = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][
+    hoy
+  ];
+  await modal.getByRole('button', { name: nombre }).click();
+  await modal.getByLabel('Palabras por día').fill('25');
+  await modal.getByRole('button', { name: 'Guardar meta' }).click();
+  await expect(page.getByText('Hoy es un día libre')).toBeVisible();
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Ver demo' }).click();
+  await page.getByRole('tab', { name: 'Metas' }).click();
+  await expect(page.getByText('Hoy es un día libre')).toBeVisible();
+});
+
+test('mantiene el temporizador y registra la sesión', async ({ page }) => {
+  await abrirDemo(page);
   await page.getByRole('button', { name: 'Iniciar temporizador' }).click();
   await expect(page.getByRole('button', { name: 'Pausar temporizador' })).toBeVisible();
   await page.getByRole('button', { name: 'Pausar temporizador' }).click();
