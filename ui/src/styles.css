@@ -2336,6 +2336,8 @@ button.guardar:disabled {
 }
 
 .dabble-mas {
+  display: grid;
+  place-items: center;
   width: 22px;
   height: 22px;
   border: 1px solid #d6cfc4;
@@ -5527,183 +5529,465 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   background: #fff;
 }
 
-/* Vista de archivo y papelera en la barra lateral del proyecto. */
-.dabble-volver {
-  width: 100%;
-  padding: 0.35rem 0.55rem;
+/* Árbol de proyecto con iconos y menús contextuales. */
+.arbol-proyecto {
+  padding: 0.25rem 0.35rem 0.5rem;
+}
+
+.arbol-rama,
+.arbol-hijos {
+  display: block;
+}
+
+.arbol-fila {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 28px;
+  padding-right: 0.3rem;
+  border-radius: 0.3rem;
+}
+
+.arbol-fila:hover,
+.arbol-fila:focus-within {
+  background: #f0ede7;
+}
+
+.arbol-fila.arbol-seccion-principal,
+.arbol-fila.arbol-categoria {
+  margin-top: 0.55rem;
+  color: #4e4942;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.arbol-fila.arbol-seccion-principal {
+  margin-top: 0.25rem;
+}
+
+.arbol-plegar {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 22px;
+  padding: 0;
   border: 0;
   background: transparent;
-  color: #5c6f80;
+  color: #8b8175;
+  cursor: pointer;
+}
+
+.arbol-plegar-hueco {
+  width: 14px;
+}
+
+.arbol-icono {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  flex: 0 0 18px;
+  color: #7e8f9e;
+}
+
+.arbol-nombre {
+  min-width: 0;
+  flex: 1;
+  padding: 0.12rem 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: #4f4942;
   font: inherit;
   font-size: 0.76rem;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.arbol-nombre-estatico {
+  cursor: default;
+}
+
+.arbol-menu-boton {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #7a7167;
+  opacity: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.arbol-fila:hover .arbol-menu-boton,
+.arbol-fila:focus-within .arbol-menu-boton,
+.arbol-menu-boton.abierto {
+  opacity: 1;
+}
+
+.arbol-menu-boton:hover,
+.arbol-menu-boton.abierto {
+  background: #e6e1d9;
+  color: #3f6190;
+}
+
+.arbol-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 2px);
+  right: 0.15rem;
+  width: 215px;
+  padding: 0.35rem;
+  border: 1px solid #d9d2c8;
+  border-radius: 0.4rem;
+  background: #fff;
+  box-shadow: 0 10px 30px rgb(45 38 28 / 18%);
+}
+
+.arbol-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.38rem 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #4f4942;
+  font: inherit;
+  font-size: 0.75rem;
   text-align: left;
   cursor: pointer;
 }
 
-.dabble-volver:hover {
+.arbol-menu button:hover {
   background: #f0ede7;
-  border-radius: 0.3rem;
 }
 
-.dabble-archivo-cabecera {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin: 0.35rem 0.2rem 0.7rem;
-  padding: 0.65rem 0.6rem;
-  border: 1px solid #e7e2da;
-  border-radius: 0.4rem;
-  background: #f7f5f1;
+.arbol-menu button.peligro-menu {
+  color: #9b4a2f;
 }
 
-.dabble-archivo-icono {
-  color: #7d8fa0;
-  font-size: 1rem;
-  line-height: 1.2;
-}
-
-.dabble-archivo-cabecera h3 {
-  margin: 0;
-  color: #3d3832;
-  font-size: 0.82rem;
-}
-
-.dabble-archivo-cabecera p {
-  margin: 0.2rem 0 0;
-  color: #81786e;
-  font-size: 0.69rem;
-  line-height: 1.35;
-}
-
-.dabble-archivo-contador {
-  min-width: 1.35rem;
-  margin-left: auto;
-  padding: 0.05rem 0.35rem;
-  border-radius: 999px;
-  background: #e7edf3;
-  color: #4f6b81;
-  font-size: 0.66rem;
-  text-align: center;
-}
-
-.dabble-archivo-lista {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.dabble-archivo-lista li {
-  display: flex;
-  align-items: stretch;
-  gap: 0.15rem;
-}
-
-.dabble-archivo-lista .dabble-doc {
-  flex: 1;
-  min-width: 0;
-  padding-left: 0.55rem;
-}
-
-.dabble-doc-texto {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 0.1rem;
-}
-
-.dabble-doc-subtitulo {
-  overflow: hidden;
+.arbol-menu-titulo {
+  display: block;
+  padding: 0.3rem 0.5rem 0.25rem;
   color: #8a8074;
   font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arbol-menu-separador {
+  height: 1px;
+  margin: 0.3rem 0.15rem;
+  background: #e9e4dc;
+}
+
+.dabble-doc.arbol-doc {
+  min-width: 0;
+  flex: 1;
+  width: auto;
+  padding: 0.12rem 0.2rem;
+  font-size: 0.74rem;
+}
+
+.dabble-doc.arbol-doc .dabble-doc-titulo {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dabble-doc.activo .dabble-doc-subtitulo {
-  color: rgb(255 255 255 / 72%);
+.arbol-documento .arbol-icono {
+  margin-left: 1.05rem;
 }
 
-.dabble-archivo-restaurar {
-  width: 27px;
-  padding: 0;
-  border: 1px solid #d6dfe7;
-  border-radius: 0.3rem;
+.arbol-vacio {
+  margin: 0.15rem 0.6rem 0.35rem 2.2rem;
+  color: #8a8074;
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+.arbol-menu + .arbol-menu {
+  display: none;
+}
+
+.modal-arbol {
+  width: min(420px, calc(100vw - 2rem));
+  border-radius: 0.5rem;
   background: #fff;
-  color: #4f6b81;
-  font: inherit;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+}
+
+.modal-arbol-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.65rem;
+}
+
+.modal-arbol-cabecera h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.modal-arbol-cuerpo {
+  padding: 0 1.25rem 1rem;
+}
+
+.modal-arbol-cuerpo p {
+  margin: 0;
+  color: #5f574e;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.modal-arbol-pie {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.8rem 1.25rem 1rem;
+  border-top: 1px solid #e9e4dc;
+}
+
+/* Páginas de Archivo, Papelera y Plantillas dentro del proyecto. */
+.vista-proyecto-pagina {
+  min-height: calc(100vh - 74px);
+  padding: 1.35rem 1.7rem 2rem;
+  background: #f3f2ef;
+}
+
+.vista-proyecto-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid #ded9d1;
+}
+
+.vista-proyecto-titulo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  color: #566b7c;
+}
+
+.vista-proyecto-titulo h1 {
+  margin: 0;
+  color: #2f2b26;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+}
+
+.vista-proyecto-titulo p {
+  margin: 0.25rem 0 0;
+  color: #81786e;
+  font-size: 0.78rem;
+}
+
+.vista-proyecto-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.vista-proyecto-contador {
+  color: #81786e;
+  font-size: 0.74rem;
+}
+
+.vista-proyecto-vacia {
+  display: flex;
+  min-height: 55vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.vista-proyecto-vacia-icono {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 0.5rem;
+  border-radius: 50%;
+  background: #e9e6e0;
+  color: #9a9186;
+}
+
+.vista-proyecto-vacia h2 {
+  margin: 0;
+  color: #3c3731;
   font-size: 0.9rem;
-  line-height: 1;
+}
+
+.vista-proyecto-vacia p {
+  margin: 0;
+  color: #81786e;
+  font-size: 0.76rem;
+}
+
+.vista-proyecto-vacia .dabble-boton-primario {
+  margin-top: 0.8rem;
+}
+
+.vista-proyecto-lista {
+  display: flex;
+  max-width: 850px;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 1.2rem auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vista-proyecto-lista li {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.vista-proyecto-fila {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #e1dcd4;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: #3e3831;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
-.dabble-archivo-restaurar:hover {
+.vista-proyecto-fila:hover {
+  border-color: #b9c9d6;
+  background: #fbfcfd;
+}
+
+.vista-proyecto-icono {
+  color: #728b9f;
+}
+
+.vista-proyecto-texto {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.vista-proyecto-texto strong {
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vista-proyecto-texto small {
+  overflow: hidden;
+  color: #8a8074;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vista-proyecto-restaurar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.7rem;
+  border: 1px solid #d6dfe7;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: #4f6b81;
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.vista-proyecto-restaurar:hover {
   border-color: #9fb5c8;
   background: #eaf0f6;
 }
 
-.dabble-archivo-vacio {
-  margin: 0.3rem 0.2rem;
-  padding: 1rem 0.7rem;
-  border: 1px dashed #d9d2c8;
-  border-radius: 0.4rem;
-  text-align: center;
-}
-
-.dabble-archivo-vacio strong {
-  display: block;
-  color: #4b453e;
-  font-size: 0.78rem;
-}
-
-.dabble-archivo-vacio p {
-  margin: 0.3rem 0 0;
-  color: #81786e;
-  font-size: 0.7rem;
-  line-height: 1.4;
-}
-
-.dabble-archivo-vacio button {
-  margin-top: 0.55rem;
-  padding: 0.3rem 0.55rem;
-  border: 1px solid #d6dfe7;
-  border-radius: 0.3rem;
-  background: #fff;
-  color: #4f6b81;
-  font: inherit;
-  font-size: 0.72rem;
-  cursor: pointer;
-}
-
-.dabble-archivo-vacio button:hover {
-  background: #eaf0f6;
-}
-
-.dabble-archivo-filtro {
-  margin: 0.45rem 0.3rem;
-  color: #8a8074;
-  font-size: 0.68rem;
-}
-
-.dabble-utilidad-fila {
+.dabble-utilidad {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.4rem;
 }
 
-.dabble-utilidad-contador {
-  min-width: 1.25rem;
-  padding: 0.02rem 0.3rem;
-  border-radius: 999px;
-  background: #e7edf3;
-  color: #4f6b81;
-  font-size: 0.64rem;
-  text-align: center;
+.dabble-utilidad-fila {
+  justify-content: space-between;
 }
 
-.dabble-utilidad.activo .dabble-utilidad-contador {
-  background: #d8e4ee;
+.dabble-utilidad-fila > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dabble-config {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+@media (max-width: 700px) {
+  .vista-proyecto-pagina {
+    padding: 1rem;
+  }
+
+  .vista-proyecto-cabecera {
+    flex-direction: column;
+  }
+
+  .vista-proyecto-lista li {
+    flex-direction: column;
+  }
+
+  .vista-proyecto-restaurar {
+    justify-content: center;
+    padding: 0.4rem;
+  }
+}
+
+.dabble-app.dabble-vista-especial .dabble-workspace {
+  grid-template-columns: 262px minmax(0, 1fr);
+}
+
+.dabble-app.dabble-vista-especial .dabble-derecha {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .dabble-app.dabble-vista-especial .dabble-workspace {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .dabble-app.dabble-vista-especial .dabble-workspace {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+@media (hover: none) {
+  .arbol-menu-boton {
+    opacity: 0.7;
+  }
 }

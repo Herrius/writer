@@ -52,9 +52,9 @@ no sobre las sesiones de un proyecto concreto.
 ```text
 pnpm typecheck                         OK
 pnpm ui:test                           88/88
-pnpm e2e                               58/58 (metas 4/4)
-cargo test --workspace                 91 + 49 + 25 + 1
-cargo test desktop                     9/9
+pnpm e2e                               59/59 (metas 4/4)
+cargo test --workspace                 91 + 50 + 25 + 1
+cargo test desktop                     10/10
 ```
 
 Casos nuevos: meta global, progreso tras escribir, persistencia al recargar,

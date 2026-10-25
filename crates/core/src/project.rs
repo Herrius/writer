@@ -711,6 +711,107 @@ impl Project {
         Ok((id, relativa))
     }
 
+    /// Lista las carpetas de manuscrito y notas que existen en disco.
+    pub fn listar_carpetas(&self) -> Result<Vec<String>> {
+        let mut carpetas = BTreeSet::new();
+        for raiz in ["manuscrito", "notas"] {
+            let directorio = self.raiz.join(raiz);
+            let Ok(metadatos) = std::fs::symlink_metadata(&directorio) else {
+                continue;
+            };
+            if metadatos.file_type().is_symlink() {
+                return Err(Error::Input(format!(
+                    "la carpeta {raiz} no puede ser un enlace simbólico"
+                )));
+            }
+            if !metadatos.is_dir() {
+                continue;
+            }
+            recorrer_carpetas(&directorio, raiz, &mut carpetas)?;
+        }
+        Ok(carpetas.into_iter().collect())
+    }
+
+    /// Crea una carpeta dentro de `manuscrito` o `notas`.
+    pub fn crear_carpeta(&self, relativa: &str) -> Result<String> {
+        let ruta = self.ruta_carpeta_permitida(relativa, false)?;
+        if ruta.exists() {
+            return Err(Error::Conflict(format!("ya existe {relativa}")));
+        }
+        std::fs::create_dir_all(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+        Ok(relativa.to_string())
+    }
+
+    /// Renombra una carpeta del manuscrito y reindexa.
+    pub fn renombrar_carpeta(&self, relativa: &str, nuevo_nombre: &str) -> Result<String> {
+        validar_componente(nuevo_nombre)?;
+        let actual = self.ruta_carpeta_permitida(relativa, true)?;
+        let padre = actual
+            .parent()
+            .ok_or_else(|| Error::Input("la raíz del proyecto no se puede renombrar".into()))?;
+        let destino = padre.join(nuevo_nombre);
+        if destino.exists() {
+            return Err(Error::Conflict(format!("ya existe {nuevo_nombre}")));
+        }
+        let padre_rel = relativa
+            .rsplit_once('/')
+            .map(|(p, _)| p)
+            .ok_or_else(|| Error::Input("ruta de carpeta no válida".into()))?;
+        let nueva_relativa = format!("{padre_rel}/{nuevo_nombre}");
+        let sesion = self.escritura()?;
+        std::fs::rename(&actual, &destino).map_err(|error| Error::Io(error).with_path(&actual))?;
+        drop(sesion);
+        self.reindexar(false)?;
+        Ok(nueva_relativa)
+    }
+
+    /// Elimina una carpeta vacía del manuscrito.
+    pub fn eliminar_carpeta_vacia(&self, relativa: &str) -> Result<()> {
+        let ruta = self.ruta_carpeta_permitida(relativa, true)?;
+        let sesion = self.escritura()?;
+        std::fs::remove_dir(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;
+        drop(sesion);
+        Ok(())
+    }
+
+    /// Crea una escena en una carpeta arbitraria bajo `manuscrito`.
+    pub fn crear_escena_en(&self, carpeta: &str, titulo: &str) -> Result<(String, String)> {
+        let ruta_carpeta = self.ruta_carpeta_permitida(carpeta, true)?;
+        let mut sesion = self.escritura()?;
+        std::fs::create_dir_all(&ruta_carpeta)
+            .map_err(|error| Error::Io(error).with_path(&ruta_carpeta))?;
+        let prefijo = format!("{carpeta}/");
+        let orden = sesion
+            .escaneo
+            .escenas
+            .iter()
+            .filter(|escena| escena.relativa.starts_with(&prefijo))
+            .map(|escena| escena.escena.orden)
+            .max()
+            .map(|valor| (valor / 10 + 1) * 10)
+            .unwrap_or(10);
+        let mut numero = siguiente_prefijo(&ruta_carpeta);
+        let relativa = loop {
+            let nombre = format!("{numero:03}-{}.md", model::slug(titulo));
+            let candidata = format!("{carpeta}/{nombre}");
+            if !ruta_carpeta.join(&nombre).exists() {
+                break candidata;
+            }
+            numero += 1;
+        };
+        let escena = Escena::nueva(titulo, orden)?;
+        let id = escena.id.clone();
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::nuevo(relativa.clone(), escena.a_bytes())],
+            "humano",
+            "estructura",
+            None,
+            None,
+        )?;
+        Ok((id, relativa))
+    }
+
     /// Reordena una escena dentro de su capítulo.
     pub fn reordenar_escena(&self, id_o_ruta: &str, nuevo_orden: i64) -> Result<String> {
         if !(1..=99_999).contains(&nuevo_orden) {
@@ -1888,6 +1989,70 @@ fn revertir_aplicados(raiz: &Path, blobs: &BlobStore, aplicados: &[Efecto]) -> R
         }
     }
     Ok(conflictos)
+}
+
+fn recorrer_carpetas(
+    directorio: &Path,
+    relativa: &str,
+    salida: &mut BTreeSet<String>,
+) -> Result<()> {
+    let mut entradas: Vec<_> = std::fs::read_dir(directorio)
+        .map_err(|error| Error::Io(error).with_path(directorio))?
+        .filter_map(|entrada| entrada.ok())
+        .collect();
+    entradas.sort_by_key(|entrada| entrada.file_name());
+    for entrada in entradas {
+        let tipo = entrada
+            .file_type()
+            .map_err(|error| Error::Io(error).with_path(entrada.path()))?;
+        if tipo.is_symlink() || !tipo.is_dir() {
+            continue;
+        }
+        let nombre = entrada.file_name();
+        let Some(nombre) = nombre.to_str() else {
+            continue;
+        };
+        if nombre.starts_with('.') {
+            continue;
+        }
+        let hija = format!("{relativa}/{nombre}");
+        if salida.len() >= 10_000 {
+            return Err(Error::Input(
+                "el proyecto tiene demasiadas carpetas para mostrarlas".into(),
+            ));
+        }
+        salida.insert(hija.clone());
+        recorrer_carpetas(&entrada.path(), &hija, salida)?;
+    }
+    Ok(())
+}
+
+impl Project {
+    fn ruta_carpeta_permitida(&self, relativa: &str, solo_manuscrito: bool) -> Result<PathBuf> {
+        let partes: Vec<&str> = relativa.split('/').collect();
+        let raiz = partes.first().copied().unwrap_or_default();
+        let raiz_valida = raiz == "manuscrito" || (!solo_manuscrito && raiz == "notas");
+        if !raiz_valida || partes.len() < 2 {
+            return Err(Error::Input(format!(
+                "ruta de carpeta no válida: {relativa}"
+            )));
+        }
+        for componente in &partes {
+            validar_componente(componente)?;
+        }
+        let mut ruta = self.raiz.clone();
+        for componente in partes {
+            ruta.push(componente);
+            if let Ok(metadatos) = std::fs::symlink_metadata(&ruta) {
+                if metadatos.file_type().is_symlink() {
+                    return Err(Error::Input(format!(
+                        "la ruta no puede contener enlaces simbólicos: {relativa}"
+                    )));
+                }
+            }
+        }
+        Ok(ruta)
+    }
 }
 
 fn siguiente_orden(escaneo: &Escaneo, libro: &str, capitulo: &str) -> i64 {

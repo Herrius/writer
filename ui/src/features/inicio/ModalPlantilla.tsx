@@ -10,7 +10,6 @@ const NOTAS = [
   ['cronologia', 'Cronología'],
   ['objetos', 'Objetos'],
   ['cuaderno', 'Cuaderno'],
-  ['ideas', 'Ideas'],
 ] as const;
 
 type Props = {

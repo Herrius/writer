@@ -73,6 +73,8 @@ const demoCuarentena: CuarentenaDto[] = [
   },
 ];
 
+const demoCarpetasExtra: string[] = [];
+
 const demoDocumentos: DocumentoDto[] = [
   {
     tipo: 'escena',
@@ -1395,7 +1397,125 @@ export async function compararDocumento(
   });
 }
 
+export async function listarCarpetas(ruta: string): Promise<string[]> {
+  if (!esTauri) {
+    const carpetas = new Set(demoCarpetasExtra);
+    for (const documento of demoDocumentos) {
+      const partes = documento.ruta.split('/');
+      for (let indice = 2; indice < partes.length; indice += 1) {
+        carpetas.add(partes.slice(0, indice).join('/'));
+      }
+    }
+    return [...carpetas].sort();
+  }
+  return invoke<string[]>('listar_carpetas', { ruta });
+}
+
+export async function crearCarpeta(ruta: string, relativa: string): Promise<string> {
+  if (!esTauri) {
+    if (demoCarpetasExtra.includes(relativa)) {
+      throw new Error(`ya existe ${relativa}`);
+    }
+    demoCarpetasExtra.push(relativa);
+    return relativa;
+  }
+  return invoke<string>('crear_carpeta', { ruta, relativa });
+}
+
+export async function renombrarCarpeta(
+  ruta: string,
+  relativa: string,
+  nombre: string,
+): Promise<string> {
+  if (!esTauri) {
+    const padre = relativa.split('/').slice(0, -1).join('/');
+    const nueva = `${padre}/${nombre}`;
+    demoCarpetasExtra.forEach((carpeta, indice) => {
+      if (carpeta === relativa || carpeta.startsWith(`${relativa}/`)) {
+        demoCarpetasExtra[indice] = nueva + carpeta.slice(relativa.length);
+      }
+    });
+    for (const documento of demoDocumentos) {
+      if (documento.ruta.startsWith(`${relativa}/`)) {
+        documento.ruta = nueva + documento.ruta.slice(relativa.length);
+      }
+    }
+    return nueva;
+  }
+  return invoke<string>('renombrar_carpeta', { ruta, relativa, nombre });
+}
+
+export async function eliminarCarpetaVacia(ruta: string, relativa: string): Promise<void> {
+  if (!esTauri) {
+    const indice = demoCarpetasExtra.indexOf(relativa);
+    if (indice >= 0) {
+      demoCarpetasExtra.splice(indice, 1);
+    }
+    return;
+  }
+  await invoke('eliminar_carpeta_vacia', { ruta, relativa });
+}
+
+export async function crearEscenaEn(
+  ruta: string,
+  carpeta: string,
+  titulo: string,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const escena: DocumentoDto = {
+      tipo: 'escena',
+      id: `demo-escena-${Date.now()}`,
+      ruta: `${carpeta}/${String(demoDocumentos.length + 1).padStart(3, '0')}-${titulo
+        .toLowerCase()
+        .replaceAll(' ', '-')}.md`,
+      titulo,
+      cuerpo: '',
+      hashArchivo: `demo:${Date.now()}`,
+      orden: demoDocumentos.length * 10 + 10,
+      estado: 'borrador',
+      archivo: null,
+      etiquetas: [],
+      rol: null,
+      cast: [],
+      alias: [],
+      clase: null,
+    };
+    demoDocumentos.push(escena);
+    return { ...escena };
+  }
+  return invoke<DocumentoDto>('crear_escena_en', { ruta, carpeta, titulo });
+}
+
+export async function exportarTexto(
+  nombre: string,
+  contenido: string,
+): Promise<string | null> {
+  if (!esTauri) {
+    const blob = new Blob([contenido], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombre;
+    enlace.click();
+    URL.revokeObjectURL(url);
+    return nombre;
+  }
+  const destino = await save({
+    defaultPath: nombre,
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+  });
+  if (!destino) {
+    return null;
+  }
+  return invoke<string>('guardar_texto_exportado', {
+    destino,
+    contenido,
+    forzar: false,
+  });
+}
+
 export async function exportarDocx(
+
   ruta: string,
   destino: string,
   incluirNotas: boolean,

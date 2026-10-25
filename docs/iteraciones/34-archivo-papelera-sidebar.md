@@ -1,7 +1,8 @@
 # Iteración 34 — Archivo y papelera en la barra lateral
 
 - **Fecha:** 2026-10-25
-- **Estado:** implementado en Linux x86_64.
+- **Estado:** implementado en Linux x86_64; las vistas se trasladaron al área
+  principal en la iteración 35.
 - **Capturas:** [`../revisiones/archivo-papelera-vacia-2026-10-25.png`](../revisiones/archivo-papelera-vacia-2026-10-25.png),
   [`../revisiones/archivo-papelera-lista-2026-10-25.png`](../revisiones/archivo-papelera-lista-2026-10-25.png).
 
@@ -40,7 +41,7 @@ documentos había en ese estado ni cómo devolverlos a activos.
 - E2E `fase-2-1-archivo`: archiva, comprueba el listado, restaura desde la fila,
   comprueba el estado vacío y usa el botón **+** para abrir la creación.
 - E2E de metas y organización sin cambios.
-- UI 88/88; E2E 58/58.
+- UI 88/88; E2E 59/59.
 
 ## 5. Límites
 

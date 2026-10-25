@@ -3,8 +3,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { Archive, BookOpen, FileStack, Globe2, Home, Plus, Search, Settings, Trash2 } from 'lucide-react';
 import {
   abrirProyecto,
   actualizarEscena,
@@ -27,6 +27,12 @@ import {
   crearComentario,
   crearDesdePlantilla as crearDesdePlantillaApi,
   crearEscena as crearEscenaApi,
+  crearCarpeta,
+  crearEscenaEn,
+  eliminarCarpetaVacia,
+  exportarTexto,
+  listarCarpetas,
+  renombrarCarpeta,
   crearNota as crearNotaApi,
   crearProyecto as crearProyectoApi,
   convertirIdeaEnProyecto,
@@ -115,6 +121,9 @@ import {
 import { Inicio, type DatosNuevoProyecto } from './Inicio';
 import { PanelMetaDiaria } from './features/metas/PanelMetaDiaria';
 import { ModalMetaDiaria } from './features/metas/ModalMetaDiaria';
+import { ArbolProyecto } from './features/arbol/ArbolProyecto';
+import type { TipoCreacion } from './features/arbol/ArbolProyecto';
+import { VistaEstadoProyecto, VistaPlantillas } from './features/arbol/VistaEstadoProyecto';
 import {
   cargarMetasGlobales,
   esDiaLibre,
@@ -181,97 +190,11 @@ function formatearTiempo(segundos: number): string {
   return `${minutos}:${resto.toString().padStart(2, '0')}`;
 }
 
-type GrupoDocumentos = {
-  clave: string;
-  etiqueta: string;
-  documentos: DocumentoDto[];
-};
-
-function etiquetaCarpeta(carpeta: string): string {
-  const coincidencia = /^(\d+)[-_](.+)$/.exec(carpeta);
-  const numero = coincidencia?.[1] ? Number(coincidencia[1]) : null;
-  const nombre = (coincidencia?.[2] ?? carpeta)
-    .replace(/[-_]/g, ' ')
-    .replace(/\bcapitulo\b/gi, 'capítulo')
-    .replace(/\blibro\b/gi, 'libro');
-  const capitalizada = nombre
-    .split(' ')
-    .filter(Boolean)
-    .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-    .join(' ');
-  return numero === null ? capitalizada : `${capitalizada} ${numero}`;
-}
-
-function grupoEscena(documento: DocumentoDto): { clave: string; etiqueta: string } {
-  const partes = documento.ruta.split('/');
-  if (partes.length < 4) {
-    return { clave: 'sin-clasificar', etiqueta: 'Sin clasificar' };
-  }
-  return {
-    clave: `${partes[1]}/${partes[2]}`,
-    etiqueta: `${etiquetaCarpeta(partes[1])} / ${etiquetaCarpeta(partes[2])}`,
-  };
-}
-
-function agrupar(
-  documentos: DocumentoDto[],
-  clave: (documento: DocumentoDto) => string,
-  etiqueta: (documento: DocumentoDto) => string,
-): GrupoDocumentos[] {
-  const mapa = new Map<string, GrupoDocumentos>();
-  for (const documento of documentos) {
-    const grupo = clave(documento);
-    const existente = mapa.get(grupo);
-    if (existente) {
-      existente.documentos.push(documento);
-    } else {
-      mapa.set(grupo, {
-        clave: grupo,
-        etiqueta: etiqueta(documento),
-        documentos: [documento],
-      });
-    }
-  }
-  return Array.from(mapa.values());
-}
-
 function etiquetaTipo(documento: DocumentoDto): string {
   if (documento.tipo === 'escena') {
     return documento.estado ?? 'borrador';
   }
   return documento.clase ?? 'nota';
-}
-
-function etiquetaDocumento(documento: DocumentoDto): string {
-  if (documento.tipo === 'escena') {
-    return 'Escena';
-  }
-  const etiquetas: Record<string, string> = {
-    tramas: 'Trama',
-    personajes: 'Personaje',
-    ideas: 'Idea',
-    cuaderno: 'Cuaderno',
-    lugares: 'Lugar',
-    cronologia: 'Cronología',
-    objetos: 'Objeto',
-  };
-  return etiquetas[documento.clase ?? ''] ?? 'Nota';
-}
-
-function iconoDocumento(documento: DocumentoDto): string {
-  if (documento.tipo === 'escena') {
-    return '▤';
-  }
-  if (documento.clase === 'tramas') {
-    return '◈';
-  }
-  if (documento.clase === 'personajes') {
-    return '♙';
-  }
-  if (documento.clase === 'ideas') {
-    return '✦';
-  }
-  return '▢';
 }
 
 function etiquetaGuardado(estado: EstadoGuardado): string {
@@ -358,7 +281,6 @@ export default function App() {
   const [confirmarRecarga, setConfirmarRecarga] = useState(false);
 
   const [consulta, setConsulta] = useState('');
-  const [focoArbol, setFocoArbol] = useState<string | null>(null);
   const [panelDerecho, setPanelDerecho] = useState<
     'metas' | 'notas' | 'comentarios' | 'plan' | 'cambios' | 'herramientas'
   >('metas');
@@ -387,15 +309,13 @@ export default function App() {
     formato: string;
     texto: string;
   } | null>(null);
+  const [carpetas, setCarpetas] = useState<string[]>([]);
+  const [vistaProyecto, setVistaProyecto] = useState<'editor' | 'archivo' | 'papelera' | 'plantillas'>('editor');
   const [metas, setMetas] = useState<MetasDto | null>(null);
   const [metasGlobales, setMetasGlobales] = useState<MetasGlobales>(() => cargarMetasGlobales());
   const [modalMetaDiaria, setModalMetaDiaria] = useState(false);
   const [errorMetas, setErrorMetas] = useState<string | null>(null);
   const [tituloEdicion, setTituloEdicion] = useState('');
-  const [destinoArrastre, setDestinoArrastre] = useState<string | null>(null);
-  const [filtroArchivo, setFiltroArchivo] = useState<'activo' | 'archivado' | 'papelera'>(
-    'activo',
-  );
   const [filtroEtiqueta, setFiltroEtiqueta] = useState('');
   const [estadoEdicion, setEstadoEdicion] = useState('borrador');
   const [etiquetasEdicion, setEtiquetasEdicion] = useState('');
@@ -589,42 +509,6 @@ export default function App() {
     () => documentos.filter((documento) => documento.tipo === 'nota'),
     [documentos],
   );
-  const escenasVisibles = useMemo(() => {
-    const termino = filtroEtiqueta.trim().toLocaleLowerCase();
-    return escenas.filter(
-      (documento) =>
-        (documento.archivo ?? 'activo') === filtroArchivo &&
-        (!termino ||
-          documento.etiquetas.some((etiqueta) =>
-            etiqueta.toLocaleLowerCase().includes(termino),
-          )),
-    );
-  }, [escenas, filtroArchivo, filtroEtiqueta]);
-  const notasVisibles = useMemo(() => {
-    const termino = filtroEtiqueta.trim().toLocaleLowerCase();
-    return notas.filter(
-      (documento) =>
-        (documento.archivo ?? 'activo') === filtroArchivo &&
-        (!termino ||
-          documento.etiquetas.some((etiqueta) =>
-            etiqueta.toLocaleLowerCase().includes(termino),
-          )),
-    );
-  }, [notas, filtroArchivo, filtroEtiqueta]);
-  const documentosArchivo = useMemo(() => {
-    if (filtroArchivo === 'activo') {
-      return [];
-    }
-    const termino = filtroEtiqueta.trim().toLocaleLowerCase();
-    return documentos.filter(
-      (documento) =>
-        (documento.archivo ?? 'activo') === filtroArchivo &&
-        (!termino ||
-          documento.etiquetas.some((etiqueta) =>
-            etiqueta.toLocaleLowerCase().includes(termino),
-          )),
-    );
-  }, [documentos, filtroArchivo, filtroEtiqueta]);
   const totalArchivados = useMemo(
     () => documentos.filter((documento) => documento.archivo === 'archivado').length,
     [documentos],
@@ -633,66 +517,6 @@ export default function App() {
     () => documentos.filter((documento) => documento.archivo === 'papelera').length,
     [documentos],
   );
-  const idArbolTabbable = focoArbol ?? activo?.id ?? documentos[0]?.id ?? null;
-
-  const moverFocoArbol = (documento: DocumentoDto, destino: 'siguiente' | 'anterior' | 'inicio' | 'fin') => {
-    const indice = documentos.findIndex((candidato) => candidato.id === documento.id);
-    if (indice < 0 || documentos.length === 0) {
-      return;
-    }
-    const siguienteIndice =
-      destino === 'inicio'
-        ? 0
-        : destino === 'fin'
-          ? documentos.length - 1
-          : destino === 'siguiente'
-            ? Math.min(documentos.length - 1, indice + 1)
-            : Math.max(0, indice - 1);
-    const siguiente = documentos[siguienteIndice];
-    setFocoArbol(siguiente.id);
-    window.setTimeout(() => document.getElementById(`doc-${siguiente.id}`)?.focus(), 0);
-  };
-
-  const manejarTeclaArbol = (evento: ReactKeyboardEvent, documento: DocumentoDto) => {
-    if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
-      evento.preventDefault();
-      moverFocoArbol(documento, evento.key === 'ArrowDown' ? 'siguiente' : 'anterior');
-    } else if (evento.key === 'Home' || evento.key === 'End') {
-      evento.preventDefault();
-      moverFocoArbol(documento, evento.key === 'Home' ? 'inicio' : 'fin');
-    }
-  };
-
-  const gruposEscenas = useMemo(
-    () =>
-      agrupar(
-        escenasVisibles,
-        (documento) => grupoEscena(documento).clave,
-        (documento) => grupoEscena(documento).etiqueta,
-      ),
-    [escenasVisibles],
-  );
-  const libros = useMemo(() => {
-    const porLibro = new Map<
-      string,
-      { etiqueta: string; capitulos: Array<{ clave: string; etiqueta: string; documentos: DocumentoDto[] }> }
-    >();
-    for (const grupo of gruposEscenas) {
-      const [claveLibro, claveCapitulo] = grupo.clave.split('/');
-      const [etiquetaLibro, etiquetaCapitulo] = grupo.etiqueta.split(' / ');
-      const libro = porLibro.get(claveLibro) ?? {
-        etiqueta: etiquetaLibro ?? claveLibro,
-        capitulos: [],
-      };
-      libro.capitulos.push({
-        clave: grupo.clave,
-        etiqueta: etiquetaCapitulo ?? claveCapitulo,
-        documentos: grupo.documentos,
-      });
-      porLibro.set(claveLibro, libro);
-    }
-    return Array.from(porLibro.values());
-  }, [gruposEscenas]);
   const personajes = useMemo(
     () =>
       notas
@@ -870,7 +694,8 @@ export default function App() {
     setMensaje(null);
     setErrorGuardado(null);
     setConsulta('');
-    setFiltroArchivo('activo');
+    setVistaProyecto('editor');
+    setCarpetas([]);
     setResultados([]);
     setErrorBusqueda(null);
     setCuarentena([]);
@@ -893,6 +718,7 @@ export default function App() {
     try {
       const resumen = await abrirProyecto(ruta);
       const lista = await listar(ruta, true);
+      const carpetasProyecto = await listarCarpetas(ruta);
       const preferido = objetivoPreferido
         ? lista.find((documento) => documento.id === objetivoPreferido)
         : null;
@@ -906,6 +732,7 @@ export default function App() {
       fijarProyecto(resumen);
       recordarProyecto(resumen, palabras);
       setDocumentos(lista);
+      setCarpetas(carpetasProyecto);
       limpiarPendiente();
       fijarActivo(leido);
       cuerpoEditorRef.current = leido?.cuerpo ?? '';
@@ -1239,6 +1066,7 @@ export default function App() {
     }
     if (activoRef.current?.id === documento.id) {
       setVista('editor');
+      setVistaProyecto('editor');
       return;
     }
     navegando.current = true;
@@ -1254,6 +1082,7 @@ export default function App() {
       }
       setMensaje(null);
       setVista('editor');
+      setVistaProyecto('editor');
       try {
         const leido = await leer(proyectoActual.raiz, documento.id);
         fijarActivo(leido);
@@ -1324,8 +1153,6 @@ export default function App() {
       setMensaje(`Documento movido a ${libro}/${capitulo}.`);
     } catch (fallo) {
       setMensaje(`No se pudo mover: ${errorDe(fallo).mensaje}`);
-    } finally {
-      setDestinoArrastre(null);
     }
   };
 
@@ -1620,6 +1447,269 @@ export default function App() {
     const documento = activoRef.current;
     if (documento) {
       await cambiarArchivoDocumento(documento, archivo);
+    }
+  };
+
+  const refrescarEstructura = async () => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return null;
+    }
+    const [lista, directorios] = await Promise.all([
+      listar(actual.raiz, true),
+      listarCarpetas(actual.raiz),
+    ]);
+    setDocumentos(lista);
+    setCarpetas(directorios);
+    return { lista, directorios };
+  };
+
+  const crearCarpetaEn = async (
+    tipo: 'libro' | 'capitulo' | 'seccion',
+    padre: string,
+  ) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se creó la estructura: resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const base = tipo;
+      const nivelPadre = padre.split('/').length;
+      const ocupadas = new Set(
+        carpetas
+          .filter(
+            (carpeta) =>
+              carpeta.startsWith(`${padre}/`) &&
+              carpeta.split('/').length === nivelPadre + 1,
+          )
+          .map((carpeta) => carpeta.split('/').at(-1) ?? ''),
+      );
+      let numero = 1;
+      let nombre = `${String(numero).padStart(2, '0')}-${base}`;
+      while (ocupadas.has(nombre)) {
+        numero += 1;
+        nombre = `${String(numero).padStart(2, '0')}-${base}`;
+      }
+      const ruta = `${padre}/${nombre}`;
+      await crearCarpeta(actual.raiz, ruta);
+      await refrescarEstructura();
+      setMensaje(`${base === 'libro' ? 'Libro' : base === 'capitulo' ? 'Capítulo' : 'Sección'} creado.`);
+      setVistaProyecto('editor');
+    } catch (fallo) {
+      setMensaje(`No se pudo crear: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
+  const crearEscenaEnCarpeta = async (carpeta: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se creó la escena: resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const escena = await crearEscenaEn(actual.raiz, carpeta, 'Escena sin título');
+      await refrescarEstructura();
+      await seleccionar(escena);
+      setMensaje('Escena creada.');
+    } catch (fallo) {
+      setMensaje(`No se pudo crear la escena: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const crearNotaEn = async (tipo: 'tramas' | 'personajes' | 'cuaderno') => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se creó la nota: resuelve el guardado pendiente.');
+      return;
+    }
+    const etiqueta =
+      tipo === 'tramas' ? 'Nueva trama' : tipo === 'personajes' ? 'Nuevo personaje' : 'Nueva nota';
+    try {
+      const nota = await crearNotaApi(actual.raiz, tipo, etiqueta);
+      await refrescarEstructura();
+      await seleccionar(nota);
+      setMensaje(`${etiqueta} creada.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo crear la nota: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const crearNodo = (tipo: TipoCreacion, padre: string = 'manuscrito') => {
+    if (tipo === 'libro' || tipo === 'capitulo' || tipo === 'seccion') {
+      void crearCarpetaEn(tipo, padre);
+    } else if (tipo === 'escena') {
+      void crearEscenaEnCarpeta(padre);
+    } else if (tipo === 'trama') {
+      void crearNotaEn('tramas');
+    } else if (tipo === 'personaje') {
+      void crearNotaEn('personajes');
+    } else {
+      void crearNotaEn('cuaderno');
+    }
+  };
+
+  const renombrarCarpetaNodo = async (ruta: string, nombre: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      throw new Error('No se renombró: resuelve el guardado pendiente.');
+    }
+    try {
+      const nueva = await renombrarCarpeta(actual.raiz, ruta, nombre.trim());
+      await refrescarEstructura();
+      const documento = activoRef.current;
+      if (documento?.ruta.startsWith(`${ruta}/`)) {
+        const actualizado = await leer(actual.raiz, documento.id);
+        fijarActivo(actualizado);
+        cuerpoEditorRef.current = actualizado.cuerpo;
+      }
+      setMensaje(`Carpeta renombrada: ${nueva.split('/').at(-1)}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo renombrar: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
+  const eliminarCarpetaNodo = async (ruta: string, nombre: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      throw new Error('No se eliminó: resuelve el guardado pendiente.');
+    }
+    try {
+      const documentosCarpeta = documentos.filter((documento) =>
+        documento.ruta.startsWith(`${ruta}/`),
+      );
+      for (const documento of documentosCarpeta) {
+        await cambiarArchivoApi(actual.raiz, documento.id, 'papelera');
+      }
+      const subcarpetas = carpetas
+        .filter((carpeta) => carpeta === ruta || carpeta.startsWith(`${ruta}/`))
+        .sort((a, b) => b.length - a.length);
+      for (const carpeta of subcarpetas) {
+        try {
+          await eliminarCarpetaVacia(actual.raiz, carpeta);
+        } catch {
+          // Si una carpeta tiene archivos ajenos al índice, se conserva.
+        }
+      }
+      await refrescarEstructura();
+      const documentoActivo = activoRef.current;
+      if (documentoActivo?.ruta.startsWith(`${ruta}/`)) {
+        fijarActivo({ ...documentoActivo, archivo: 'papelera' });
+      }
+      setVistaProyecto('papelera');
+      setMensaje(`${nombre}: ${documentosCarpeta.length} documento(s) enviados a la papelera.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo eliminar: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
+  const renombrarDocumentoNodo = async (documento: DocumentoDto, titulo: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      throw new Error('No se renombró: resuelve el guardado pendiente.');
+    }
+    try {
+      const actualizado = await renombrarDocumento(actual.raiz, documento.id, titulo.trim());
+      await refrescarEstructura();
+      if (activoRef.current?.id === actualizado.id) {
+        fijarActivo(actualizado);
+        setTituloEdicion(actualizado.titulo);
+        cuerpoEditorRef.current = actualizado.cuerpo;
+      }
+      setMensaje('Documento renombrado.');
+    } catch (fallo) {
+      setMensaje(`No se pudo renombrar: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
+  const eliminarDocumentoNodo = async (documento: DocumentoDto) => {
+    await cambiarArchivoDocumento(documento, 'papelera');
+  };
+
+  const contenidoMarkdown = (lista: DocumentoDto[]) =>
+    lista
+      .map((documento) => `# ${documento.titulo}\n\n${documento.cuerpo.trim()}`)
+      .join('\n\n---\n\n')
+      .concat('\n');
+
+  const exportarDocumentoNodo = async (documento: DocumentoDto) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se exportó: resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const vivo =
+        documento.id === activoRef.current?.id
+          ? await leer(actual.raiz, documento.id)
+          : documento;
+      const nombre = `${vivo.titulo.replace(/[\\/:*?"<>|]+/g, '-')}.md`;
+      const destino = await exportarTexto(nombre, contenidoMarkdown([vivo]));
+      if (destino) {
+        setMensaje(`Exportado: ${destino}.`);
+      }
+    } catch (fallo) {
+      setMensaje(`No se pudo exportar: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const exportarCarpetaNodo = async (ruta: string, nombre: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se exportó: resuelve el guardado pendiente.');
+      return;
+    }
+    const lista = documentos
+      .filter((documento) => documento.ruta.startsWith(`${ruta}/`) && !documento.archivo)
+      .sort((a, b) => a.ruta.localeCompare(b.ruta, 'es'));
+    if (lista.length === 0) {
+      setMensaje('No hay documentos activos para exportar en esta carpeta.');
+      return;
+    }
+    try {
+      const nombreArchivo = `${nombre.replace(/[\\/:*?"<>|]+/g, '-')}.md`;
+      const destino = await exportarTexto(nombreArchivo, contenidoMarkdown(lista));
+      if (destino) {
+        setMensaje(`Exportado: ${destino}.`);
+      }
+    } catch (fallo) {
+      setMensaje(`No se pudo exportar: ${errorDe(fallo).mensaje}`);
     }
   };
 
@@ -2329,6 +2419,8 @@ export default function App() {
     limpiarPendiente();
     fijarProyecto(null);
     setDocumentos([]);
+    setCarpetas([]);
+    setVistaProyecto('editor');
     fijarActivo(null);
     setEstado('inicio');
     setVistaInicio(destino);
@@ -3049,35 +3141,8 @@ export default function App() {
     });
   };
 
-  const botonDocumento = (documento: DocumentoDto, icono: string) => (
-    <button
-      key={documento.id}
-      id={`doc-${documento.id}`}
-      className={`dabble-doc ${activo?.id === documento.id ? 'activo' : ''}`}
-      tabIndex={idArbolTabbable === documento.id ? 0 : -1}
-      aria-current={activo?.id === documento.id ? 'page' : undefined}
-      onFocus={() => setFocoArbol(documento.id)}
-      onKeyDown={(evento) => manejarTeclaArbol(evento, documento)}
-      onClick={() => void seleccionar(documento)}
-      draggable={documento.tipo === 'escena'}
-      onDragStart={(evento) => {
-        if (documento.tipo !== 'escena') {
-          return;
-        }
-        evento.dataTransfer.setData('text/plain', documento.id);
-        evento.dataTransfer.effectAllowed = 'move';
-      }}
-      onDragEnd={() => setDestinoArrastre(null)}
-    >
-      <span className="dabble-doc-icono" aria-hidden="true">
-        {icono}
-      </span>
-      <span className="dabble-doc-titulo">{documento.titulo}</span>
-    </button>
-  );
-
   const abrirCreacionRapida = () => {
-    setFiltroArchivo('activo');
+    setVistaProyecto('editor');
     setConsulta('');
     setPanelDerecho('plan');
     if (esVistaEstrecha()) {
@@ -3093,28 +3158,28 @@ export default function App() {
       <h3 className="dabble-seccion">Utilidades</h3>
       <button
         className="dabble-utilidad"
-        onClick={() => void volverAlInicio('plantillas')}
+        onClick={() => setVistaProyecto('plantillas')}
       >
-        ▢ Plantillas
+        <FileStack size={15} strokeWidth={1.7} aria-hidden="true" /> Plantillas
       </button>
       <button
         className={`dabble-utilidad dabble-utilidad-fila ${
-          filtroArchivo === 'archivado' ? 'activo' : ''
+          vistaProyecto === 'archivo' ? 'activo' : ''
         }`}
-        onClick={() => setFiltroArchivo('archivado')}
+        onClick={() => setVistaProyecto('archivo')}
       >
-        <span>⌂ Archivo</span>
+        <span><Archive size={15} strokeWidth={1.7} aria-hidden="true" /> Archivo</span>
         {totalArchivados > 0 && (
           <span className="dabble-utilidad-contador">{totalArchivados}</span>
         )}
       </button>
       <button
         className={`dabble-utilidad dabble-utilidad-fila ${
-          filtroArchivo === 'papelera' ? 'activo' : ''
+          vistaProyecto === 'papelera' ? 'activo' : ''
         }`}
-        onClick={() => setFiltroArchivo('papelera')}
+        onClick={() => setVistaProyecto('papelera')}
       >
-        <span>♲ Papelera</span>
+        <span><Trash2 size={15} strokeWidth={1.7} aria-hidden="true" /> Papelera</span>
         {totalPapelera > 0 && (
           <span className="dabble-utilidad-contador">{totalPapelera}</span>
         )}
@@ -3124,106 +3189,9 @@ export default function App() {
         onClick={() => setPreferenciasAbiertas(true)}
         title="Preferencias de escritura"
       >
-        ⚙ Preferencias de escritura
+        <Settings size={15} strokeWidth={1.7} aria-hidden="true" /> Preferencias de escritura
       </button>
     </>
-  );
-
-  const totalEstadoArchivo =
-    filtroArchivo === 'papelera' ? totalPapelera : totalArchivados;
-  const otroEstadoArchivo =
-    filtroArchivo === 'papelera' ? totalArchivados : totalPapelera;
-  const nombreEstadoArchivo = filtroArchivo === 'papelera' ? 'Papelera' : 'Archivo';
-
-  const vistaArchivo = (
-    <section className="dabble-archivo-vista" aria-label={nombreEstadoArchivo}>
-      <button className="dabble-volver" onClick={() => setFiltroArchivo('activo')}>
-        ← Volver a activos
-      </button>
-      <header className="dabble-archivo-cabecera">
-        <span className="dabble-archivo-icono" aria-hidden="true">
-          {filtroArchivo === 'papelera' ? '♲' : '⌂'}
-        </span>
-        <div>
-          <h3>{nombreEstadoArchivo}</h3>
-          <p>
-            {filtroArchivo === 'papelera'
-              ? 'Documentos apartados del manuscrito. Restáuralos para seguir editando.'
-              : 'Documentos guardados fuera del manuscrito. Restáuralos cuando los necesites.'}
-          </p>
-        </div>
-        <span className="dabble-archivo-contador">{documentosArchivo.length}</span>
-      </header>
-
-      {documentosArchivo.length === 0 ? (
-        <div className="dabble-archivo-vacio">
-          <strong>
-            {filtroEtiqueta.trim()
-              ? 'No hay documentos con esta etiqueta'
-              : filtroArchivo === 'papelera'
-                ? 'La papelera está vacía'
-                : 'El archivo está vacío'}
-          </strong>
-          <p>
-            {filtroEtiqueta.trim()
-              ? 'Prueba con otra etiqueta o límpiala para ver todos los documentos.'
-              : filtroArchivo === 'papelera'
-                ? 'Cuando envíes una escena o nota a la papelera, aparecerá aquí para restaurarla.'
-                : 'Cuando archives una escena o nota, aparecerá aquí para recuperarla.'}
-          </p>
-          {filtroEtiqueta.trim() ? (
-            <button onClick={() => setFiltroEtiqueta('')}>Limpiar filtro</button>
-          ) : otroEstadoArchivo > 0 ? (
-            <button
-              onClick={() =>
-                setFiltroArchivo(filtroArchivo === 'papelera' ? 'archivado' : 'papelera')
-              }
-            >
-              Ver {filtroArchivo === 'papelera' ? 'archivo' : 'papelera'} (
-              {otroEstadoArchivo})
-            </button>
-          ) : null}
-        </div>
-      ) : (
-        <ul className="dabble-archivo-lista">
-          {documentosArchivo.map((documento) => (
-            <li key={documento.id}>
-              <button
-                className={`dabble-doc ${activo?.id === documento.id ? 'activo' : ''}`}
-                aria-current={activo?.id === documento.id ? 'page' : undefined}
-                onClick={() => void seleccionar(documento)}
-              >
-                <span className="dabble-doc-icono" aria-hidden="true">
-                  {iconoDocumento(documento)}
-                </span>
-                <span className="dabble-doc-texto">
-                  <span className="dabble-doc-titulo">{documento.titulo}</span>
-                  <span className="dabble-doc-subtitulo">
-                    {etiquetaDocumento(documento)}
-                    {documento.etiquetas.length > 0
-                      ? ` · ${documento.etiquetas.slice(0, 2).join(', ')}`
-                      : ''}
-                  </span>
-                </span>
-              </button>
-              <button
-                className="dabble-archivo-restaurar"
-                aria-label={`Restaurar ${documento.titulo}`}
-                title="Restaurar a activos"
-                onClick={() => void cambiarArchivoDocumento(documento, null)}
-              >
-                ↩
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {totalEstadoArchivo > documentosArchivo.length && (
-        <p className="dabble-archivo-filtro">
-          Mostrando {documentosArchivo.length} de {totalEstadoArchivo}.
-        </p>
-      )}
-    </section>
   );
 
   if (estado === 'inicio' || estado === 'error') {
@@ -3259,7 +3227,7 @@ export default function App() {
     <div
       className={`dabble-app ${preferencias.modoEnfoque ? 'modo-enfoque' : ''} ${
         panelAbierto ? 'panel-abierto' : ''
-      }`}
+      } ${vistaProyecto !== 'editor' ? 'dabble-vista-especial' : ''}`}
     >
       <a className="saltar-contenido" href="#panel-principal">
         Saltar al contenido
@@ -3271,14 +3239,17 @@ export default function App() {
           title="Volver a Proyectos"
           onClick={() => void volverAlInicio()}
         >
-          ⌂
+          <Home size={18} strokeWidth={1.7} aria-hidden="true" />
         </button>
         <div className="dabble-tabs">
           <button
             className={`dabble-tab ${vista === 'editor' ? 'activo' : ''}`}
-            onClick={() => setVista('editor')}
+            onClick={() => {
+              setVista('editor');
+              setVistaProyecto('editor');
+            }}
           >
-            <span className="dabble-tab-icono" aria-hidden="true">▤</span>
+            <span className="dabble-tab-icono" aria-hidden="true"><BookOpen size={15} strokeWidth={1.8} /></span>
             <strong>{proyecto?.titulo ?? 'Proyecto'}</strong>
           </button>
           <button
@@ -3292,15 +3263,19 @@ export default function App() {
               } else {
                 setPanelDerecho('notas');
               }
+              setVistaProyecto('editor');
             }}
           >
-            <span className="dabble-tab-icono" aria-hidden="true">◈</span>
+            <span className="dabble-tab-icono" aria-hidden="true"><Globe2 size={15} strokeWidth={1.8} /></span>
             Construcción del mundo
           </button>
           <button
             className={`dabble-tab ${vista !== 'editor' ? 'activo' : ''}`}
             aria-label={`Editor: ${activo?.titulo ?? 'sin documento'}`}
-            onClick={() => setVista('editor')}
+            onClick={() => {
+              setVista('editor');
+              setVistaProyecto('editor');
+            }}
             disabled={!activo}
           >
             {activo?.titulo ?? 'Sin documento'}
@@ -3408,7 +3383,7 @@ export default function App() {
       <div className="dabble-workspace">
         <aside className="dabble-sidebar">
           <div className="dabble-filtro">
-            <span aria-hidden="true">▽</span>
+            <Search size={14} strokeWidth={1.7} aria-hidden="true" />
             <input
               ref={buscadorRef}
               type="text"
@@ -3434,7 +3409,7 @@ export default function App() {
               title="Crear documento"
               onClick={abrirCreacionRapida}
             >
-              +
+              <Plus size={15} strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
           <div className="dabble-filtro-etiqueta">
@@ -3480,81 +3455,26 @@ export default function App() {
             </div>
           ) : (
             <div className="dabble-arbol">
-              {filtroArchivo === 'activo' ? (
-                <>
-              <h3 className="dabble-seccion">Manuscritos</h3>
-              {libros.length === 0 && <p className="dabble-vacio">Sin escenas.</p>}
-              {libros.map((libro) => (
-                <div className="dabble-libro" key={libro.etiqueta}>
-                  <div className="dabble-libro-titulo">{libro.etiqueta}</div>
-                  {libro.capitulos.map((capitulo) => (
-                    <div
-                      className={`dabble-capitulo ${
-                        destinoArrastre === capitulo.clave ? 'arrastre-activo' : ''
-                      }`}
-                      key={capitulo.clave}
-                      onDragOver={(evento) => {
-                        evento.preventDefault();
-                        evento.dataTransfer.dropEffect = 'move';
-                        setDestinoArrastre(capitulo.clave);
-                      }}
-                      onDragLeave={() => setDestinoArrastre(null)}
-                      onDrop={(evento) => {
-                        evento.preventDefault();
-                        const id = evento.dataTransfer.getData('text/plain');
-                        const [libro, capituloDestino] = capitulo.clave.split('/');
-                        if (id && libro && capituloDestino) {
-                          void moverDocumento(id, libro, capituloDestino);
-                        }
-                      }}
-                    >
-                      <div className="dabble-capitulo-titulo">{capitulo.etiqueta}</div>
-                      {capitulo.documentos.map((documento) => botonDocumento(documento, '▤'))}
-                    </div>
-                  ))}
-                </div>
-              ))}
-
-              <h3 className="dabble-seccion">Tramas</h3>
-              {notasVisibles.filter((documento) => documento.clase === 'tramas').length === 0 && (
-                <p className="dabble-vacio">Sin tramas.</p>
-              )}
-              {notasVisibles
-                .filter((documento) => documento.clase === 'tramas')
-                .map((documento) => botonDocumento(documento, '◈'))}
-
-              <h3 className="dabble-seccion">Personajes</h3>
-              {notasVisibles.filter((documento) => documento.clase === 'personajes').length === 0 && (
-                <p className="dabble-vacio">Sin personajes.</p>
-              )}
-              {notasVisibles
-                .filter((documento) => documento.clase === 'personajes')
-                .map((documento) => botonDocumento(documento, '♙'))}
-
-              <h3 className="dabble-seccion">Cuaderno</h3>
-              {notasVisibles.filter(
-                (documento) =>
-                  !['tramas', 'personajes', 'ideas'].includes(documento.clase ?? ''),
-              ).length === 0 && <p className="dabble-vacio">Sin notas de cuaderno.</p>}
-              {notasVisibles
-                .filter(
-                  (documento) =>
-                    !['tramas', 'personajes', 'ideas'].includes(documento.clase ?? ''),
-                )
-                .map((documento) => botonDocumento(documento, '▢'))}
-
-              <h3 className="dabble-seccion">Ideas</h3>
-              {notasVisibles.filter((documento) => documento.clase === 'ideas').length === 0 && (
-                <p className="dabble-vacio">Sin ideas.</p>
-              )}
-              {notasVisibles
-                .filter((documento) => documento.clase === 'ideas')
-                .map((documento) => botonDocumento(documento, '✦'))}
-
-                </>
-              ) : (
-                vistaArchivo
-              )}
+              <ArbolProyecto
+                carpetas={carpetas}
+                documentos={documentos}
+                activoId={activo?.id ?? null}
+                filtroEtiqueta={filtroEtiqueta}
+                onSeleccionar={(documento) => void seleccionar(documento)}
+                onCrear={crearNodo}
+                onRenombrarCarpeta={renombrarCarpetaNodo}
+                onEliminarCarpeta={eliminarCarpetaNodo}
+                onExportarCarpeta={(ruta, nombre) => void exportarCarpetaNodo(ruta, nombre)}
+                onRenombrarDocumento={renombrarDocumentoNodo}
+                onEliminarDocumento={eliminarDocumentoNodo}
+                onExportarDocumento={(documento) => void exportarDocumentoNodo(documento)}
+                onMoverDocumento={(documento, ruta) => {
+                  const partes = ruta.split('/');
+                  if (partes.length >= 3) {
+                    void moverDocumento(documento.id, partes[1], partes[2]);
+                  }
+                }}
+              />
               {utilidadesSidebar}
             </div>
           )}
@@ -3684,7 +3604,28 @@ export default function App() {
             </details>
           )}
 
-          {vista === 'historial' ? (
+          {vistaProyecto === 'archivo' ? (
+            <VistaEstadoProyecto
+              estado="archivo"
+              documentos={documentos.filter((documento) => documento.archivo === 'archivado')}
+              onAbrir={(documento) => void seleccionar(documento)}
+              onRestaurar={(documento) => void cambiarArchivoDocumento(documento, null)}
+              onVolver={() => setVistaProyecto('editor')}
+            />
+          ) : vistaProyecto === 'papelera' ? (
+            <VistaEstadoProyecto
+              estado="papelera"
+              documentos={documentos.filter((documento) => documento.archivo === 'papelera')}
+              onAbrir={(documento) => void seleccionar(documento)}
+              onRestaurar={(documento) => void cambiarArchivoDocumento(documento, null)}
+              onVolver={() => setVistaProyecto('editor')}
+            />
+          ) : vistaProyecto === 'plantillas' ? (
+            <VistaPlantillas
+              onGestionar={() => void volverAlInicio('plantillas')}
+              onVolver={() => setVistaProyecto('editor')}
+            />
+          ) : vista === 'historial' ? (
             <section className="dabble-historial">
               <header className="dabble-historial-cabecera">
                 <div>
@@ -4683,7 +4624,6 @@ export default function App() {
                     aria-label="Tipo de la nueva nota"
                   >
                     <option value="cuaderno">Cuaderno</option>
-                    <option value="ideas">Ideas</option>
                     <option value="personajes">Personajes</option>
                     <option value="tramas">Tramas</option>
                     <option value="lugares">Lugares</option>
@@ -4713,7 +4653,6 @@ export default function App() {
                   >
                     <option value="">Escena</option>
                     <option value="cuaderno">Nota de cuaderno</option>
-                    <option value="ideas">Idea</option>
                     <option value="personajes">Personaje</option>
                     <option value="tramas">Trama</option>
                     <option value="lugares">Lugar</option>

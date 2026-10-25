@@ -33,6 +33,48 @@ fn init_crea_proyecto_verificable() {
 }
 
 #[test]
+fn crea_renombra_carpetas_y_escenas_en_cualquier_nivel() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+
+    proyecto
+        .crear_carpeta("manuscrito/02-libro")
+        .expect("crear libro");
+    proyecto
+        .crear_carpeta("manuscrito/02-libro/01-capitulo")
+        .expect("crear capítulo");
+    let (_, ruta) = proyecto
+        .crear_escena_en("manuscrito/02-libro/01-capitulo", "Escena nueva")
+        .expect("crear escena");
+    assert!(ruta.starts_with("manuscrito/02-libro/01-capitulo/"));
+
+    let carpetas = proyecto.listar_carpetas().expect("carpetas");
+    assert!(carpetas.contains(&"manuscrito/02-libro".to_string()));
+    assert!(carpetas.contains(&"manuscrito/02-libro/01-capitulo".to_string()));
+    assert!(!carpetas.contains(&"notas".to_string()));
+
+    let nueva = proyecto
+        .renombrar_carpeta("manuscrito/02-libro/01-capitulo", "02-capitulo")
+        .expect("renombrar");
+    assert_eq!(nueva, "manuscrito/02-libro/02-capitulo");
+    let escenas = proyecto.listar(false).expect("listar");
+    assert!(escenas.iter().any(|escena| escena
+        .relativa()
+        .starts_with("manuscrito/02-libro/02-capitulo/")));
+
+    proyecto
+        .crear_carpeta("manuscrito/03-libro")
+        .expect("crear vacío");
+    proyecto
+        .eliminar_carpeta_vacia("manuscrito/03-libro")
+        .expect("eliminar vacío");
+    assert!(!directorio.path().join("manuscrito/03-libro").exists());
+    assert!(proyecto.crear_carpeta("manuscrito/../fuera").is_err());
+    assert!(proyecto.renombrar_carpeta("notas/tramas", "otra").is_err());
+}
+
+#[test]
 fn cambios_locales_se_proponen_aceptan_o_rechazan() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));

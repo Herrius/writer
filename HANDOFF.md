@@ -20,6 +20,9 @@
 - **Barra lateral 2026-10-25:** vistas de Archivo y Papelera con contador,
   restauración por fila y estados vacíos; ver
   [`docs/iteraciones/34-archivo-papelera-sidebar.md`](docs/iteraciones/34-archivo-papelera-sidebar.md).
+- **Árbol jerárquico 2026-10-25:** iconos Lucide, carpetas anidadas, menús por
+  nodo y páginas de Archivo/Papelera/Plantillas; ver
+  [`docs/iteraciones/35-arbol-jerarquico.md`](docs/iteraciones/35-arbol-jerarquico.md).
 
 ## 1. Resumen
 
@@ -41,8 +44,10 @@ La Fase 3 añade sobre el motor y la app existentes:
    papelera local de proyectos.
 8. **Meta diaria global:** objetivo y actividad compartidos por todos los
    libros, con días libres, opciones de conteo y recordatorio local.
-9. **Archivo y papelera de documentos:** vistas dedicadas, contadores y
-   restauración directa desde la barra lateral.
+9. **Archivo y papelera de documentos:** páginas propias en el área principal,
+   con árbol visible y restauración directa.
+10. **Árbol jerárquico:** libros, capítulos, secciones y escenas con menús de
+    crear, renombrar, eliminar y exportar, e iconos profesionales Lucide.
 
 La Fase 3 sigue siendo **local/offline**. El corrector es el nativo del WebView;
 no se empaqueta diccionario, tesauro ni gramática propia. Las voces dependen del
@@ -140,11 +145,11 @@ WebKit/WebView2 al ejecutar `cargo test --workspace` del núcleo.
 ```text
 cargo fmt --all --check                         OK
 cargo clippy --workspace --all-targets -D warnings   OK
-cargo test --workspace --all-targets --locked   91 + 49 + 25 + 1 perf
-cargo test desktop                              9/9
+cargo test --workspace --all-targets --locked   91 + 50 + 25 + 1 perf
+cargo test desktop                              10/10
 pnpm typecheck                                  OK
 pnpm ui:test                                    88/88
-pnpm e2e                                        58/58
+pnpm e2e                                        59/59
 ci.py calidad                                   OK
 ci.py interfaz                                  OK
 ci.py producto                                  OK

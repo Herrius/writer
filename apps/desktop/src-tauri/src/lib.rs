@@ -1329,6 +1329,59 @@ fn abrir_proyecto(ruta: String) -> Result<ProyectoDto, ErrorDto> {
 }
 
 #[tauri::command]
+fn listar_carpetas(ruta: String) -> Result<Vec<String>, ErrorDto> {
+    Project::new(&ruta).listar_carpetas().map_err(error)
+}
+
+#[tauri::command]
+fn crear_carpeta(ruta: String, relativa: String) -> Result<String, ErrorDto> {
+    Project::new(&ruta).crear_carpeta(&relativa).map_err(error)
+}
+
+#[tauri::command]
+fn renombrar_carpeta(ruta: String, relativa: String, nombre: String) -> Result<String, ErrorDto> {
+    Project::new(&ruta)
+        .renombrar_carpeta(&relativa, &nombre)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn eliminar_carpeta_vacia(ruta: String, relativa: String) -> Result<(), ErrorDto> {
+    Project::new(&ruta)
+        .eliminar_carpeta_vacia(&relativa)
+        .map_err(error)
+}
+
+#[tauri::command]
+fn crear_escena_en(
+    ruta: String,
+    carpeta: String,
+    titulo: String,
+) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = Project::new(&ruta)
+        .crear_escena_en(&carpeta, &titulo)
+        .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
+fn guardar_texto_exportado(
+    destino: String,
+    contenido: String,
+    forzar: bool,
+) -> Result<String, ErrorDto> {
+    let destino = std::path::PathBuf::from(destino);
+    if destino.exists() && !forzar {
+        return Err(error(ErrorNucleo::Conflict(format!(
+            "el destino ya existe: {}",
+            destino.display()
+        ))));
+    }
+    writer_core::fsutil::escribir_atomico(&destino, contenido.as_bytes()).map_err(error)?;
+    Ok(destino.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 fn listar(ruta: String, notas: bool) -> Result<Vec<DocumentoDto>, ErrorDto> {
     let documentos = Project::new(&ruta).listar(notas).map_err(error)?;
     Ok(documentos.into_iter().map(documento_dto).collect())
@@ -1857,6 +1910,12 @@ pub fn run() {
             crear_proyecto,
             abrir_proyecto,
             listar,
+            listar_carpetas,
+            crear_carpeta,
+            renombrar_carpeta,
+            eliminar_carpeta_vacia,
+            crear_escena_en,
+            guardar_texto_exportado,
             leer,
             verificar,
             buscar,
@@ -2347,5 +2406,14 @@ mod tests {
         let sesiones = leer_sesiones(ruta, "2026-10".to_string()).expect("leer sesiones");
         assert_eq!(sesiones.len(), 1);
         assert_eq!(sesiones[0].palabras, 412);
+    }
+    #[test]
+    fn guardar_texto_exportado_no_sobrescribe_sin_forzar() {
+        let directorio = tempfile::tempdir().expect("temporal");
+        let destino = directorio.path().join("salida.md");
+        let ruta = destino.display().to_string();
+        guardar_texto_exportado(ruta.clone(), "# Hola".to_string(), false).expect("exportar texto");
+        assert_eq!(std::fs::read_to_string(&destino).expect("leer"), "# Hola");
+        assert!(guardar_texto_exportado(ruta, "otro".to_string(), false).is_err());
     }
 }

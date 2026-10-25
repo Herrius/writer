@@ -115,7 +115,10 @@
 - [`iteraciones/33-metas-globales.md`](iteraciones/33-metas-globales.md) — meta
   diaria global y rediseño del panel de metas.
 - [`iteraciones/34-archivo-papelera-sidebar.md`](iteraciones/34-archivo-papelera-sidebar.md)
-  — archivo y papelera de documentos desde la barra lateral.
+  — primera vista de archivo y papelera en la barra lateral (reemplazada por
+  la iteración 35).
+- [`iteraciones/35-arbol-jerarquico.md`](iteraciones/35-arbol-jerarquico.md) —
+  árbol jerárquico, menús contextuales, iconos Lucide y páginas de estado.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura
