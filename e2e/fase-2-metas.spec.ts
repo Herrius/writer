@@ -80,3 +80,28 @@ test('mantiene el temporizador y registra la sesión', async ({ page }) => {
   await page.getByRole('button', { name: 'Finalizar' }).click();
   await expect(page.getByText('Sesión de 5 min registrada.')).toBeVisible();
 });
+
+test('muestra el estado vacío y el botón solo al pasar el ratón', async ({ page }) => {
+  await abrirDemo(page);
+  await page.getByRole('button', { name: 'Configurar meta diaria' }).click();
+  const modal = page.getByRole('dialog', { name: 'Meta diaria' });
+  await modal.getByRole('button', { name: 'Eliminar meta' }).click();
+  await modal.getByRole('button', { name: 'Confirmar eliminación' }).click();
+  await expect(modal).toHaveCount(0);
+
+  await expect(page.getByText('METAS DIARIAS')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Establece tus metas de escritura' })).toBeVisible();
+  await expect(page.getByText('Configura tu primera meta diaria')).toHaveCount(0);
+  await expect(page.getByText('Aún no tienes una meta diaria.')).toHaveCount(0);
+
+  const agregar = page.getByRole('button', { name: 'Agregar una meta' });
+  expect(
+    await agregar.evaluate((elemento) => window.getComputedStyle(elemento).opacity),
+  ).toBe('0');
+  await page.locator('.meta-vacia').hover();
+  await expect
+    .poll(() => agregar.evaluate((elemento) => window.getComputedStyle(elemento).opacity))
+    .toBe('1');
+  await agregar.click();
+  await expect(page.getByRole('dialog', { name: 'Meta diaria' })).toBeVisible();
+});

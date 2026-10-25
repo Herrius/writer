@@ -1,14 +1,14 @@
 # E2E — navegador y escritorio
 
 - **Fecha:** 2026-10-24
-- **Estado:** vigente para la Fase 3 (57 flujos)
+- **Estado:** vigente para la Fase 3 (58 flujos)
 - **Ámbito:** `e2e/`, `e2e-tauri/`, `playwright.config.ts` y
   `scripts/e2e-tauri.sh`
 
 ## 1. E2E de navegador (Playwright)
 
 Playwright arranca Vite en `http://127.0.0.1:1420` y prueba la UI en **modo
-demo** (sin Tauri). Cubre los flujos de las fases 1–3, incluidos autosave, búsqueda, historial, cambios, preferencias, paleta, TTS simulado, filtros, colecciones, plantillas, papelera y zoom. Los 12 flujos originales se conservan y la suite creció a 57 casos con las fases 2 y 3. Los primeros son:
+demo** (sin Tauri). Cubre los flujos de las fases 1–3, incluidos autosave, búsqueda, historial, cambios, preferencias, paleta, TTS simulado, filtros, colecciones, plantillas, papelera y zoom. Los 12 flujos originales se conservan y la suite creció a 58 casos con las fases 2 y 3. Los primeros son:
 
 1. abrir el asistente de creación, validar el título y explicar el límite de la
    demo;

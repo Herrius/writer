@@ -59,7 +59,8 @@ global, se migra una sola vez al abrir el proyecto.
 - El engranaje abre el modal de meta diaria con las opciones de conteo y días
   libres; no hay tarjeta inferior de llamada a la acción.
 - Temporizador con presets, tiempo restante, iniciar/pausar/finalizar.
-- Estado vacío con el engranaje para configurar la primera meta.
+- Sin meta no aparece la cabecera ni el estado del día; se muestra un estado
+  vacío con gráfico, título, mensaje y «Agregar una meta» al pasar el ratón.
 - Las metas de libro y desafío se conservan en el archivo del proyecto, pero no
   se editan en este panel.
 - Los cambios de meta se guardan al confirmar, no en cada tecla.

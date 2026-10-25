@@ -49,8 +49,9 @@ El editor calcula el delta de palabras de cada documento activo.
 - «Hoy es un día de escritura» / «Hoy es un día libre».
 - Progreso, porcentaje, restante y gráfico de 14 días.
 - Modal de configuración con días libres y recordatorio local.
-- El engranaje de la cabecera es la única entrada para crear, ajustar o
-  eliminar la meta diaria.
+- El engranaje de la cabecera solo aparece cuando ya hay una meta.
+- Sin meta se muestra un estado vacío con gráfico ilustrado y el botón
+  «Agregar una meta», visible al pasar el ratón o al enfocar.
 
 ## 4. Persistencia y migración
 

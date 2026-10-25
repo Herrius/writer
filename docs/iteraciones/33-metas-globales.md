@@ -3,7 +3,8 @@
 - **Fecha:** 2026-10-24
 - **Estado:** implementado en Linux x86_64; Windows pendiente de Fase 4.
 - **Capturas:** [`../revisiones/metas-globales-panel-2026-10-24.png`](../revisiones/metas-globales-panel-2026-10-24.png),
-  [`../revisiones/metas-globales-modal-2026-10-24.png`](../revisiones/metas-globales-modal-2026-10-24.png).
+  [`../revisiones/metas-globales-modal-2026-10-24.png`](../revisiones/metas-globales-modal-2026-10-24.png),
+  [`../revisiones/metas-globales-vacia-2026-10-25.png`](../revisiones/metas-globales-vacia-2026-10-25.png).
 
 ## 1. Objetivo
 
@@ -25,10 +26,13 @@ no sobre las sesiones de un proyecto concreto.
   `localStorage` (`writer.metas-globales.v1`).
 - Migración inicial: si el proyecto abierto tiene una meta diaria antigua y aún
   no hay una global, se adopta esa meta una sola vez.
-- Se retiraron la tarjeta «Establece tus metas de escritura» y el bloque
-  «Otras metas»: la meta se configura desde el engranaje de la cabecera.
-- Los datos antiguos de libro y desafío se conservan en el proyecto por
-  compatibilidad, pero ya no se editan desde este panel.
+- Sin meta no se muestran «METAS DIARIAS», el estado del día ni el mensaje de
+  bienvenida. Se muestra un estado vacío con gráfico ilustrado, título, texto y
+  el botón «Agregar una meta», visible solo al pasar el ratón o al enfocar.
+- Con meta se muestra la cabecera «METAS DIARIAS» con el engranaje, el estado
+  del día, el progreso y el gráfico real.
+- Se retiró el bloque «Otras metas»; los datos antiguos de libro y desafío se
+  conservan en el proyecto por compatibilidad, pero ya no se editan aquí.
 - El temporizador de sesión se conserva debajo del panel.
 
 ## 3. Cálculo
@@ -46,7 +50,7 @@ no sobre las sesiones de un proyecto concreto.
 ```text
 pnpm typecheck                         OK
 pnpm ui:test                           88/88
-pnpm e2e                               57/57 (metas 3/3)
+pnpm e2e                               58/58 (metas 4/4)
 cargo test --workspace                 91 + 49 + 25 + 1
 cargo test desktop                     9/9
 ```
