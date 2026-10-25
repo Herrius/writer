@@ -242,6 +242,38 @@ function etiquetaTipo(documento: DocumentoDto): string {
   return documento.clase ?? 'nota';
 }
 
+function etiquetaDocumento(documento: DocumentoDto): string {
+  if (documento.tipo === 'escena') {
+    return 'Escena';
+  }
+  const etiquetas: Record<string, string> = {
+    tramas: 'Trama',
+    personajes: 'Personaje',
+    ideas: 'Idea',
+    cuaderno: 'Cuaderno',
+    lugares: 'Lugar',
+    cronologia: 'Cronología',
+    objetos: 'Objeto',
+  };
+  return etiquetas[documento.clase ?? ''] ?? 'Nota';
+}
+
+function iconoDocumento(documento: DocumentoDto): string {
+  if (documento.tipo === 'escena') {
+    return '▤';
+  }
+  if (documento.clase === 'tramas') {
+    return '◈';
+  }
+  if (documento.clase === 'personajes') {
+    return '♙';
+  }
+  if (documento.clase === 'ideas') {
+    return '✦';
+  }
+  return '▢';
+}
+
 function etiquetaGuardado(estado: EstadoGuardado): string {
   switch (estado) {
     case 'guardado':
@@ -412,6 +444,9 @@ export default function App() {
   const [recientes, setRecientes] = useState<Reciente[]>(() => leerRecientes());
   const [preferencias, setPreferencias] = useState<Preferencias>(() => cargarPreferencias());
   const [preferenciasAbiertas, setPreferenciasAbiertas] = useState(false);
+  const [vistaInicio, setVistaInicio] = useState<'activo' | 'plantillas' | 'papelera'>(
+    'activo',
+  );
   const [paleta, setPaleta] = useState<'documentos' | 'comandos' | null>(null);
   const [diffAbierto, setDiffAbierto] = useState(false);
   const [panelAbierto, setPanelAbierto] = useState(false);
@@ -576,6 +611,28 @@ export default function App() {
           )),
     );
   }, [notas, filtroArchivo, filtroEtiqueta]);
+  const documentosArchivo = useMemo(() => {
+    if (filtroArchivo === 'activo') {
+      return [];
+    }
+    const termino = filtroEtiqueta.trim().toLocaleLowerCase();
+    return documentos.filter(
+      (documento) =>
+        (documento.archivo ?? 'activo') === filtroArchivo &&
+        (!termino ||
+          documento.etiquetas.some((etiqueta) =>
+            etiqueta.toLocaleLowerCase().includes(termino),
+          )),
+    );
+  }, [documentos, filtroArchivo, filtroEtiqueta]);
+  const totalArchivados = useMemo(
+    () => documentos.filter((documento) => documento.archivo === 'archivado').length,
+    [documentos],
+  );
+  const totalPapelera = useMemo(
+    () => documentos.filter((documento) => documento.archivo === 'papelera').length,
+    [documentos],
+  );
   const idArbolTabbable = focoArbol ?? activo?.id ?? documentos[0]?.id ?? null;
 
   const moverFocoArbol = (documento: DocumentoDto, destino: 'siguiente' | 'anterior' | 'inicio' | 'fin') => {
@@ -1524,10 +1581,12 @@ export default function App() {
     }
   };
 
-  const cambiarArchivoActivo = async (archivo: 'archivado' | 'papelera' | null) => {
+  const cambiarArchivoDocumento = async (
+    documento: DocumentoDto,
+    archivo: 'archivado' | 'papelera' | null,
+  ) => {
     const actual = proyectoRef.current;
-    const documento = activoRef.current;
-    if (!actual || !documento) {
+    if (!actual) {
       return;
     }
     const guardado = await guardarAhora();
@@ -1542,7 +1601,9 @@ export default function App() {
           candidato.id === actualizado.id ? { ...candidato, ...actualizado } : candidato,
         ),
       );
-      fijarActivo(actualizado);
+      if (activoRef.current?.id === actualizado.id) {
+        fijarActivo(actualizado);
+      }
       setMensaje(
         archivo === null
           ? 'Documento restaurado a activos.'
@@ -1552,6 +1613,13 @@ export default function App() {
       );
     } catch (fallo) {
       setMensaje(`No se pudo cambiar de ubicación: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const cambiarArchivoActivo = async (archivo: 'archivado' | 'papelera' | null) => {
+    const documento = activoRef.current;
+    if (documento) {
+      await cambiarArchivoDocumento(documento, archivo);
     }
   };
 
@@ -2247,7 +2315,9 @@ export default function App() {
     }
   };
 
-  const volverAlInicio = async () => {
+  const volverAlInicio = async (
+    destino: 'activo' | 'plantillas' | 'papelera' = 'activo',
+  ) => {
     if (revirtiendoRef.current) {
       return;
     }
@@ -2261,6 +2331,7 @@ export default function App() {
     setDocumentos([]);
     fijarActivo(null);
     setEstado('inicio');
+    setVistaInicio(destino);
     setVista('editor');
     setConsulta('');
     setResultados([]);
@@ -3005,6 +3076,156 @@ export default function App() {
     </button>
   );
 
+  const abrirCreacionRapida = () => {
+    setFiltroArchivo('activo');
+    setConsulta('');
+    setPanelDerecho('plan');
+    if (esVistaEstrecha()) {
+      setPanelAbierto(true);
+    }
+    window.setTimeout(() => {
+      document.getElementById('nueva-escena-titulo')?.focus();
+    }, 50);
+  };
+
+  const utilidadesSidebar = (
+    <>
+      <h3 className="dabble-seccion">Utilidades</h3>
+      <button
+        className="dabble-utilidad"
+        onClick={() => void volverAlInicio('plantillas')}
+      >
+        ▢ Plantillas
+      </button>
+      <button
+        className={`dabble-utilidad dabble-utilidad-fila ${
+          filtroArchivo === 'archivado' ? 'activo' : ''
+        }`}
+        onClick={() => setFiltroArchivo('archivado')}
+      >
+        <span>⌂ Archivo</span>
+        {totalArchivados > 0 && (
+          <span className="dabble-utilidad-contador">{totalArchivados}</span>
+        )}
+      </button>
+      <button
+        className={`dabble-utilidad dabble-utilidad-fila ${
+          filtroArchivo === 'papelera' ? 'activo' : ''
+        }`}
+        onClick={() => setFiltroArchivo('papelera')}
+      >
+        <span>♲ Papelera</span>
+        {totalPapelera > 0 && (
+          <span className="dabble-utilidad-contador">{totalPapelera}</span>
+        )}
+      </button>
+      <button
+        className="dabble-config"
+        onClick={() => setPreferenciasAbiertas(true)}
+        title="Preferencias de escritura"
+      >
+        ⚙ Preferencias de escritura
+      </button>
+    </>
+  );
+
+  const totalEstadoArchivo =
+    filtroArchivo === 'papelera' ? totalPapelera : totalArchivados;
+  const otroEstadoArchivo =
+    filtroArchivo === 'papelera' ? totalArchivados : totalPapelera;
+  const nombreEstadoArchivo = filtroArchivo === 'papelera' ? 'Papelera' : 'Archivo';
+
+  const vistaArchivo = (
+    <section className="dabble-archivo-vista" aria-label={nombreEstadoArchivo}>
+      <button className="dabble-volver" onClick={() => setFiltroArchivo('activo')}>
+        ← Volver a activos
+      </button>
+      <header className="dabble-archivo-cabecera">
+        <span className="dabble-archivo-icono" aria-hidden="true">
+          {filtroArchivo === 'papelera' ? '♲' : '⌂'}
+        </span>
+        <div>
+          <h3>{nombreEstadoArchivo}</h3>
+          <p>
+            {filtroArchivo === 'papelera'
+              ? 'Documentos apartados del manuscrito. Restáuralos para seguir editando.'
+              : 'Documentos guardados fuera del manuscrito. Restáuralos cuando los necesites.'}
+          </p>
+        </div>
+        <span className="dabble-archivo-contador">{documentosArchivo.length}</span>
+      </header>
+
+      {documentosArchivo.length === 0 ? (
+        <div className="dabble-archivo-vacio">
+          <strong>
+            {filtroEtiqueta.trim()
+              ? 'No hay documentos con esta etiqueta'
+              : filtroArchivo === 'papelera'
+                ? 'La papelera está vacía'
+                : 'El archivo está vacío'}
+          </strong>
+          <p>
+            {filtroEtiqueta.trim()
+              ? 'Prueba con otra etiqueta o límpiala para ver todos los documentos.'
+              : filtroArchivo === 'papelera'
+                ? 'Cuando envíes una escena o nota a la papelera, aparecerá aquí para restaurarla.'
+                : 'Cuando archives una escena o nota, aparecerá aquí para recuperarla.'}
+          </p>
+          {filtroEtiqueta.trim() ? (
+            <button onClick={() => setFiltroEtiqueta('')}>Limpiar filtro</button>
+          ) : otroEstadoArchivo > 0 ? (
+            <button
+              onClick={() =>
+                setFiltroArchivo(filtroArchivo === 'papelera' ? 'archivado' : 'papelera')
+              }
+            >
+              Ver {filtroArchivo === 'papelera' ? 'archivo' : 'papelera'} (
+              {otroEstadoArchivo})
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <ul className="dabble-archivo-lista">
+          {documentosArchivo.map((documento) => (
+            <li key={documento.id}>
+              <button
+                className={`dabble-doc ${activo?.id === documento.id ? 'activo' : ''}`}
+                aria-current={activo?.id === documento.id ? 'page' : undefined}
+                onClick={() => void seleccionar(documento)}
+              >
+                <span className="dabble-doc-icono" aria-hidden="true">
+                  {iconoDocumento(documento)}
+                </span>
+                <span className="dabble-doc-texto">
+                  <span className="dabble-doc-titulo">{documento.titulo}</span>
+                  <span className="dabble-doc-subtitulo">
+                    {etiquetaDocumento(documento)}
+                    {documento.etiquetas.length > 0
+                      ? ` · ${documento.etiquetas.slice(0, 2).join(', ')}`
+                      : ''}
+                  </span>
+                </span>
+              </button>
+              <button
+                className="dabble-archivo-restaurar"
+                aria-label={`Restaurar ${documento.titulo}`}
+                title="Restaurar a activos"
+                onClick={() => void cambiarArchivoDocumento(documento, null)}
+              >
+                ↩
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {totalEstadoArchivo > documentosArchivo.length && (
+        <p className="dabble-archivo-filtro">
+          Mostrando {documentosArchivo.length} de {totalEstadoArchivo}.
+        </p>
+      )}
+    </section>
+  );
+
   if (estado === 'inicio' || estado === 'error') {
     return (
       <Inicio
@@ -3017,6 +3238,7 @@ export default function App() {
         onQuitarReciente={quitarReciente}
         onAgregarReciente={agregarReciente}
         onCrear={crearProyectoDesdeInicio}
+        vistaInicial={vistaInicio}
       />
     );
   }
@@ -3206,7 +3428,12 @@ export default function App() {
               placeholder="Filtrar archivos del proyecto"
               aria-label="Buscar en el proyecto"
             />
-            <button className="dabble-mas" aria-label="Crear archivo" title="Crear archivo próximamente" disabled>
+            <button
+              className="dabble-mas"
+              aria-label="Crear documento"
+              title="Crear documento"
+              onClick={abrirCreacionRapida}
+            >
               +
             </button>
           </div>
@@ -3253,14 +3480,8 @@ export default function App() {
             </div>
           ) : (
             <div className="dabble-arbol">
-              {filtroArchivo !== 'activo' && (
-                <button
-                  className="dabble-utilidad"
-                  onClick={() => setFiltroArchivo('activo')}
-                >
-                  ← Volver a activos
-                </button>
-              )}
+              {filtroArchivo === 'activo' ? (
+                <>
               <h3 className="dabble-seccion">Manuscritos</h3>
               {libros.length === 0 && <p className="dabble-vacio">Sin escenas.</p>}
               {libros.map((libro) => (
@@ -3330,31 +3551,11 @@ export default function App() {
                 .filter((documento) => documento.clase === 'ideas')
                 .map((documento) => botonDocumento(documento, '✦'))}
 
-              <h3 className="dabble-seccion">Utilidades</h3>
-              <button className="dabble-utilidad" disabled>▢ Plantillas</button>
-              <button
-                className={`dabble-utilidad ${
-                  filtroArchivo === 'archivado' ? 'activo' : ''
-                }`}
-                onClick={() => setFiltroArchivo('archivado')}
-              >
-                ⌂ Archivo
-              </button>
-              <button
-                className={`dabble-utilidad ${
-                  filtroArchivo === 'papelera' ? 'activo' : ''
-                }`}
-                onClick={() => setFiltroArchivo('papelera')}
-              >
-                ♲ Papelera
-              </button>
-              <button
-                className="dabble-config"
-                onClick={() => setPreferenciasAbiertas(true)}
-                title="Preferencias de escritura"
-              >
-                ⚙ Preferencias de escritura
-              </button>
+                </>
+              ) : (
+                vistaArchivo
+              )}
+              {utilidadesSidebar}
             </div>
           )}
         </aside>
@@ -4465,6 +4666,7 @@ export default function App() {
                 <label className="dabble-campo-meta">
                   <span>Título de la escena</span>
                   <input
+                    id="nueva-escena-titulo"
                     value={nuevaEscenaTitulo}
                     onChange={(evento) => setNuevaEscenaTitulo(evento.target.value)}
                     aria-label="Título de la nueva escena"

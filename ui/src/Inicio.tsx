@@ -55,6 +55,7 @@ type Props = {
   onQuitarReciente: (ruta: string) => void;
   onAgregarReciente: (reciente: Reciente) => void;
   onCrear: (datos: DatosNuevoProyecto, abrir: boolean) => Promise<void>;
+  vistaInicial?: 'activo' | 'plantillas' | 'papelera';
 };
 
 const COLORES = [
@@ -138,6 +139,7 @@ export function Inicio({
   onQuitarReciente,
   onAgregarReciente,
   onCrear,
+  vistaInicial = 'activo',
 }: Props) {
   const [consulta, setConsulta] = useState('');
   const [filtros, setFiltros] = useState<FiltrosProyectos>(() => cargarFiltros());
@@ -157,7 +159,9 @@ export function Inicio({
   const [errorPapelera, setErrorPapelera] = useState<string | null>(null);
   const [procesandoPapelera, setProcesandoPapelera] = useState(false);
   const [errorOrganizacion, setErrorOrganizacion] = useState<string | null>(null);
-  const [vistaInicio, setVistaInicio] = useState<'activo' | 'plantillas' | 'papelera'>('activo');
+  const [vistaInicio, setVistaInicio] = useState<'activo' | 'plantillas' | 'papelera'>(
+    vistaInicial,
+  );
   const [vista, setVista] = useState<'cuadricula' | 'lista'>('cuadricula');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');

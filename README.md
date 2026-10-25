@@ -9,7 +9,8 @@ x86_64**. El motor y la CLI (Fase 1), la interfaz y la publicación local (Fase 
 y las extensiones locales de la Fase 3 están implementados: control de cambios,
 comparación de versiones, preferencias y temas, lectura en voz alta, Quick Open,
 paleta de comandos, filtros, colecciones, plantillas, papelera local de
-proyectos, meta diaria global y presupuestos de rendimiento. La app se empaqueta en deb/rpm.
+proyectos, archivo/papelera de documentos, meta diaria global y presupuestos de
+rendimiento. La app se empaqueta en deb/rpm.
 
 El **release público no está autorizado** todavía: AppImage, firma, updater,
 Windows, CI remoto y la prueba de la app instalada son condiciones de

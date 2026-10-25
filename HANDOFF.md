@@ -1,6 +1,6 @@
 # HANDOFF — estado para retomar
 
-- **Fecha:** 2026-10-24
+- **Fecha:** 2026-10-25
 - **Repositorio local:** `writer/` (dentro de una carpeta sincronizada por MEGA)
 - **Fase actual:** **Fase 3 — Local avanzado, cerrada funcionalmente en Linux
   x86_64**. La Fase 2 local también está cerrada; Windows sigue pendiente y pasa
@@ -17,6 +17,9 @@
 - **Organización 2026-10-24:** filtros, colecciones, pestaña de plantillas y
   papelera local de proyectos; ver
   [`docs/iteraciones/32-organizacion-proyectos.md`](docs/iteraciones/32-organizacion-proyectos.md).
+- **Barra lateral 2026-10-25:** vistas de Archivo y Papelera con contador,
+  restauración por fila y estados vacíos; ver
+  [`docs/iteraciones/34-archivo-papelera-sidebar.md`](docs/iteraciones/34-archivo-papelera-sidebar.md).
 
 ## 1. Resumen
 
@@ -38,6 +41,8 @@ La Fase 3 añade sobre el motor y la app existentes:
    papelera local de proyectos.
 8. **Meta diaria global:** objetivo y actividad compartidos por todos los
    libros, con días libres, opciones de conteo y recordatorio local.
+9. **Archivo y papelera de documentos:** vistas dedicadas, contadores y
+   restauración directa desde la barra lateral.
 
 La Fase 3 sigue siendo **local/offline**. El corrector es el nativo del WebView;
 no se empaqueta diccionario, tesauro ni gramática propia. Las voces dependen del
