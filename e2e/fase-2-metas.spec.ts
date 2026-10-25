@@ -32,6 +32,12 @@ test('configura la meta diaria global y muestra el progreso', async ({ page }) =
   await expect(page.getByText('METAS DIARIAS')).toBeVisible();
   await expect(page.locator('.meta-progreso')).toContainText('3');
   await expect(page.locator('.meta-progreso')).toContainText('30 %');
+  await expect(page.locator('.meta-grafico')).toHaveCount(0);
+  const panel = await page.locator('.dabble-derecha').boundingBox();
+  const timer = await page.locator('.dabble-timer').boundingBox();
+  expect(panel).not.toBeNull();
+  expect(timer).not.toBeNull();
+  expect(timer!.y + timer!.height).toBeGreaterThan(panel!.y + panel!.height - 30);
 
   await page.getByRole('button', { name: 'Configurar meta diaria' }).click();
   const modal = page.getByRole('dialog', { name: 'Meta diaria' });

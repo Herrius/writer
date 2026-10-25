@@ -21,7 +21,7 @@ no sobre las sesiones de un proyecto concreto.
   - días libres D L M X J V S;
   - recordatorio local (sin correo, porque la app es offline);
   - guardar y eliminar meta.
-- Progreso total del día, porcentaje, restante y gráfico de los últimos 14 días.
+- Progreso total del día, porcentaje y restante.
 - El progreso se actualiza al escribir y se conserva en
   `localStorage` (`writer.metas-globales.v1`).
 - Migración inicial: si el proyecto abierto tiene una meta diaria antigua y aún
@@ -31,10 +31,11 @@ no sobre las sesiones de un proyecto concreto.
   el botón «Agregar una meta», visible solo al pasar el ratón o al enfocar.
   La línea azul termina y cae sobre la última barra del gráfico.
 - Con meta se muestra la cabecera «METAS DIARIAS» con el engranaje, el estado
-  del día, el progreso y el gráfico real.
+  del día y el progreso. El gráfico real se retiró del panel activo.
 - Se retiró el bloque «Otras metas»; los datos antiguos de libro y desafío se
   conservan en el proyecto por compatibilidad, pero ya no se editan aquí.
-- El temporizador de sesión se conserva debajo del panel.
+- El temporizador de sesión queda anclado al fondo del panel de metas, visible
+  siempre en la parte inferior.
 
 ## 3. Cálculo
 
@@ -66,6 +67,6 @@ día libre, opciones de conteo, validación de localStorage y temporizador.
   aviso local al abrir el proyecto.
 - La migración adopta la primera meta diaria de proyecto que encuentre; no
   fusiona metas de varios libros.
-- El gráfico es de 14 días y no es interactivo.
+- El único gráfico que queda es la ilustración estática del estado vacío.
 - La actividad se calcula del texto editado en writer, no de archivos cambiados
   por fuera.

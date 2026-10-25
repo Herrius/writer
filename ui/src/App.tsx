@@ -117,7 +117,6 @@ import { PanelMetaDiaria } from './features/metas/PanelMetaDiaria';
 import { ModalMetaDiaria } from './features/metas/ModalMetaDiaria';
 import {
   cargarMetasGlobales,
-  diasRecientes,
   esDiaLibre,
   fechaLocal,
   guardarMetasGlobales,
@@ -2755,7 +2754,6 @@ export default function App() {
   const metaDiariaGlobal = metasGlobales.diaria;
   const progresoGlobal = progresoDelDia(metasGlobales);
   const diaLibreHoy = esDiaLibre(metaDiariaGlobal);
-  const diasGlobales = diasRecientes(metasGlobales, 14);
   const palabrasHoy = progresoGlobal.hechas;
 
   useEffect(() => {
@@ -3780,7 +3778,11 @@ export default function App() {
           </aside>
         ) : (
           <>
-        <aside className={`dabble-derecha ${panelAbierto ? 'abierto' : ''}`}>
+        <aside
+          className={`dabble-derecha ${panelAbierto ? 'abierto' : ''} ${
+            panelDerecho === 'metas' ? 'dabble-derecha-metas' : ''
+          }`}
+        >
             <button
               className="dabble-panel-cerrar"
               aria-label="Cerrar panel lateral"
@@ -3839,7 +3841,7 @@ export default function App() {
               </button>
             </div>
             {panelDerecho === 'metas' ? (
-              <>
+              <div className="dabble-metas-contenedor">
                 <PanelMetaDiaria
                   meta={metaDiariaGlobal}
                   hechas={progresoGlobal.hechas}
@@ -3847,7 +3849,6 @@ export default function App() {
                   porcentaje={progresoGlobal.porcentaje}
                   restantes={progresoGlobal.restantes}
                   libre={diaLibreHoy}
-                  dias={diasGlobales}
                   onEditar={() => setModalMetaDiaria(true)}
                 />
                 {errorMetas && (
@@ -3909,7 +3910,7 @@ export default function App() {
                     ))}
                   </div>
                 </section>
-              </>
+              </div>
             ) : panelDerecho === 'notas' ? (
               <section className="dabble-notas-panel">
                 <h3>Documento</h3>

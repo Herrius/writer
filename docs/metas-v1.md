@@ -39,7 +39,6 @@ global, se migra una sola vez al abrir el proyecto.
 - Libro y desafío usan el proyecto activo.
 - Racha global: días consecutivos con la meta cumplida, contando los días
   libres como válidos.
-- Gráfico de 14 días en la tarjeta diaria.
 - La actividad se actualiza con el delta de palabras del editor; no se guarda
   como verdad duplicada del manuscrito.
 
@@ -55,10 +54,11 @@ global, se migra una sola vez al abrir el proyecto.
 
 ## 6. UI
 
-- Tarjeta **METAS DIARIAS** con engranaje, estado de hoy, progreso y gráfico.
+- Tarjeta **METAS DIARIAS** con engranaje, estado de hoy y progreso.
 - El engranaje abre el modal de meta diaria con las opciones de conteo y días
   libres; no hay tarjeta inferior de llamada a la acción.
-- Temporizador con presets, tiempo restante, iniciar/pausar/finalizar.
+- Temporizador con presets, tiempo restante, iniciar/pausar/finalizar,
+  anclado al fondo del panel.
 - Sin meta no aparece la cabecera ni el estado del día; se muestra un estado
   vacío con gráfico, título, mensaje y «Agregar una meta» al pasar el ratón.
 - Las metas de libro y desafío se conservan en el archivo del proyecto, pero no

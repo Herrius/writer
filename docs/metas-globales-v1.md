@@ -47,7 +47,7 @@ El editor calcula el delta de palabras de cada documento activo.
 
 - **METAS DIARIAS** en el panel Metas.
 - «Hoy es un día de escritura» / «Hoy es un día libre».
-- Progreso, porcentaje, restante y gráfico de 14 días.
+- Progreso, porcentaje y restante.
 - Modal de configuración con días libres y recordatorio local.
 - El engranaje de la cabecera solo aparece cuando ya hay una meta.
 - Sin meta se muestra un estado vacío con gráfico ilustrado y el botón
@@ -68,4 +68,5 @@ El editor calcula el delta de palabras de cada documento activo.
   al abrir el proyecto.
 - No hay sincronización entre equipos.
 - La actividad no detecta cambios hechos fuera del editor.
-- El gráfico es de 14 días y no es interactivo.
+- El gráfico real se retiró del panel; solo queda la ilustración del estado
+  vacío.

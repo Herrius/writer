@@ -5303,33 +5303,6 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   }
 }
 
-.meta-grafico {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 0.18rem;
-  height: 92px;
-  margin-top: 0.15rem;
-  padding: 0.2rem 0.1rem 0;
-  border-bottom: 1px solid #e9e5de;
-  border-left: 1px solid #f0ede8;
-}
-
-.meta-barra-dia {
-  flex: 1;
-  min-width: 2px;
-  border-radius: 2px 2px 0 0;
-  background: linear-gradient(180deg, #d9d5ce, #e9e6e0);
-}
-
-.meta-linea-objetivo {
-  position: absolute;
-  right: 0;
-  left: 0;
-  border-top: 2px dashed #d19564;
-  pointer-events: none;
-}
-
 .modal-meta-diaria {
   width: min(360px, calc(100vw - 2rem));
   max-height: min(90vh, 820px);
@@ -5518,4 +5491,32 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   .modal-meta-diaria {
     width: min(460px, calc(100vw - 2rem));
   }
+}
+
+/* Panel de metas: el temporizador queda anclado al fondo. */
+.dabble-derecha-metas {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dabble-derecha-metas .dabble-derecha-tabs {
+  flex: 0 0 auto;
+}
+
+.dabble-metas-contenedor {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dabble-metas-contenedor .dabble-timer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex: 0 0 auto;
+  margin-top: auto;
+  background: #fff;
 }

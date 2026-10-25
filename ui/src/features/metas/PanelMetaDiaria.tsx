@@ -1,7 +1,5 @@
 import type { MetaDiariaGlobal } from '../../metasGlobales';
 
-type Dia = { fecha: string; palabras: number; etiqueta: string };
-
 type Props = {
   meta: MetaDiariaGlobal | null;
   hechas: number;
@@ -9,7 +7,6 @@ type Props = {
   porcentaje: number;
   restantes: number;
   libre: boolean;
-  dias: Dia[];
   onEditar: () => void;
 };
 
@@ -22,12 +19,8 @@ export function PanelMetaDiaria({
   porcentaje,
   restantes,
   libre,
-  dias,
   onEditar,
 }: Props) {
-  const maximo = Math.max(1, objetivo, ...dias.map((dia) => dia.palabras));
-  const alturaObjetivo = objetivo > 0 ? Math.min(100, (objetivo / maximo) * 100) : 0;
-
   return (
     <section className="dabble-metas-global" aria-label="Metas diarias">
       {meta ? (
@@ -65,26 +58,6 @@ export function PanelMetaDiaria({
               <span style={{ width: `${porcentaje}%` }} />
             </div>
             <small>{restantes.toLocaleString('es')} restante</small>
-          </div>
-
-          <div className="meta-grafico" aria-label="Palabras de los últimos días">
-            {dias.map((dia) => (
-              <span
-                key={dia.fecha}
-                className="meta-barra-dia"
-                style={{
-                  height: `${Math.max(4, Math.round((dia.palabras / maximo) * 100))}%`,
-                }}
-                title={`${dia.fecha}: ${dia.palabras.toLocaleString('es')} palabras`}
-              />
-            ))}
-            {objetivo > 0 && (
-              <span
-                className="meta-linea-objetivo"
-                style={{ bottom: `${alturaObjetivo}%` }}
-                aria-hidden="true"
-              />
-            )}
           </div>
         </>
       ) : (
