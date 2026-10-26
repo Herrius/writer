@@ -77,7 +77,13 @@ jobs:
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 
       - name: Instaladores
-        run: pnpm build
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            python scripts/ci.py empaquetado
+          else
+            python3 scripts/ci.py empaquetado
+          fi
 
   e2e:
     name: E2E navegador (${{ matrix.os }})
@@ -167,42 +173,25 @@ jobs:
       - name: Instalar msedgedriver
         shell: pwsh
         run: |
-          $edge = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
-          if (-not (Test-Path $edge)) {
-            $edge = "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe"
-          }
-          if (-not (Test-Path $edge)) {
-            throw "no se encontró Microsoft Edge"
-          }
-          $version = (Get-Item $edge).VersionInfo.ProductVersion
+          # La herramienta consulta la versión real de WebView2/Edge y descarga
+          # el driver correspondiente; bajar el de Edge puede no coincidir.
+          cargo install --git https://github.com/chippers/msedgedriver-tool
           $destino = Join-Path $env:RUNNER_TEMP "msedgedriver"
           New-Item -ItemType Directory -Path $destino -Force | Out-Null
-          $zip = Join-Path $destino "msedgedriver.zip"
-          $urls = @(
-            "https://msedgedriver.microsoft.com/$version/edgedriver_win64.zip",
-            "https://msedgedriver.azureedge.net/$version/edgedriver_win64.zip"
-          )
-          $descargado = $false
-          foreach ($url in $urls) {
-            try {
-              Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
-              $descargado = $true
-              break
-            } catch {
-              Write-Host "no se pudo descargar $url"
-            }
+          Push-Location $destino
+          try {
+            & "$env:USERPROFILE\.cargo\bin\msedgedriver-tool.exe"
+          } finally {
+            Pop-Location
           }
-          if (-not $descargado) {
-            throw "no se pudo descargar msedgedriver $version"
-          }
-          Expand-Archive -Path $zip -DestinationPath $destino -Force
           $driver = Get-ChildItem -Path $destino -Recurse -Filter msedgedriver.exe |
             Select-Object -First 1
           if (-not $driver) {
-            throw "el ZIP de msedgedriver no contiene msedgedriver.exe"
+            throw "msedgedriver-tool no generó msedgedriver.exe"
           }
           "MSEDGEDRIVER=$($driver.FullName)" |
             Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+          $destino | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding ascii
 
       - name: E2E Tauri
         shell: pwsh

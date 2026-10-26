@@ -96,6 +96,12 @@ try {
     Detener-App
     $env:WRITER_E2E_MODE = 'cerrar'
     Ejecutar 'node' @('e2e-tauri/tauri.test.mjs')
+} catch {
+    Write-Host '--- tauri-driver stdout ---'
+    Get-Content $logDriver -Raw -ErrorAction SilentlyContinue
+    Write-Host '--- tauri-driver stderr ---'
+    Get-Content "$logDriver.err" -Raw -ErrorAction SilentlyContinue
+    throw
 } finally {
     if ($driver -and -not $driver.HasExited) {
         Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue

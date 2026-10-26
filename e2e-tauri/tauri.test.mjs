@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { remote } from 'webdriverio';
 
@@ -19,13 +20,21 @@ const textoGuardado = 'Texto E2E Tauri.';
 const textoCierre = 'PENDIENTE VENTANA.';
 
 function abrirSesion() {
+  const opciones = { application: aplicacion };
+  if (process.platform === 'win32') {
+    // WebView2 necesita una carpeta de datos estable y escribible; sin esto,
+    // msedgedriver puede fallar con DevToolsActivePort durante el arranque.
+    opciones.webviewOptions = {
+      userDataFolder: path.join(os.tmpdir(), `writer-e2e-webview2-${process.pid}`),
+    };
+  }
   return remote({
     hostname: '127.0.0.1',
     port: puerto,
     path: '/',
     logLevel: 'error',
     capabilities: {
-      'tauri:options': { application: aplicacion },
+      'tauri:options': opciones,
     },
   });
 }
