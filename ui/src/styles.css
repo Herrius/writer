@@ -4412,7 +4412,7 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 
 .tarjeta-proyecto .tarjeta-datos .tarjeta-meta {
   font-size: 0.7rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .tarjeta-proyecto .tarjeta-datos .tarjeta-meta > span {
