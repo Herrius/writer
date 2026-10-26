@@ -13,7 +13,10 @@
 - WebView2 Evergreen. Windows 10/11 lo incluye; el instalador puede descargar
   el bootstrapper si falta.
 - Para el E2E nativo: `tauri-driver` 2.0.6 y `msedgedriver` de la misma versión
-  mayor que Microsoft Edge.
+  que WebView2/Edge. El CI usa
+  [`msedgedriver-tool`](https://github.com/chippers/msedgedriver-tool) para
+  sincronizarlos y fija `webviewOptions.userDataFolder` en una carpeta temporal
+  escribible.
 
 ## 2. Instaladores
 
@@ -48,7 +51,9 @@ necesita `tauri-driver` y `msedgedriver`:
 
 ```powershell
 cargo install tauri-driver --version 2.0.6 --locked
-$env:MSEDGEDRIVER = 'C:\ruta\a\msedgedriver.exe'
+cargo install --git https://github.com/chippers/msedgedriver-tool
+& "$env:USERPROFILE\.cargo\bin\msedgedriver-tool.exe"
+$env:MSEDGEDRIVER = (Resolve-Path .\msedgedriver.exe).Path
 pwsh -File scripts/e2e-tauri.ps1
 ```
 

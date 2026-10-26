@@ -68,20 +68,25 @@ no autoabre proyectos ni conserva el hook activo.
 `tauri-driver` + `msedgedriver` y la app real sobre WebView2:
 
 1. crea el proyecto temporal con `target/debug/writer.exe`;
-2. compila la app con la feature `e2e` y `--no-bundle`;
-3. ejecuta el escenario `Ctrl+S` con verificación del archivo en disco;
-4. ejecuta el escenario de cierre: escribe texto pendiente, envía `WM_CLOSE`,
+2. compila la app debug con la feature `e2e` y `--no-bundle`;
+3. comprueba que la app arranca y se mantiene viva antes de involucrar al driver;
+4. ejecuta el escenario `Ctrl+S` con verificación del archivo en disco;
+5. ejecuta el escenario de cierre: escribe texto pendiente, envía `WM_CLOSE`,
    comprueba que se guarda y que el proceso termina.
 
 ```powershell
 cargo install tauri-driver --version 2.0.6 --locked
-$env:MSEDGEDRIVER = 'C:\ruta\a\msedgedriver.exe'
+cargo install --git https://github.com/chippers/msedgedriver-tool
+& "$env:USERPROFILE\.cargo\bin\msedgedriver-tool.exe"
+$env:MSEDGEDRIVER = (Resolve-Path .\msedgedriver.exe).Path
 pwsh -File scripts/e2e-tauri.ps1
 ```
 
-El workflow `e2e-tauri-windows` instala `tauri-driver`, descarga el
-`msedgedriver` correspondiente a Microsoft Edge y ejecuta el script. Requiere
-Windows 10/11, WebView2 y Visual Studio Build Tools.
+El workflow `e2e-tauri-windows` instala `tauri-driver`, usa
+`msedgedriver-tool` para obtener el driver que corresponde a la versión real de
+WebView2/Edge, fija una carpeta de datos escribible
+(`webviewOptions.userDataFolder`) y ejecuta el script. Requiere Windows 10/11,
+WebView2 y Visual Studio Build Tools.
 
 ## 4. Limitaciones
 
