@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { remote } from 'webdriverio';
@@ -24,9 +24,12 @@ function abrirSesion() {
   if (process.platform === 'win32') {
     // WebView2 necesita una carpeta de datos estable y escribible; sin esto,
     // msedgedriver puede fallar con DevToolsActivePort durante el arranque.
-    opciones.webviewOptions = {
-      userDataFolder: path.join(os.tmpdir(), `writer-e2e-webview2-${process.pid}`),
-    };
+    const carpetaDatos = path.join(
+      os.tmpdir(),
+      `writer-e2e-webview2-${process.pid}`,
+    );
+    mkdirSync(carpetaDatos, { recursive: true });
+    opciones.webviewOptions = { userDataFolder: carpetaDatos };
   }
   return remote({
     hostname: '127.0.0.1',
