@@ -874,6 +874,35 @@ export async function crearNota(
   return invoke<DocumentoDto>('crear_nota', { ruta, tipo, titulo });
 }
 
+export async function crearNotaEn(
+  ruta: string,
+  carpeta: string,
+  tipo: string,
+  titulo: string,
+): Promise<DocumentoDto> {
+  if (!esTauri) {
+    const nota: DocumentoDto = {
+      tipo: 'nota',
+      id: `demo-nota-${Date.now()}`,
+      ruta: `${carpeta}/${titulo.toLowerCase().replaceAll(' ', '-')}.md`,
+      titulo,
+      cuerpo: '',
+      hashArchivo: `demo:${Date.now()}`,
+      orden: null,
+      estado: null,
+      archivo: null,
+      etiquetas: [],
+      rol: null,
+      cast: [],
+      alias: [],
+      clase: tipo,
+    };
+    demoDocumentos.push(nota);
+    return { ...nota };
+  }
+  return invoke<DocumentoDto>('crear_nota_en', { ruta, carpeta, tipo, titulo });
+}
+
 export async function crearEscena(
   ruta: string,
   titulo: string,

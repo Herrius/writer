@@ -70,6 +70,7 @@ vi.mock('./api', () => ({
   renombrarCarpeta: vi.fn(),
   eliminarCarpetaVacia: vi.fn(),
   crearEscenaEn: vi.fn(),
+  crearNotaEn: vi.fn(),
   exportarTexto: vi.fn(),
   leer: vi.fn(),
   verificar: vi.fn(),

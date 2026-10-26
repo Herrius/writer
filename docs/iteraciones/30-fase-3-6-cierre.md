@@ -38,7 +38,7 @@ cargo test --workspace --all-targets --locked        91 + 50 + 25 + 1 perf
 cargo test desktop                                   10/10
 pnpm typecheck                                       OK
 pnpm ui:test                                         88/88
-pnpm e2e                                             60/60
+pnpm e2e                                             61/61
 ci.py calidad                                        OK
 ci.py interfaz                                       OK
 ci.py producto                                       OK
@@ -117,7 +117,7 @@ La primera revisión independiente bloqueó la fase. Se corrigieron:
 - **P3 responsive:** tabs con salto de línea en vez de elipsis, diff con ancho
   mínimo y pruebas de foco/geometría a 720/960 px.
 - **P3 documentación:** README, HANDOFF, e2e, empaquetado y conteos
-  actualizados a 91 + 50 + 25 + 1, 88 UI y 60 E2E.
+  actualizados a 91 + 50 + 25 + 1, 88 UI y 61 E2E.
 
 ## 8. Correcciones de la revisión r3
 

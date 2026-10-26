@@ -774,6 +774,46 @@ impl Project {
         Ok(())
     }
 
+    /// Crea una nota en una carpeta arbitraria bajo `notas`.
+    pub fn crear_nota_en(
+        &self,
+        carpeta: &str,
+        tipo: &str,
+        titulo: &str,
+    ) -> Result<(String, String)> {
+        if !TIPOS_NOTA.contains(&tipo) {
+            return Err(Error::Input(format!("tipo de nota no válido: {tipo}")));
+        }
+        let ruta_carpeta = self.ruta_carpeta_permitida(carpeta, false)?;
+        if !carpeta.starts_with("notas/") {
+            return Err(Error::Input(
+                "las notas solo se crean dentro de notas/".to_string(),
+            ));
+        }
+        let mut sesion = self.escritura()?;
+        std::fs::create_dir_all(&ruta_carpeta)
+            .map_err(|error| Error::Io(error).with_path(&ruta_carpeta))?;
+        let base = model::slug(titulo);
+        let mut nombre = format!("{base}.md");
+        let mut numero = 2_u32;
+        while ruta_carpeta.join(&nombre).exists() {
+            nombre = format!("{base}-{numero}.md");
+            numero += 1;
+        }
+        let relativa = format!("{carpeta}/{nombre}");
+        let nota = Nota::nueva(tipo, titulo)?;
+        let id = nota.id.clone();
+        self.commit_efectos(
+            &mut sesion,
+            vec![Cambio::nuevo(relativa.clone(), nota.a_bytes())],
+            "humano",
+            "notas",
+            None,
+            None,
+        )?;
+        Ok((id, relativa))
+    }
+
     /// Crea una escena en una carpeta arbitraria bajo `manuscrito`.
     pub fn crear_escena_en(&self, carpeta: &str, titulo: &str) -> Result<(String, String)> {
         let ruta_carpeta = self.ruta_carpeta_permitida(carpeta, true)?;

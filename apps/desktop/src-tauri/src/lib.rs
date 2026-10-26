@@ -1353,6 +1353,19 @@ fn eliminar_carpeta_vacia(ruta: String, relativa: String) -> Result<(), ErrorDto
 }
 
 #[tauri::command]
+fn crear_nota_en(
+    ruta: String,
+    carpeta: String,
+    tipo: String,
+    titulo: String,
+) -> Result<DocumentoDto, ErrorDto> {
+    let (id, _) = Project::new(&ruta)
+        .crear_nota_en(&carpeta, &tipo, &titulo)
+        .map_err(error)?;
+    leer(ruta, id)
+}
+
+#[tauri::command]
 fn crear_escena_en(
     ruta: String,
     carpeta: String,
@@ -1915,6 +1928,7 @@ pub fn run() {
             renombrar_carpeta,
             eliminar_carpeta_vacia,
             crear_escena_en,
+            crear_nota_en,
             guardar_texto_exportado,
             leer,
             verificar,

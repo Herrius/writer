@@ -34,6 +34,7 @@ import {
   listarCarpetas,
   renombrarCarpeta,
   crearNota as crearNotaApi,
+  crearNotaEn as crearNotaEnApi,
   crearProyecto as crearProyectoApi,
   convertirIdeaEnProyecto,
   crearSticky,
@@ -124,6 +125,7 @@ import { ModalMetaDiaria } from './features/metas/ModalMetaDiaria';
 import { ArbolProyecto } from './features/arbol/ArbolProyecto';
 import type { TipoCreacion } from './features/arbol/ArbolProyecto';
 import { VistaEstadoProyecto, VistaPlantillas } from './features/arbol/VistaEstadoProyecto';
+import { VistaGrupoPersonajes, VistaCarpetaCuaderno } from './features/arbol/VistaContenedor';
 import {
   cargarMetasGlobales,
   esDiaLibre,
@@ -199,24 +201,43 @@ function etiquetaCarpeta(carpeta: string): string {
     .replace(/\blibro\b/gi, 'libro')
     .replace(/\bseccion\b/gi, 'sección');
   const capitalizada = nombre
-    .split(' ')
-    .filter(Boolean)
-    .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-    .join(' ');
+    ? nombre.charAt(0).toUpperCase() + nombre.slice(1)
+    : nombre;
   return numero === null ? capitalizada : `${capitalizada} ${numero}`;
 }
 
-function etiquetaCategoriaNota(clase: string | null): string {
-  const etiquetas: Record<string, string> = {
-    tramas: 'Tramas',
-    personajes: 'Personajes',
-    cuaderno: 'Cuaderno',
-    ideas: 'Cuaderno',
-    lugares: 'Cuaderno',
-    cronologia: 'Cuaderno',
-    objetos: 'Cuaderno',
-  };
-  return etiquetas[clase ?? ''] ?? 'Cuaderno';
+type ContenedorProyecto =
+  | { tipo: 'personajes'; grupo: string; etiqueta: string }
+  | { tipo: 'cuaderno'; ruta: string; nombre: string };
+
+function cargarGruposPersonajes(proyectoId: string | null): string[] {
+  if (!proyectoId) {
+    return [];
+  }
+  try {
+    const valor = JSON.parse(
+      window.localStorage.getItem(`writer.grupos-personajes.v1.${proyectoId}`) ?? '[]',
+    );
+    return Array.isArray(valor)
+      ? valor.filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarGruposPersonajes(proyectoId: string | null, grupos: string[]) {
+  if (!proyectoId) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      `writer.grupos-personajes.v1.${proyectoId}`,
+      JSON.stringify(grupos),
+    );
+  } catch {
+    // Sin almacenamiento, los grupos permanecen en memoria.
+  }
 }
 
 function etiquetaRolPersonaje(rol: string | null): string {
@@ -225,6 +246,9 @@ function etiquetaRolPersonaje(rol: string | null): string {
   }
   if (rol === 'secundario') {
     return 'Personajes secundarios';
+  }
+  if (rol && rol.trim()) {
+    return rol;
   }
   return 'Personajes sin clasificar';
 }
@@ -308,6 +332,8 @@ function Fragmento({ texto }: { texto: string }) {
 
 export default function App() {
   const [proyecto, setProyecto] = useState<ProyectoDto | null>(null);
+  const [contenedor, setContenedor] = useState<ContenedorProyecto | null>(null);
+  const [gruposPersonajes, setGruposPersonajes] = useState<string[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoDto[]>([]);
   const [activo, setActivo] = useState<DocumentoDto | null>(null);
   const [vista, setVista] = useState<Vista>('editor');
@@ -482,6 +508,10 @@ export default function App() {
     aplicarPreferencias(preferencias);
     guardarPreferencias(preferencias);
   }, [preferencias]);
+
+  useEffect(() => {
+    guardarGruposPersonajes(proyecto?.id ?? null, gruposPersonajes);
+  }, [proyecto?.id, gruposPersonajes]);
 
   useEffect(() => {
     if (!panelAbierto || !esVistaEstrecha()) {
@@ -772,6 +802,8 @@ export default function App() {
       recordarProyecto(resumen, palabras);
       setDocumentos(lista);
       setCarpetas(carpetasProyecto);
+      setGruposPersonajes(cargarGruposPersonajes(resumen.id));
+      setContenedor(null);
       limpiarPendiente();
       fijarActivo(leido);
       cuerpoEditorRef.current = leido?.cuerpo ?? '';
@@ -1106,6 +1138,7 @@ export default function App() {
     if (activoRef.current?.id === documento.id) {
       setVista('editor');
       setVistaProyecto('editor');
+      setContenedor(null);
       return;
     }
     navegando.current = true;
@@ -1122,6 +1155,7 @@ export default function App() {
       setMensaje(null);
       setVista('editor');
       setVistaProyecto('editor');
+      setContenedor(null);
       try {
         const leido = await leer(proyectoActual.raiz, documento.id);
         fijarActivo(leido);
@@ -1584,6 +1618,91 @@ export default function App() {
       setMensaje(`${etiqueta} creada.`);
     } catch (fallo) {
       setMensaje(`No se pudo crear la nota: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const crearGrupoPersonaje = async (nombre: string) => {
+    const limpio = nombre.trim();
+    if (!limpio) {
+      throw new Error('El nombre de la sección no puede estar vacío.');
+    }
+    if (limpio === 'principal' || limpio === 'secundario') {
+      throw new Error('Ese nombre de sección ya existe.');
+    }
+    if (gruposPersonajes.some((grupo) => grupo.toLowerCase() === limpio.toLowerCase())) {
+      throw new Error('Ese nombre de sección ya existe.');
+    }
+    setGruposPersonajes((actual) => [...actual, limpio]);
+    setContenedor({ tipo: 'personajes', grupo: limpio, etiqueta: limpio });
+    setVistaProyecto('editor');
+    setVista('editor');
+  };
+
+  const crearPersonajeEnGrupo = async (grupo: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se creó el personaje: resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const nota = await crearNotaApi(actual.raiz, 'personajes', 'Personaje sin título');
+      const actualizada = await actualizarPersonaje(
+        actual.raiz,
+        nota.id,
+        grupo || null,
+        [],
+        [],
+      );
+      await refrescarEstructura();
+      await seleccionar(actualizada);
+      setMensaje('Personaje creado.');
+    } catch (fallo) {
+      setMensaje(`No se pudo crear el personaje: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const crearNotaCuaderno = async (carpeta: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setMensaje('No se creó la nota: resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const nota = await crearNotaEnApi(actual.raiz, carpeta, 'cuaderno', 'Nota sin título');
+      await refrescarEstructura();
+      await seleccionar(nota);
+      setMensaje('Nota creada.');
+    } catch (fallo) {
+      setMensaje(`No se pudo crear la nota: ${errorDe(fallo).mensaje}`);
+    }
+  };
+
+  const crearCarpetaCuaderno = async (padre: string, nombre: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const limpio = nombre.trim();
+    if (!limpio) {
+      throw new Error('El nombre de la carpeta no puede estar vacío.');
+    }
+    const ruta = `${padre}/${limpio}`;
+    try {
+      await crearCarpeta(actual.raiz, ruta);
+      await refrescarEstructura();
+      setContenedor({ tipo: 'cuaderno', ruta, nombre: limpio });
+      setMensaje(`Carpeta creada: ${limpio}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo crear la carpeta: ${errorDe(fallo).mensaje}`);
+      throw fallo;
     }
   };
 
@@ -2459,6 +2578,8 @@ export default function App() {
     fijarProyecto(null);
     setDocumentos([]);
     setCarpetas([]);
+    setGruposPersonajes([]);
+    setContenedor(null);
     setVistaProyecto('editor');
     fijarActivo(null);
     setEstado('inicio');
@@ -3215,6 +3336,24 @@ export default function App() {
     if (vistaProyecto === 'plantillas') {
       return [...base, { etiqueta: 'Plantillas', especial: true }];
     }
+    if (contenedor?.tipo === 'personajes') {
+      return [
+        ...base,
+        { etiqueta: contenedor.etiqueta, especial: false },
+      ];
+    }
+    if (contenedor?.tipo === 'cuaderno') {
+      if (contenedor.ruta === 'notas/cuaderno') {
+        return [...base, { etiqueta: 'Cuaderno', especial: false }];
+      }
+      return [
+        ...base,
+        ...contenedor.ruta
+          .split('/')
+          .slice(2)
+          .map((parte) => ({ etiqueta: etiquetaCarpeta(parte), especial: false })),
+      ];
+    }
     if (!activo) {
       return base;
     }
@@ -3237,26 +3376,32 @@ export default function App() {
       }
       return camino;
     }
-    const camino = [
-      ...base,
-      { etiqueta: etiquetaCategoriaNota(activo.clase), especial: false },
-    ];
+    const camino = [...base];
     if (activo.clase === 'personajes') {
       camino.push({ etiqueta: etiquetaRolPersonaje(activo.rol), especial: false });
+    } else if (activo.clase !== 'tramas') {
+      const partes = activo.ruta.split('/');
+      const carpetasNota = partes.slice(2, -1);
+      for (const carpeta of carpetasNota) {
+        camino.push({ etiqueta: etiquetaCarpeta(carpeta), especial: false });
+      }
     }
     camino.push({ etiqueta: activo.titulo, especial: false });
     if (vista === 'historial') {
       camino.push({ etiqueta: 'Historial', especial: false });
     }
     return camino;
-  }, [activo, proyecto?.titulo, vista, vistaProyecto, primerLibro]);
+  }, [activo, contenedor, proyecto?.titulo, vista, vistaProyecto, primerLibro]);
 
   const utilidadesSidebar = (
     <>
       <h3 className="dabble-seccion">Utilidades</h3>
       <button
         className="dabble-utilidad"
-        onClick={() => setVistaProyecto('plantillas')}
+        onClick={() => {
+          setContenedor(null);
+          setVistaProyecto('plantillas');
+        }}
       >
         <FileStack size={15} strokeWidth={1.7} aria-hidden="true" /> Plantillas
       </button>
@@ -3264,7 +3409,10 @@ export default function App() {
         className={`dabble-utilidad dabble-utilidad-fila ${
           vistaProyecto === 'archivo' ? 'activo' : ''
         }`}
-        onClick={() => setVistaProyecto('archivo')}
+        onClick={() => {
+          setContenedor(null);
+          setVistaProyecto('archivo');
+        }}
       >
         <span><Archive size={15} strokeWidth={1.7} aria-hidden="true" /> Archivo</span>
         {totalArchivados > 0 && (
@@ -3275,7 +3423,10 @@ export default function App() {
         className={`dabble-utilidad dabble-utilidad-fila ${
           vistaProyecto === 'papelera' ? 'activo' : ''
         }`}
-        onClick={() => setVistaProyecto('papelera')}
+        onClick={() => {
+          setContenedor(null);
+          setVistaProyecto('papelera');
+        }}
       >
         <span><Trash2 size={15} strokeWidth={1.7} aria-hidden="true" /> Papelera</span>
         {totalPapelera > 0 && (
@@ -3325,7 +3476,7 @@ export default function App() {
     <div
       className={`dabble-app ${preferencias.modoEnfoque ? 'modo-enfoque' : ''} ${
         panelAbierto ? 'panel-abierto' : ''
-      } ${vistaProyecto !== 'editor' ? 'dabble-vista-especial' : ''}`}
+      } ${vistaProyecto !== 'editor' || contenedor ? 'dabble-vista-especial' : ''}`}
     >
       <a className="saltar-contenido" href="#panel-principal">
         Saltar al contenido
@@ -3349,7 +3500,7 @@ export default function App() {
                     /
                   </span>
                 )}
-                {ultima && vistaProyecto === 'editor' ? (
+                {ultima && vistaProyecto === 'editor' && !contenedor ? (
                   <button
                     className="dabble-miga-boton activo"
                     aria-label={`Editor: ${activo?.titulo ?? 'sin documento'}`}
@@ -3546,9 +3697,28 @@ export default function App() {
               <ArbolProyecto
                 carpetas={carpetas}
                 documentos={documentos}
-                activoId={activo?.id ?? null}
+                activoId={contenedor ? null : activo?.id ?? null}
                 filtroEtiqueta={filtroEtiqueta}
                 tituloProyecto={proyecto?.titulo ?? ''}
+                gruposPersonajes={gruposPersonajes}
+                contenedorActivo={
+                  contenedor?.tipo === 'personajes'
+                    ? `personajes:${contenedor.grupo}`
+                    : contenedor?.tipo === 'cuaderno'
+                      ? `cuaderno:${contenedor.ruta}`
+                      : null
+                }
+                onSeleccionarGrupo={(grupo, etiqueta) => {
+                  setContenedor({ tipo: 'personajes', grupo, etiqueta });
+                  setVistaProyecto('editor');
+                  setVista('editor');
+                }}
+                onSeleccionarCarpetaCuaderno={(ruta, nombre) => {
+                  setContenedor({ tipo: 'cuaderno', ruta, nombre });
+                  setVistaProyecto('editor');
+                  setVista('editor');
+                }}
+                onCrearGrupoPersonaje={crearGrupoPersonaje}
                 onSeleccionar={(documento) => void seleccionar(documento)}
                 onCrear={crearNodo}
                 onRenombrarCarpeta={renombrarCarpetaNodo}
@@ -3699,7 +3869,10 @@ export default function App() {
               documentos={documentos.filter((documento) => documento.archivo === 'archivado')}
               onAbrir={(documento) => void seleccionar(documento)}
               onRestaurar={(documento) => void cambiarArchivoDocumento(documento, null)}
-              onVolver={() => setVistaProyecto('editor')}
+              onVolver={() => {
+                setContenedor(null);
+                setVistaProyecto('editor');
+              }}
             />
           ) : vistaProyecto === 'papelera' ? (
             <VistaEstadoProyecto
@@ -3707,12 +3880,49 @@ export default function App() {
               documentos={documentos.filter((documento) => documento.archivo === 'papelera')}
               onAbrir={(documento) => void seleccionar(documento)}
               onRestaurar={(documento) => void cambiarArchivoDocumento(documento, null)}
-              onVolver={() => setVistaProyecto('editor')}
+              onVolver={() => {
+                setContenedor(null);
+                setVistaProyecto('editor');
+              }}
             />
           ) : vistaProyecto === 'plantillas' ? (
             <VistaPlantillas
               onGestionar={() => void volverAlInicio('plantillas')}
-              onVolver={() => setVistaProyecto('editor')}
+              onVolver={() => {
+                setContenedor(null);
+                setVistaProyecto('editor');
+              }}
+            />
+          ) : contenedor?.tipo === 'personajes' ? (
+            <VistaGrupoPersonajes
+              etiqueta={contenedor.etiqueta}
+              personajes={documentos.filter(
+                (documento) =>
+                  documento.tipo === 'nota' &&
+                  documento.clase === 'personajes' &&
+                  !documento.archivo &&
+                  (documento.rol ?? '') === contenedor.grupo,
+              )}
+              onAbrir={(documento) => void seleccionar(documento)}
+              onCrear={() => void crearPersonajeEnGrupo(contenedor.grupo)}
+            />
+          ) : contenedor?.tipo === 'cuaderno' ? (
+            <VistaCarpetaCuaderno
+              key={contenedor.ruta}
+              ruta={contenedor.ruta}
+              nombre={contenedor.nombre}
+              notas={documentos.filter(
+                (documento) =>
+                  documento.tipo === 'nota' &&
+                  !documento.archivo &&
+                  documento.ruta.startsWith(`${contenedor.ruta}/`) &&
+                  documento.ruta.split('/').slice(0, -1).join('/') === contenedor.ruta,
+              )}
+              onAbrir={(documento) => void seleccionar(documento)}
+              onCrearNota={() => void crearNotaCuaderno(contenedor.ruta)}
+              onCrearCarpeta={(nombre) =>
+                crearCarpetaCuaderno(contenedor.ruta, nombre)
+              }
             />
           ) : vista === 'historial' ? (
             <section className="dabble-historial">
@@ -4190,6 +4400,15 @@ export default function App() {
                             <option value="">Sin clasificar</option>
                             <option value="principal">Principal</option>
                             <option value="secundario">Secundario</option>
+                            {gruposPersonajes.map((grupo) => (
+                              <option key={grupo} value={grupo}>
+                                {grupo}
+                              </option>
+                            ))}
+                            {rolPersonaje &&
+                              !['', 'principal', 'secundario', ...gruposPersonajes].includes(
+                                rolPersonaje,
+                              ) && <option value={rolPersonaje}>{rolPersonaje}</option>}
                           </select>
                         </label>
                         <label className="dabble-campo-meta">

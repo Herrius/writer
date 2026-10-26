@@ -6051,3 +6051,230 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
     max-width: 150px;
   }
 }
+
+/* Páginas de grupos de personajes y carpetas de cuaderno. */
+.vista-contenedor {
+  min-height: calc(100vh - 74px);
+  padding: 1.35rem 1.7rem 2rem;
+  background: #f3f2ef;
+}
+
+.vista-contenedor-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ded9d1;
+}
+
+.vista-contenedor-migas {
+  margin: 0 0 0.2rem;
+  color: #8a8074;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vista-contenedor-cabecera h1 {
+  margin: 0;
+  color: #2f2b26;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+}
+
+.vista-contenedor-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vista-contenedor-acciones .dabble-boton-primario,
+.vista-contenedor-acciones .dabble-boton,
+.vista-contenedor-cabecera > .dabble-boton-primario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.vista-tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1.1rem;
+  max-width: 1060px;
+}
+
+.tarjeta-personaje,
+.tarjeta-nota {
+  overflow: hidden;
+  border: 1px solid #ded9d1;
+  border-radius: 0.45rem;
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(50 42 32 / 8%);
+}
+
+.tarjeta-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.65rem;
+  color: #6f665c;
+  font-size: 0.74rem;
+}
+
+.tarjeta-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tarjeta-menu {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #7c7267;
+  cursor: pointer;
+}
+
+.tarjeta-menu:hover {
+  background: #f0ede7;
+}
+
+.tarjeta-cuerpo {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #3e3831;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tarjeta-portada {
+  display: block;
+  width: 100%;
+  height: 78px;
+}
+
+.tarjeta-cuerpo strong {
+  padding: 0.8rem 0.7rem 0.55rem;
+  text-align: center;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.tarjeta-cuerpo-nota strong {
+  padding: 0.8rem 0.8rem 0.55rem;
+  text-align: left;
+}
+
+.tarjeta-preview {
+  min-height: 3.1rem;
+  margin: 0 0.7rem;
+  padding: 0.65rem 0 0.85rem;
+  border-top: 1px solid #e8e3db;
+  color: #746b60;
+  font-size: 0.72rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.tarjeta-cuerpo-nota .tarjeta-preview {
+  margin: 0 0.8rem;
+}
+
+.vista-contenedor-vacia {
+  display: flex;
+  min-height: 45vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: #9a9186;
+  text-align: center;
+}
+
+.vista-contenedor-vacia strong {
+  color: #4a443d;
+  font-size: 0.85rem;
+}
+
+.vista-contenedor-vacia p {
+  margin: 0;
+  color: #81786e;
+  font-size: 0.76rem;
+}
+
+.vista-crear-carpeta {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-width: 630px;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #ded9d1;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.vista-crear-carpeta .dabble-campo-meta {
+  flex: 1;
+}
+
+.vista-crear-carpeta .dabble-error {
+  flex-basis: 100%;
+}
+
+.vista-cuaderno-ruta {
+  margin: 1.5rem 0 0;
+  color: #a1988d;
+  font-size: 0.66rem;
+}
+
+.arbol-personajes-grupo.activo,
+.arbol-personajes-grupo.activo .arbol-nombre {
+  background: #e4ebf2;
+  color: #34506a;
+}
+
+.arbol-personajes-grupo .arbol-nombre {
+  font-weight: 500;
+}
+
+@media (max-width: 700px) {
+  .vista-contenedor {
+    padding: 1rem;
+  }
+
+  .vista-contenedor-cabecera {
+    flex-direction: column;
+  }
+
+  .vista-contenedor-acciones {
+    flex-wrap: wrap;
+  }
+
+  .vista-tarjetas {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tarjeta-personaje .tarjeta-menu,
+.tarjeta-nota .tarjeta-menu {
+  position: static;
+  right: auto;
+  bottom: auto;
+  margin-left: auto;
+}

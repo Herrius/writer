@@ -41,7 +41,7 @@ documentos había en ese estado ni cómo devolverlos a activos.
 - E2E `fase-2-1-archivo`: archiva, comprueba el listado, restaura desde la fila,
   comprueba el estado vacío y usa el botón **+** para abrir la creación.
 - E2E de metas y organización sin cambios.
-- UI 88/88; E2E 60/60.
+- UI 88/88; E2E 61/61.
 
 ## 5. Límites
 
