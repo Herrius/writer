@@ -48,9 +48,13 @@ propias para Archivo, Papelera y Plantillas.
 - **Tramas:** solo tramas.
 - **Personajes:** solo personajes y nuevas secciones de personajes (grupos por
   rol o grupos personalizados). Cada sección tiene su menú `⋯` para crear un
-  personaje dentro.
+  personaje; las secciones **personalizadas** también se pueden renombrar y
+  eliminar. Al eliminar una sección personalizada, sus personajes pasan a
+  «Sin clasificar». Las secciones predeterminadas (principales, secundarios y
+  sin clasificar) son estructurales y no se renombran ni eliminan.
 - **Cuaderno:** carpetas y notas dentro de ellas. La raíz y cada carpeta tienen
-  su menú `⋯` para crear una nota o una carpeta.
+  su menú `⋯` para crear una nota o una carpeta. Las carpetas se pueden
+  renombrar y eliminar; al eliminarlas, sus notas pasan a la Papelera.
 - Las secciones de personajes se guardan por proyecto en `localStorage` y los
   personajes se asignan con su `rol`.
 
@@ -74,8 +78,9 @@ Cada nodo tiene un menú `⋯` adaptado a su nivel:
 | Sección | Sección, Escena | Renombrar, Exportar, Eliminar |
 | Escena/nota | — | Renombrar, Exportar, Eliminar |
 | Tramas | Trama | — |
-| Personajes | Personaje, nueva sección | — |
-| Cuaderno | Nota/carpeta desde su página | — |
+| Personajes | Personaje, nueva sección | Renombrar/eliminar sección personalizada |
+| Cuaderno (raíz) | Nota, carpeta | — |
+| Cuaderno (carpeta) | Nota, carpeta | Renombrar, eliminar |
 
 - **Renombrar** carpeta actualiza las rutas y reindexa; renombrar documento usa
   la API existente.

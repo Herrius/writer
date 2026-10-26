@@ -33,13 +33,18 @@ type Acciones = {
   onExportarDocumento: (documento: DocumentoDto) => void;
   onMoverDocumento: (documento: DocumentoDto, ruta: string) => void;
   gruposPersonajes: string[];
+  carpetasCuadernoOcultas: string[];
   contenedorActivo: string | null;
   onSeleccionarGrupo: (grupo: string, etiqueta: string) => void;
   onSeleccionarCarpetaCuaderno: (ruta: string, nombre: string) => void;
   onCrearGrupoPersonaje: (nombre: string) => Promise<void>;
+  onRenombrarGrupoPersonaje: (grupo: string, nombre: string) => Promise<void>;
+  onEliminarGrupoPersonaje: (grupo: string) => Promise<void>;
   onCrearPersonajeEnGrupo: (grupo: string) => void;
   onCrearNotaCuaderno: (ruta: string) => void;
   onCrearCarpetaCuaderno: (padre: string, nombre: string) => Promise<void>;
+  onRenombrarCarpetaCuaderno: (ruta: string, nombre: string) => Promise<void>;
+  onEliminarCarpetaCuaderno: (ruta: string, nombre: string) => Promise<void>;
 };
 
 type Props = Acciones & {
@@ -65,7 +70,11 @@ type Dialogo =
   | { tipo: 'renombrar-documento'; documento: DocumentoDto; valor: string }
   | { tipo: 'eliminar-documento'; documento: DocumentoDto; nombre: string }
   | { tipo: 'crear-grupo'; valor: string }
-  | { tipo: 'crear-carpeta-cuaderno'; padre: string; valor: string };
+  | { tipo: 'renombrar-grupo'; grupo: string; valor: string }
+  | { tipo: 'eliminar-grupo'; grupo: string; nombre: string }
+  | { tipo: 'crear-carpeta-cuaderno'; padre: string; valor: string }
+  | { tipo: 'renombrar-carpeta-cuaderno'; ruta: string; valor: string }
+  | { tipo: 'eliminar-carpeta-cuaderno'; ruta: string; nombre: string };
 
 function etiquetaCarpeta(carpeta: string): string {
   const coincidencia = /^(\d+)[-_](.+)$/.exec(carpeta);
@@ -322,10 +331,14 @@ function MenuCuaderno({
   onCerrar,
   onNota,
   onCarpeta,
+  onRenombrar,
+  onEliminar,
 }: {
   onCerrar: () => void;
   onNota: () => void;
   onCarpeta: () => void;
+  onRenombrar?: () => void;
+  onEliminar?: () => void;
 }) {
   return (
     <div className="arbol-menu" role="menu" onMouseDown={(evento) => evento.stopPropagation()}>
@@ -352,6 +365,33 @@ function MenuCuaderno({
         <FolderPlus size={15} strokeWidth={1.7} aria-hidden="true" />
         Carpeta
       </button>
+      {onRenombrar && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onRenombrar();
+            onCerrar();
+          }}
+        >
+          <Pencil size={15} strokeWidth={1.7} aria-hidden="true" />
+          Renombrar
+        </button>
+      )}
+      {onEliminar && (
+        <button
+          type="button"
+          role="menuitem"
+          className="peligro-menu"
+          onClick={() => {
+            onEliminar();
+            onCerrar();
+          }}
+        >
+          <Trash2 size={15} strokeWidth={1.7} aria-hidden="true" />
+          Eliminar
+        </button>
+      )}
     </div>
   );
 }
@@ -372,13 +412,18 @@ export function ArbolProyecto({
   onEliminarDocumento,
   onExportarDocumento,
   gruposPersonajes,
+  carpetasCuadernoOcultas,
   contenedorActivo,
   onSeleccionarGrupo,
   onSeleccionarCarpetaCuaderno,
   onCrearGrupoPersonaje,
+  onRenombrarGrupoPersonaje,
+  onEliminarGrupoPersonaje,
   onCrearPersonajeEnGrupo,
   onCrearNotaCuaderno,
   onCrearCarpetaCuaderno,
+  onRenombrarCarpetaCuaderno,
+  onEliminarCarpetaCuaderno,
 }: Props) {
   const [plegados, setPlegados] = useState<Set<string>>(new Set());
   const [menuAbierto, setMenuAbierto] = useState<string | null>(null);
@@ -509,6 +554,22 @@ export function ArbolProyecto({
           throw new Error('El nombre de la carpeta no puede estar vacío.');
         }
         await onCrearCarpetaCuaderno(dialogo.padre, nombre);
+      } else if (dialogo.tipo === 'renombrar-carpeta-cuaderno') {
+        const nombre = dialogo.valor.trim();
+        if (!nombre) {
+          throw new Error('El nombre de la carpeta no puede estar vacío.');
+        }
+        await onRenombrarCarpetaCuaderno(dialogo.ruta, nombre);
+      } else if (dialogo.tipo === 'eliminar-carpeta-cuaderno') {
+        await onEliminarCarpetaCuaderno(dialogo.ruta, dialogo.nombre);
+      } else if (dialogo.tipo === 'renombrar-grupo') {
+        const nombre = dialogo.valor.trim();
+        if (!nombre) {
+          throw new Error('El nombre de la sección no puede estar vacío.');
+        }
+        await onRenombrarGrupoPersonaje(dialogo.grupo, nombre);
+      } else if (dialogo.tipo === 'eliminar-grupo') {
+        await onEliminarGrupoPersonaje(dialogo.grupo);
       } else {
         await onEliminarDocumento(dialogo.documento, dialogo.nombre);
       }
@@ -776,6 +837,26 @@ export function ArbolProyecto({
                   onCerrar={() => setMenuAbierto(null)}
                   onCrear={() => onCrearPersonajeEnGrupo(grupo)}
                   tipoFiltro={['personaje']}
+                  onRenombrar={
+                    grupo && gruposPersonajes.includes(grupo)
+                      ? () =>
+                          setDialogo({
+                            tipo: 'renombrar-grupo',
+                            grupo,
+                            valor: nombre,
+                          })
+                      : undefined
+                  }
+                  onEliminar={
+                    grupo && gruposPersonajes.includes(grupo)
+                      ? () =>
+                          setDialogo({
+                            tipo: 'eliminar-grupo',
+                            grupo,
+                            nombre,
+                          })
+                      : undefined
+                  }
                 />
               )}
             </div>
@@ -790,9 +871,21 @@ export function ArbolProyecto({
     const notasCuaderno = notas.filter(
       (nota) => nota.clase !== 'tramas' && nota.clase !== 'personajes',
     );
+    const activas = new Set<string>();
+    for (const nota of notasCuaderno) {
+      const partes = nota.ruta.split('/');
+      for (let indice = 3; indice < partes.length; indice += 1) {
+        activas.add(partes.slice(0, indice).join('/'));
+      }
+    }
     const carpetasCuaderno = [...new Set(
       carpetas.filter((carpeta) => carpeta.startsWith('notas/cuaderno/')),
-    )].sort((a, b) => a.localeCompare(b, 'es'));
+    )]
+      .filter(
+        (carpeta) =>
+          !carpetasCuadernoOcultas.includes(carpeta) || activas.has(carpeta),
+      )
+      .sort((a, b) => a.localeCompare(b, 'es'));
     const todas = new Set(carpetasCuaderno);
     for (const nota of notasCuaderno) {
       const partes = nota.ruta.split('/');
@@ -876,6 +969,20 @@ export function ArbolProyecto({
                       onCarpeta={() =>
                         setDialogo({ tipo: 'crear-carpeta-cuaderno', padre: ruta, valor: '' })
                       }
+                      onRenombrar={() =>
+                        setDialogo({
+                          tipo: 'renombrar-carpeta-cuaderno',
+                          ruta,
+                          valor: ruta.split('/').at(-1) ?? '',
+                        })
+                      }
+                      onEliminar={() =>
+                        setDialogo({
+                          tipo: 'eliminar-carpeta-cuaderno',
+                          ruta,
+                          nombre,
+                        })
+                      }
                     />
                   )}
                 </div>
@@ -912,6 +1019,7 @@ export function ArbolProyecto({
             <Menu
               onCerrar={() => setMenuAbierto(null)}
               onCrear={() => onCrear(tipo)}
+              tipoFiltro={[tipo]}
             />
           )}
         </div>
@@ -975,9 +1083,13 @@ export function ArbolProyecto({
                   ? 'Eliminar'
                   : dialogo.tipo === 'crear-grupo'
                     ? 'Nueva sección'
-                    : dialogo.tipo === 'crear-carpeta-cuaderno'
-                      ? 'Nueva carpeta'
-                      : 'Renombrar'}
+                    : dialogo.tipo === 'renombrar-grupo'
+                      ? 'Renombrar sección'
+                      : dialogo.tipo === 'crear-carpeta-cuaderno'
+                        ? 'Nueva carpeta'
+                        : dialogo.tipo === 'renombrar-carpeta-cuaderno'
+                          ? 'Renombrar carpeta'
+                          : 'Renombrar'}
               </h2>
               <button
                 type="button"
@@ -992,12 +1104,15 @@ export function ArbolProyecto({
               {dialogo.tipo === 'renombrar-carpeta' ||
               dialogo.tipo === 'renombrar-documento' ||
               dialogo.tipo === 'crear-grupo' ||
-              dialogo.tipo === 'crear-carpeta-cuaderno' ? (
+              dialogo.tipo === 'renombrar-grupo' ||
+              dialogo.tipo === 'crear-carpeta-cuaderno' ||
+              dialogo.tipo === 'renombrar-carpeta-cuaderno' ? (
                 <label className="dabble-campo-meta">
                   <span>
-                    {dialogo.tipo === 'crear-grupo'
+                    {dialogo.tipo === 'crear-grupo' || dialogo.tipo === 'renombrar-grupo'
                       ? 'Nombre de la sección'
-                      : dialogo.tipo === 'crear-carpeta-cuaderno'
+                      : dialogo.tipo === 'crear-carpeta-cuaderno' ||
+                          dialogo.tipo === 'renombrar-carpeta-cuaderno'
                         ? 'Nombre de la carpeta'
                         : 'Nombre'}
                   </span>

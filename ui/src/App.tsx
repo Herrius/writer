@@ -240,6 +240,36 @@ function guardarGruposPersonajes(proyectoId: string | null, grupos: string[]) {
   }
 }
 
+function cargarCarpetasCuadernoOcultas(proyectoId: string | null): string[] {
+  if (!proyectoId) {
+    return [];
+  }
+  try {
+    const valor = JSON.parse(
+      window.localStorage.getItem(`writer.cuaderno-ocultas.v1.${proyectoId}`) ?? '[]',
+    );
+    return Array.isArray(valor)
+      ? valor.filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarCarpetasCuadernoOcultas(proyectoId: string | null, carpetas: string[]) {
+  if (!proyectoId) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      `writer.cuaderno-ocultas.v1.${proyectoId}`,
+      JSON.stringify(carpetas),
+    );
+  } catch {
+    // Sin almacenamiento, las carpetas ocultas permanecen en memoria.
+  }
+}
+
 function etiquetaRolPersonaje(rol: string | null): string {
   if (rol === 'principal') {
     return 'Personajes principales';
@@ -334,6 +364,7 @@ export default function App() {
   const [proyecto, setProyecto] = useState<ProyectoDto | null>(null);
   const [contenedor, setContenedor] = useState<ContenedorProyecto | null>(null);
   const [gruposPersonajes, setGruposPersonajes] = useState<string[]>([]);
+  const [carpetasCuadernoOcultas, setCarpetasCuadernoOcultas] = useState<string[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoDto[]>([]);
   const [activo, setActivo] = useState<DocumentoDto | null>(null);
   const [vista, setVista] = useState<Vista>('editor');
@@ -512,6 +543,10 @@ export default function App() {
   useEffect(() => {
     guardarGruposPersonajes(proyecto?.id ?? null, gruposPersonajes);
   }, [proyecto?.id, gruposPersonajes]);
+
+  useEffect(() => {
+    guardarCarpetasCuadernoOcultas(proyecto?.id ?? null, carpetasCuadernoOcultas);
+  }, [proyecto?.id, carpetasCuadernoOcultas]);
 
   useEffect(() => {
     if (!panelAbierto || !esVistaEstrecha()) {
@@ -803,6 +838,7 @@ export default function App() {
       setDocumentos(lista);
       setCarpetas(carpetasProyecto);
       setGruposPersonajes(cargarGruposPersonajes(resumen.id));
+      setCarpetasCuadernoOcultas(cargarCarpetasCuadernoOcultas(resumen.id));
       setContenedor(null);
       limpiarPendiente();
       fijarActivo(leido);
@@ -1638,6 +1674,87 @@ export default function App() {
     setVista('editor');
   };
 
+  const actualizarRolGrupo = async (grupo: string, nuevo: string | null) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      throw new Error('No se actualizó la sección: hay cambios sin guardar.');
+    }
+    const miembros = documentos.filter(
+      (documento) =>
+        documento.tipo === 'nota' &&
+        documento.clase === 'personajes' &&
+        (documento.rol ?? '') === grupo,
+    );
+    for (const documento of miembros) {
+      await actualizarPersonaje(actual.raiz, documento.id, nuevo, [], []);
+    }
+    const { lista } = (await refrescarEstructura()) ?? { lista: [] };
+    const activoActual = activoRef.current;
+    if (
+      activoActual?.clase === 'personajes' &&
+      (activoActual.rol ?? '') === grupo
+    ) {
+      const actualizado = lista.find((documento) => documento.id === activoActual.id);
+      if (actualizado) {
+        fijarActivo(actualizado);
+      }
+    }
+  };
+
+  const renombrarGrupoPersonaje = async (grupo: string, nombre: string) => {
+    const limpio = nombre.trim();
+    if (!limpio) {
+      throw new Error('El nombre de la sección no puede estar vacío.');
+    }
+    if (limpio === 'principal' || limpio === 'secundario') {
+      throw new Error('Ese nombre de sección ya existe.');
+    }
+    if (
+      limpio.toLowerCase() !== grupo.toLowerCase() &&
+      gruposPersonajes.some((item) => item.toLowerCase() === limpio.toLowerCase())
+    ) {
+      throw new Error('Ese nombre de sección ya existe.');
+    }
+    try {
+      await actualizarRolGrupo(grupo, limpio);
+      setGruposPersonajes((actual) => {
+        const sinViejo = actual.filter((item) => item !== grupo);
+        return sinViejo.some((item) => item.toLowerCase() === limpio.toLowerCase())
+          ? sinViejo
+          : [...sinViejo, limpio];
+      });
+      if (contenedor?.tipo === 'personajes' && contenedor.grupo === grupo) {
+        setContenedor({ tipo: 'personajes', grupo: limpio, etiqueta: limpio });
+      }
+      setMensaje(`Sección renombrada: ${limpio}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo renombrar la sección: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
+  const eliminarGrupoPersonaje = async (grupo: string) => {
+    try {
+      await actualizarRolGrupo(grupo, null);
+      setGruposPersonajes((actual) => actual.filter((item) => item !== grupo));
+      if (contenedor?.tipo === 'personajes' && contenedor.grupo === grupo) {
+        setContenedor({
+          tipo: 'personajes',
+          grupo: '',
+          etiqueta: 'Personajes sin clasificar',
+        });
+      }
+      setMensaje('Sección eliminada; sus personajes pasaron a Sin clasificar.');
+    } catch (fallo) {
+      setMensaje(`No se pudo eliminar la sección: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
   const crearPersonajeEnGrupo = async (grupo: string) => {
     const actual = proyectoRef.current;
     if (!actual) {
@@ -1698,10 +1815,89 @@ export default function App() {
     try {
       await crearCarpeta(actual.raiz, ruta);
       await refrescarEstructura();
+      setCarpetasCuadernoOcultas((actuales) =>
+        actuales.filter(
+          (carpeta) => carpeta !== ruta && !carpeta.startsWith(`${ruta}/`),
+        ),
+      );
       setContenedor({ tipo: 'cuaderno', ruta, nombre: limpio });
       setMensaje(`Carpeta creada: ${limpio}.`);
     } catch (fallo) {
       setMensaje(`No se pudo crear la carpeta: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
+  const renombrarCarpetaCuaderno = async (ruta: string, nombre: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      throw new Error('No se renombró: resuelve el guardado pendiente.');
+    }
+    const limpio = nombre.trim();
+    try {
+      const nueva = await renombrarCarpeta(actual.raiz, ruta, limpio);
+      await refrescarEstructura();
+      setCarpetasCuadernoOcultas((actuales) =>
+        actuales.map((carpeta) =>
+          carpeta === ruta || carpeta.startsWith(`${ruta}/`)
+            ? nueva + carpeta.slice(ruta.length)
+            : carpeta,
+        ),
+      );
+      if (contenedor?.tipo === 'cuaderno' && contenedor.ruta === ruta) {
+        setContenedor({ tipo: 'cuaderno', ruta: nueva, nombre: limpio });
+      }
+      const documento = activoRef.current;
+      if (documento?.ruta.startsWith(`${ruta}/`)) {
+        const actualizado = await leer(actual.raiz, documento.id);
+        fijarActivo(actualizado);
+        cuerpoEditorRef.current = actualizado.cuerpo;
+      }
+      setMensaje(`Carpeta renombrada: ${limpio}.`);
+    } catch (fallo) {
+      setMensaje(`No se pudo renombrar la carpeta: ${errorDe(fallo).mensaje}`);
+      throw fallo;
+    }
+  };
+
+  const eliminarCarpetaCuaderno = async (ruta: string, nombre: string) => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      throw new Error('No se eliminó: resuelve el guardado pendiente.');
+    }
+    try {
+      const notasCarpeta = documentos.filter(
+        (documento) =>
+          documento.tipo === 'nota' &&
+          documento.ruta.startsWith(`${ruta}/`) &&
+          !documento.archivo,
+      );
+      for (const nota of notasCarpeta) {
+        await cambiarArchivoApi(actual.raiz, nota.id, 'papelera');
+      }
+      await refrescarEstructura();
+      setCarpetasCuadernoOcultas((actuales) => [...new Set([...actuales, ruta])]);
+      const activoActual = activoRef.current;
+      if (activoActual?.ruta.startsWith(`${ruta}/`)) {
+        fijarActivo({ ...activoActual, archivo: 'papelera' });
+      }
+      if (contenedor?.tipo === 'cuaderno' && contenedor.ruta.startsWith(ruta)) {
+        setContenedor(null);
+        setVistaProyecto('editor');
+      }
+      setMensaje(
+        `${nombre}: ${notasCarpeta.length} nota(s) enviadas a la papelera.`,
+      );
+    } catch (fallo) {
+      setMensaje(`No se pudo eliminar la carpeta: ${errorDe(fallo).mensaje}`);
       throw fallo;
     }
   };
@@ -2579,6 +2775,7 @@ export default function App() {
     setDocumentos([]);
     setCarpetas([]);
     setGruposPersonajes([]);
+    setCarpetasCuadernoOcultas([]);
     setContenedor(null);
     setVistaProyecto('editor');
     fijarActivo(null);
@@ -3701,6 +3898,7 @@ export default function App() {
                 filtroEtiqueta={filtroEtiqueta}
                 tituloProyecto={proyecto?.titulo ?? ''}
                 gruposPersonajes={gruposPersonajes}
+                carpetasCuadernoOcultas={carpetasCuadernoOcultas}
                 contenedorActivo={
                   contenedor?.tipo === 'personajes'
                     ? `personajes:${contenedor.grupo}`
@@ -3719,9 +3917,13 @@ export default function App() {
                   setVista('editor');
                 }}
                 onCrearGrupoPersonaje={crearGrupoPersonaje}
+                onRenombrarGrupoPersonaje={renombrarGrupoPersonaje}
+                onEliminarGrupoPersonaje={eliminarGrupoPersonaje}
                 onCrearPersonajeEnGrupo={(grupo) => void crearPersonajeEnGrupo(grupo)}
                 onCrearNotaCuaderno={(ruta) => void crearNotaCuaderno(ruta)}
                 onCrearCarpetaCuaderno={crearCarpetaCuaderno}
+                onRenombrarCarpetaCuaderno={renombrarCarpetaCuaderno}
+                onEliminarCarpetaCuaderno={eliminarCarpetaCuaderno}
                 onSeleccionar={(documento) => void seleccionar(documento)}
                 onCrear={crearNodo}
                 onRenombrarCarpeta={renombrarCarpetaNodo}

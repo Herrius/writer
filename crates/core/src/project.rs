@@ -745,7 +745,12 @@ impl Project {
     /// Renombra una carpeta del manuscrito y reindexa.
     pub fn renombrar_carpeta(&self, relativa: &str, nuevo_nombre: &str) -> Result<String> {
         validar_componente(nuevo_nombre)?;
-        let actual = self.ruta_carpeta_permitida(relativa, true)?;
+        let actual = self.ruta_carpeta_permitida(relativa, false)?;
+        if relativa.starts_with("notas/") && !relativa.starts_with("notas/cuaderno/") {
+            return Err(Error::Input(
+                "solo se pueden renombrar carpetas de manuscrito o de cuaderno".to_string(),
+            ));
+        }
         let padre = actual
             .parent()
             .ok_or_else(|| Error::Input("la raíz del proyecto no se puede renombrar".into()))?;
