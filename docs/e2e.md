@@ -62,31 +62,27 @@ app al terminar.
 La feature `e2e` solo existe en la compilación de prueba: la app de producción
 no autoabre proyectos ni conserva el hook activo.
 
-## 3. E2E de escritorio (Tauri/WebDriver, Windows)
+## 3. E2E de escritorio (WebView2/CDP, Windows)
 
-`scripts/e2e-tauri.ps1` reutiliza `e2e-tauri/tauri.test.mjs` con
-`tauri-driver` + `msedgedriver` y la app real sobre WebView2:
+`scripts/e2e-tauri.ps1` usa **CDP sobre WebView2** y Playwright, sin
+`tauri-driver`/`msedgedriver` (que en CI fallan con `DevToolsActivePort`):
 
 1. crea el proyecto temporal con `target/debug/writer.exe`;
-2. compila la app debug con la feature `e2e` y `--no-bundle`;
-3. comprueba que la app arranca y se mantiene viva antes de involucrar al driver;
-4. ejecuta el escenario `Ctrl+S` con verificación del archivo en disco;
+2. compila la app debug con la feature `e2e`, `--no-bundle` y
+   `tauri.e2e.conf.json`, que habilita `--remote-debugging-port=9222` solo en
+   esa build;
+3. arranca la app con una carpeta de datos WebView2 aislada;
+4. Playwright se conecta por CDP a la página real y ejecuta el escenario
+   `Ctrl+S` con verificación del archivo en disco;
 5. ejecuta el escenario de cierre: escribe texto pendiente, envía `WM_CLOSE`,
    comprueba que se guarda y que el proceso termina.
 
 ```powershell
-cargo install tauri-driver --version 2.0.6 --locked
-cargo install --git https://github.com/chippers/msedgedriver-tool
-& "$env:USERPROFILE\.cargo\bin\msedgedriver-tool.exe"
-$env:MSEDGEDRIVER = (Resolve-Path .\msedgedriver.exe).Path
 pwsh -File scripts/e2e-tauri.ps1
 ```
 
-El workflow `e2e-tauri-windows` instala `tauri-driver`, usa
-`msedgedriver-tool` para obtener el driver que corresponde a la versión real de
-WebView2/Edge, fija una carpeta de datos escribible
-(`webviewOptions.userDataFolder`) y ejecuta el script. Requiere Windows 10/11,
-WebView2 y Visual Studio Build Tools.
+El workflow `e2e-tauri-windows` solo necesita Rust, pnpm y WebView2; ya no
+instala drivers externos. Requiere Windows 10/11 y Visual Studio Build Tools.
 
 ## 4. Limitaciones
 

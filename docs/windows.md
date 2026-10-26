@@ -12,11 +12,9 @@
 - Node 22+ y pnpm 12 (`npm`/`npx` no se usan).
 - WebView2 Evergreen. Windows 10/11 lo incluye; el instalador puede descargar
   el bootstrapper si falta.
-- Para el E2E nativo: `tauri-driver` 2.0.6 y `msedgedriver` de la misma versión
-  que WebView2/Edge. El CI usa
-  [`msedgedriver-tool`](https://github.com/chippers/msedgedriver-tool) para
-  sincronizarlos y fija `webviewOptions.userDataFolder` en una carpeta temporal
-  escribible.
+- Para el E2E nativo: Playwright (ya instalado por pnpm) y WebView2. La build
+  de prueba habilita CDP en `tauri.e2e.conf.json`; no hacen falta
+  `tauri-driver` ni `msedgedriver`.
 
 ## 2. Instaladores
 
@@ -47,19 +45,16 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 ```
 
 El E2E de navegador se ejecuta con `pnpm e2e`. El E2E nativo de la app Tauri
-necesita `tauri-driver` y `msedgedriver`:
+usa CDP directo sobre WebView2 y Playwright:
 
 ```powershell
-cargo install tauri-driver --version 2.0.6 --locked
-cargo install --git https://github.com/chippers/msedgedriver-tool
-& "$env:USERPROFILE\.cargo\bin\msedgedriver-tool.exe"
-$env:MSEDGEDRIVER = (Resolve-Path .\msedgedriver.exe).Path
 pwsh -File scripts/e2e-tauri.ps1
 ```
 
-El script prueba dos escenarios reales sobre WebView2: `Ctrl+S` con
-verificación del archivo en disco y cierre de ventana con cambios pendientes
-(`WM_CLOSE`, guardado y salida del proceso).
+El script compila la app debug con `tauri.e2e.conf.json`, arranca WebView2 con
+`--remote-debugging-port=9222`, conecta Playwright y prueba dos escenarios
+reales: `Ctrl+S` con verificación del archivo en disco y cierre de ventana con
+cambios pendientes (`WM_CLOSE`, guardado y salida del proceso).
 
 ## 4. Paridad cubierta
 

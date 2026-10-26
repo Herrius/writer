@@ -1,5 +1,5 @@
-# E2E de escritorio Windows: tauri-driver + msedgedriver.
-# Ejecuta los dos escenarios reales (Ctrl+S y cierre de ventana) sobre WebView2.
+# E2E de escritorio Windows: WebView2 + CDP + Playwright.
+# No usa tauri-driver/msedgedriver: en CI fallan con DevToolsActivePort.
 $ErrorActionPreference = 'Stop'
 
 $raiz = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -13,23 +13,14 @@ function Ejecutar {
     }
 }
 
-if (-not (Get-Command tauri-driver -ErrorAction SilentlyContinue)) {
-    throw 'falta tauri-driver (cargo install tauri-driver --version 2.0.6 --locked)'
-}
-if (-not $env:MSEDGEDRIVER -or -not (Test-Path $env:MSEDGEDRIVER)) {
-    throw 'falta MSEDGEDRIVER con la ruta a msedgedriver.exe'
-}
-
 $baseTemporal = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
 $temporal = Join-Path $baseTemporal ("writer-e2e-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temporal -Force | Out-Null
 $proyecto = Join-Path $temporal 'novela'
-# El ejemplo oficial de Tauri usa una build debug para WebDriver; además
-# compila mucho más rápido y conserva la consola de diagnóstico.
 $app = Join-Path $raiz 'apps/desktop/src-tauri/target/debug/writer-desktop.exe'
 $cli = Join-Path $raiz 'target/debug/writer.exe'
-$logDriver = Join-Path $temporal 'tauri-driver.log'
-$driver = $null
+$configE2e = Join-Path $raiz 'apps/desktop/src-tauri/tauri.e2e.conf.json'
+$proceso = $null
 
 function Puerto-Abierto {
     param([int]$Puerto)
@@ -45,18 +36,72 @@ function Puerto-Abierto {
 }
 
 function Detener-App {
-    Get-Process -ErrorAction SilentlyContinue |
-        Where-Object { $_.MainWindowTitle -eq 'writer' } |
-        Stop-Process -Force -ErrorAction SilentlyContinue
+    if ($proceso -and -not $proceso.HasExited) {
+        Stop-Process -Id $proceso.Id -Force -ErrorAction SilentlyContinue
+    }
     Start-Sleep -Milliseconds 750
+}
+
+function Ejecutar-Escenario {
+    param([string]$Modo)
+    $env:WRITER_E2E_PROJECT = $proyecto
+    $env:WRITER_E2E_MODE = $Modo
+    $env:WRITER_CDP_PORT = '9222'
+    $env:WEBVIEW2_USER_DATA_FOLDER = Join-Path $temporal "webview-$Modo"
+
+    $stdout = Join-Path $temporal "app-$Modo.out"
+    $stderr = Join-Path $temporal "app-$Modo.err"
+    $script:proceso = Start-Process -FilePath $app -PassThru `
+        -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $env:WRITER_DESKTOP_PID = [string]$proceso.Id
+
+    $listo = $false
+    for ($intento = 0; $intento -lt 120; $intento += 1) {
+        $proceso.Refresh()
+        if ($proceso.HasExited) {
+            Write-Host "--- app stdout ($Modo) ---"
+            Get-Content $stdout -Raw -ErrorAction SilentlyContinue
+            Write-Host "--- app stderr ($Modo) ---"
+            Get-Content $stderr -Raw -ErrorAction SilentlyContinue
+            throw "la app terminó antes de abrir CDP (código $($proceso.ExitCode))"
+        }
+        if (Puerto-Abierto 9222) {
+            $listo = $true
+            break
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    if (-not $listo) {
+        throw "WebView2 no abrió el puerto CDP 9222"
+    }
+
+    Ejecutar 'node' @('e2e-tauri/tauri.windows-cdp.mjs')
+
+    if ($Modo -eq 'guardar') {
+        Detener-App
+    } else {
+        # El propio test espera a que WM_CLOSE guarde y termine el proceso.
+        for ($intento = 0; $intento -lt 80; $intento += 1) {
+            $proceso.Refresh()
+            if ($proceso.HasExited) {
+                break
+            }
+            Start-Sleep -Milliseconds 250
+        }
+        if (-not $proceso.HasExited) {
+            throw 'el proceso de writer sigue vivo después del cierre'
+        }
+    }
 }
 
 try {
     Ejecutar 'cargo' @('build', '--quiet', '--locked', '--bin', 'writer')
     Ejecutar $cli @('init', $proyecto, '--titulo', 'E2E Tauri')
 
-    # La feature `e2e` autoabre el proyecto; la app de producción no la lleva.
-    Ejecutar 'pnpm' @('--dir', 'apps/desktop', 'exec', 'tauri', 'build', '--debug', '--no-bundle', '--features', 'e2e')
+    Ejecutar 'pnpm' @(
+        '--dir', 'apps/desktop', 'exec', 'tauri', 'build',
+        '--debug', '--no-bundle', '--features', 'e2e', '--config', $configE2e
+    )
     if (-not (Test-Path $app)) {
         $alternativa = Join-Path $raiz 'apps/desktop/src-tauri/target/debug/writer.exe'
         if (Test-Path $alternativa) {
@@ -66,67 +111,12 @@ try {
         }
     }
 
-    $env:WRITER_E2E_PROJECT = $proyecto
-    $env:WRITER_DESKTOP_BIN = $app
-    $env:WRITER_E2E_PORT = '4444'
-
-    # Diagnóstico: la app debe arrancar y quedarse viva antes de involucrar
-    # a msedgedriver. Si crashea aquí, el fallo es de la app, no del driver.
-    $prueba = Start-Process -FilePath $app -PassThru `
-        -RedirectStandardOutput (Join-Path $temporal 'app.out') `
-        -RedirectStandardError (Join-Path $temporal 'app.err')
-    Start-Sleep -Seconds 8
-    $prueba.Refresh()
-    if ($prueba.HasExited) {
-        Write-Host '--- app stdout ---'
-        Get-Content (Join-Path $temporal 'app.out') -Raw -ErrorAction SilentlyContinue
-        Write-Host '--- app stderr ---'
-        Get-Content (Join-Path $temporal 'app.err') -Raw -ErrorAction SilentlyContinue
-        throw "la app E2E terminó al arrancar (código $($prueba.ExitCode))"
-    }
-    $prueba.Refresh()
-    Write-Host "app E2E viva: pid=$($prueba.Id) ventana='$($prueba.MainWindowTitle)' handle=$($prueba.MainWindowHandle)"
-    Stop-Process -Id $prueba.Id -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 750
-
-    $driver = Start-Process -FilePath 'tauri-driver' -ArgumentList @(
-        '--port', '4444',
-        '--native-port', '4445',
-        '--native-host', '127.0.0.1',
-        '--native-driver', $env:MSEDGEDRIVER
-    ) -PassThru -RedirectStandardOutput $logDriver -RedirectStandardError "$logDriver.err"
-
-    $listo = $false
-    for ($intento = 0; $intento -lt 80; $intento += 1) {
-        if ($driver.HasExited) {
-            throw "tauri-driver terminó antes de escuchar:`n$(Get-Content $logDriver -Raw -ErrorAction SilentlyContinue)"
-        }
-        if (Puerto-Abierto 4444) {
-            $listo = $true
-            break
-        }
-        Start-Sleep -Milliseconds 250
-    }
-    if (-not $listo) {
-        throw "tauri-driver no escuchó en 4444:`n$(Get-Content $logDriver -Raw -ErrorAction SilentlyContinue)"
-    }
-
-    $env:WRITER_E2E_MODE = 'guardar'
-    Ejecutar 'node' @('e2e-tauri/tauri.test.mjs')
-
-    Detener-App
-    $env:WRITER_E2E_MODE = 'cerrar'
-    Ejecutar 'node' @('e2e-tauri/tauri.test.mjs')
+    Ejecutar-Escenario 'guardar'
+    Ejecutar-Escenario 'cerrar'
 } catch {
-    Write-Host '--- tauri-driver stdout ---'
-    Get-Content $logDriver -Raw -ErrorAction SilentlyContinue
-    Write-Host '--- tauri-driver stderr ---'
-    Get-Content "$logDriver.err" -Raw -ErrorAction SilentlyContinue
+    Write-Host "E2E Windows: $($_.Exception.Message)"
     throw
 } finally {
-    if ($driver -and -not $driver.HasExited) {
-        Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue
-    }
     Detener-App
     Remove-Item -Recurse -Force $temporal -ErrorAction SilentlyContinue
 }

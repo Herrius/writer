@@ -65,11 +65,11 @@ Requiere **pnpm 12** y, en Linux, las bibliotecas de Tauri (`webkit2gtk-4.1`,
 |---|---|
 | `pnpm e2e` | 61 flujos de la demo en Chromium: autosave, búsqueda, historial, cambios, preferencias, paleta, TTS simulado, filtros, colecciones, plantillas, papelera, cuarentena, DOCX y responsive/zoom. Se ejecuta en Ubuntu y Windows. |
 | `pnpm e2e:tauri` | 2 escenarios reales de escritorio en Linux: `Ctrl+S` con verificación en disco y cierre de ventana con cambios pendientes. |
-| `scripts/e2e-tauri.ps1` | Los mismos 2 escenarios sobre WebView2 en Windows, con `tauri-driver` + `msedgedriver`. |
+| `scripts/e2e-tauri.ps1` | Los mismos 2 escenarios sobre WebView2 en Windows, con CDP + Playwright (sin driver externo). |
 
 Requiere Chromium de Playwright (`pnpm e2e:install`) y, para Tauri,
-`tauri-driver` 2.0.6 + `WebKitWebDriver` + `xdotool` en Linux, o
-`tauri-driver` + `msedgedriver` en Windows. Detalle: [`e2e.md`](e2e.md) y
+`tauri-driver` 2.0.6 + `WebKitWebDriver` + `xdotool` en Linux; en Windows,
+Playwright + CDP sobre WebView2. Detalle: [`e2e.md`](e2e.md) y
 [`windows.md`](windows.md).
 
 ### Empaquetado (`empaquetado`)

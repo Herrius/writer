@@ -39,7 +39,7 @@
   tipos/tests de UI, tests de la cáscara Tauri e instaladores.
 - Gate `producto` en ambos sistemas.
 - E2E de navegador Playwright en ambos sistemas.
-- E2E nativo de Windows con `tauri-driver` + `msedgedriver`: `Ctrl+S` y cierre
+- E2E nativo de Windows con CDP sobre WebView2 + Playwright: `Ctrl+S` y cierre
   de ventana con `WM_CLOSE`.
 - Workflow de release por tag `v*` que adjunta deb/rpm/MSI/NSIS a un borrador.
 - Acciones fijadas por SHA, permisos mínimos y `persist-credentials: false`.

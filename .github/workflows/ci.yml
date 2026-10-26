@@ -76,14 +76,14 @@ jobs:
       - name: Tests de la cáscara Tauri
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
 
-      - name: Instaladores
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            python scripts/ci.py empaquetado
-          else
-            python3 scripts/ci.py empaquetado
-          fi
+      - name: Instaladores (Linux)
+        if: runner.os == 'Linux'
+        run: python3 scripts/ci.py empaquetado
+
+      - name: Instaladores (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: python scripts/ci.py empaquetado
 
   e2e:
     name: E2E navegador (${{ matrix.os }})
@@ -147,6 +147,7 @@ jobs:
   e2e-tauri-windows:
     name: E2E escritorio Windows
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -166,32 +167,6 @@ jobs:
 
       - name: Instalar dependencias JS
         run: pnpm install --frozen-lockfile
-
-      - name: Instalar tauri-driver
-        run: cargo install tauri-driver --version 2.0.6 --locked
-
-      - name: Instalar msedgedriver
-        shell: pwsh
-        run: |
-          # La herramienta consulta la versión real de WebView2/Edge y descarga
-          # el driver correspondiente; bajar el de Edge puede no coincidir.
-          cargo install --git https://github.com/chippers/msedgedriver-tool
-          $destino = Join-Path $env:RUNNER_TEMP "msedgedriver"
-          New-Item -ItemType Directory -Path $destino -Force | Out-Null
-          Push-Location $destino
-          try {
-            & "$env:USERPROFILE\.cargo\bin\msedgedriver-tool.exe"
-          } finally {
-            Pop-Location
-          }
-          $driver = Get-ChildItem -Path $destino -Recurse -Filter msedgedriver.exe |
-            Select-Object -First 1
-          if (-not $driver) {
-            throw "msedgedriver-tool no generó msedgedriver.exe"
-          }
-          "MSEDGEDRIVER=$($driver.FullName)" |
-            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
-          $destino | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding ascii
 
       - name: E2E Tauri
         shell: pwsh
