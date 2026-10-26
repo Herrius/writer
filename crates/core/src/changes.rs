@@ -184,7 +184,7 @@ pub fn listar(raiz: &Path) -> Result<Vec<CambioLocal>> {
     {
         let entrada = entrada.map_err(|error| Error::Io(error).with_path(&directorio))?;
         let ruta = entrada.path();
-        if ruta.extension().and_then(|valor| valor.to_str()) != Some("json") {
+        if !fsutil::es_extension(&ruta, "json") {
             continue;
         }
         let Ok(metadatos) = std::fs::symlink_metadata(&ruta) else {

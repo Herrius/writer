@@ -22,6 +22,7 @@ import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
 import type { TipoError } from './types/TipoError';
 import { compararLineas } from './diff';
+import { nombreArchivoSeguro } from './recientes';
 
 export const esTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -251,7 +252,7 @@ export async function crearProyecto(
 }
 
 export async function elegirDestinoPdf(titulo: string): Promise<string | null> {
-  const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'novela'}.pdf`;
+  const nombre = nombreArchivoSeguro(titulo, 'pdf');
   if (!esTauri) {
     return window.prompt('Ruta del PDF', nombre);
   }
@@ -289,7 +290,7 @@ export async function exportarPdf(
 }
 
 export async function elegirDestinoDocx(titulo: string): Promise<string | null> {
-  const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'novela'}.docx`;
+  const nombre = nombreArchivoSeguro(titulo, 'docx');
   if (!esTauri) {
     return window.prompt('Ruta del DOCX', nombre);
   }
@@ -955,7 +956,7 @@ export async function elegirArchivosImportacion(): Promise<string[]> {
 }
 
 export async function elegirDestinoBackup(titulo: string): Promise<string | null> {
-  const nombre = `${titulo.replace(/[\\/:*?"<>|]/g, '').trim() || 'proyecto'}.zip`;
+  const nombre = nombreArchivoSeguro(titulo, 'zip');
   if (!esTauri) {
     return window.prompt('Ruta del backup ZIP', nombre);
   }

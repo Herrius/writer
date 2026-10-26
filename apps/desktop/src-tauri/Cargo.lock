@@ -4577,6 +4577,7 @@ version = "0.1.0"
 dependencies = [
  "atomic-write-file",
  "blake3",
+ "dunce",
  "getrandom 0.4.3",
  "pulldown-cmark",
  "rusqlite",

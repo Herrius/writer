@@ -271,12 +271,12 @@ fn escapar_pdf(texto: &str) -> String {
 }
 
 fn preparar_destino(raiz: &Path, destino: &Path, forzar: bool) -> Result<PathBuf> {
-    let raiz = std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
+    let raiz = dunce::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
     let padre = destino
         .parent()
         .filter(|padre| !padre.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    let padre = std::fs::canonicalize(padre).map_err(|error| Error::Io(error).with_path(padre))?;
+    let padre = dunce::canonicalize(padre).map_err(|error| Error::Io(error).with_path(padre))?;
     let nombre = destino
         .file_name()
         .ok_or_else(|| Error::Input("el destino PDF no tiene nombre".to_string()))?;

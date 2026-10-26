@@ -86,6 +86,17 @@ pub type Campos = BTreeMap<String, Valor>;
 
 /// Parsea un documento con frontmatter `---` y devuelve campos y cuerpo.
 pub fn parsear_documento(texto: &str, contexto: &str) -> Result<(Campos, String)> {
+    // Los blobs históricos y los archivos importados pueden venir de Windows
+    // con BOM o CRLF. `model::leer_texto` ya normaliza la lectura normal; esto
+    // cubre las rutas que leen bytes directamente.
+    let texto = texto.strip_prefix('\u{feff}').unwrap_or(texto);
+    let normalizado;
+    let texto = if texto.contains('\r') {
+        normalizado = texto.replace("\r\n", "\n").replace('\r', "\n");
+        normalizado.as_str()
+    } else {
+        texto
+    };
     let resto = texto
         .strip_prefix("---\n")
         .ok_or_else(|| Error::Schema(format!("{contexto}: el archivo no empieza por '---'")))?;
@@ -465,6 +476,14 @@ mod tests {
         );
         assert_eq!(campos["titulo"].como_texto(), Some("Escena # 1"));
         assert_eq!(campos["orden"].como_entero(), Some(10));
+        assert_eq!(cuerpo, "Cuerpo\n");
+    }
+
+    #[test]
+    fn documento_con_bom_y_crlf() {
+        let texto = "\u{feff}---\r\ntitulo: Windows\r\n---\r\n\r\nCuerpo\r\n";
+        let (campos, cuerpo) = parsear_documento(texto, "prueba").expect("parsear");
+        assert_eq!(campos["titulo"].como_texto(), Some("Windows"));
         assert_eq!(cuerpo, "Cuerpo\n");
     }
 

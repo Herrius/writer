@@ -294,7 +294,7 @@ pub fn listar_comentarios(raiz: &Path, documento: Option<&str>) -> Result<Vec<Co
     {
         let entrada = entrada.map_err(|error| Error::Io(error).with_path(&directorio))?;
         let ruta = entrada.path();
-        if ruta.extension().and_then(|valor| valor.to_str()) != Some("json") {
+        if !fsutil::es_extension(&ruta, "json") {
             continue;
         }
         let bytes = std::fs::read(&ruta).map_err(|error| Error::Io(error).with_path(&ruta))?;

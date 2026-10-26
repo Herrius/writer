@@ -798,7 +798,7 @@ impl Project {
         let mut sesion = self.escritura()?;
         std::fs::create_dir_all(&ruta_carpeta)
             .map_err(|error| Error::Io(error).with_path(&ruta_carpeta))?;
-        let base = model::slug(titulo);
+        let base = slug_nota(titulo);
         let mut nombre = format!("{base}.md");
         let mut numero = 2_u32;
         while ruta_carpeta.join(&nombre).exists() {
@@ -1744,7 +1744,7 @@ impl Project {
 
     fn preparar_destino(&self, destino: &Path, forzar: bool) -> Result<PathBuf> {
         let raiz_lexica = normalizar_lexica(&absoluta(&self.raiz)?);
-        let raiz_real = std::fs::canonicalize(&self.raiz)
+        let raiz_real = dunce::canonicalize(&self.raiz)
             .map_err(|error| Error::Io(error).with_path(&self.raiz))?;
         let destino_abs = normalizar_lexica(&absoluta(destino)?);
 
@@ -2133,7 +2133,7 @@ fn siguiente_prefijo(directorio: &Path) -> u32 {
         .filter_map(|entrada| entrada.ok())
         .filter_map(|entrada| {
             let nombre = entrada.file_name().to_string_lossy().to_string();
-            if !nombre.ends_with(".md") {
+            if !nombre.to_ascii_lowercase().ends_with(".md") {
                 return None;
             }
             nombre.split_once('-')?.0.parse::<u32>().ok()
@@ -2145,7 +2145,7 @@ fn siguiente_prefijo(directorio: &Path) -> u32 {
 
 fn nombre_nota_libre(raiz: &Path, tipo: &str, titulo: &str) -> Result<String> {
     let directorio = raiz.join("notas").join(tipo);
-    let base = model::slug(titulo);
+    let base = slug_nota(titulo);
     let mut nombre = format!("{base}.md");
     let mut numero = 2_u32;
     while directorio.join(&nombre).exists() {
@@ -2172,17 +2172,25 @@ fn primer_hijo(directorio: &Path) -> Option<String> {
 }
 
 fn validar_componente(componente: &str) -> Result<()> {
-    if componente.is_empty()
-        || componente.contains('/')
-        || componente.contains('\\')
-        || componente == "."
-        || componente == ".."
-    {
+    if !crate::fsutil::componente_valido(componente) {
         return Err(Error::Input(format!(
             "componente de ruta no válido: {componente}"
         )));
     }
     Ok(())
+}
+
+/// Slug seguro para un archivo de nota en Linux y Windows.
+fn slug_nota(titulo: &str) -> String {
+    let base = model::slug(titulo);
+    let recortado: String = base.chars().take(120).collect();
+    let base = recortado.trim_end_matches('-');
+    let nombre = format!("{base}.md");
+    if crate::fsutil::componente_valido(&nombre) {
+        base.to_string()
+    } else {
+        format!("nota-{base}")
+    }
 }
 
 fn resultado_busqueda(documento: Documento, fragmento: String) -> ResultadoBusqueda {
@@ -2359,7 +2367,7 @@ fn resolver_destino(ruta: &Path) -> Result<PathBuf> {
     let mut actual = ruta.to_path_buf();
     let mut faltantes: Vec<std::ffi::OsString> = Vec::new();
     loop {
-        match std::fs::canonicalize(&actual) {
+        match dunce::canonicalize(&actual) {
             Ok(mut resuelto) => {
                 for componente in faltantes.iter().rev() {
                     resuelto.push(componente);
@@ -2436,7 +2444,7 @@ fn preparar_raiz_inicial(raiz: &Path) -> Result<(PathBuf, bool)> {
         )));
     }
     let padre_real =
-        std::fs::canonicalize(&padre).map_err(|error| Error::Io(error).with_path(&padre))?;
+        dunce::canonicalize(&padre).map_err(|error| Error::Io(error).with_path(&padre))?;
     let mut ancestro = Some(padre_real.as_path());
     while let Some(directorio) = ancestro {
         if directorio.join("proyecto.yml").is_file() || directorio.join(".escritor").is_dir() {
@@ -2479,7 +2487,7 @@ fn preparar_raiz_inicial(raiz: &Path) -> Result<(PathBuf, bool)> {
         Err(error) => return Err(Error::Io(error).with_path(&destino)),
     };
     let real =
-        std::fs::canonicalize(&destino).map_err(|error| Error::Io(error).with_path(&destino))?;
+        dunce::canonicalize(&destino).map_err(|error| Error::Io(error).with_path(&destino))?;
     if real.parent() != Some(padre_real.as_path()) {
         return Err(Error::Project(format!(
             "la ruta del proyecto escapó de su carpeta padre: {}",

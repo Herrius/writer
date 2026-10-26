@@ -168,6 +168,16 @@ pub fn ruta_relativa(ruta: &Path, raiz: &Path) -> Result<String> {
         .join("/"))
 }
 
+/// Comprueba la extensión de un archivo sin depender de mayúsculas/minúsculas.
+///
+/// Windows conserva el caso pero no lo distingue; aceptar `.MD` evita que un
+/// proyecto editado en Explorer aparezca vacío al abrirlo en Windows.
+pub fn es_extension(ruta: &Path, extension: &str) -> bool {
+    ruta.extension()
+        .and_then(|valor| valor.to_str())
+        .is_some_and(|valor| valor.eq_ignore_ascii_case(extension))
+}
+
 /// Valida una ruta relativa del proyecto sin tocar el sistema de archivos.
 ///
 /// Rechaza separadores de Windows, prefijos de unidad, UNC, componentes `.` o
@@ -184,28 +194,57 @@ pub fn validar_ruta_relativa(relativa: &str) -> Result<()> {
         return Err(Error::Integrity(format!("ruta no válida: {relativa}")));
     }
     for componente in relativa.split('/') {
-        if componente.is_empty()
-            || componente == "."
-            || componente == ".."
-            || componente.starts_with(' ')
-            || componente.ends_with('.')
-            || componente.ends_with(' ')
-            || componente.chars().any(char::is_control)
-        {
-            return Err(Error::Integrity(format!("ruta no válida: {relativa}")));
-        }
-        let mayusculas = componente.to_ascii_uppercase();
-        let base = mayusculas.split('.').next().unwrap_or("");
-        let reservado = matches!(base, "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$")
-            || (base.len() == 4
-                && (base.starts_with("COM") || base.starts_with("LPT"))
-                && base.as_bytes()[3].is_ascii_digit()
-                && base.as_bytes()[3] != b'0');
-        if reservado {
+        if !componente_valido(componente) {
             return Err(Error::Integrity(format!("ruta no válida: {relativa}")));
         }
     }
     Ok(())
+}
+
+/// Comprueba si un componente de ruta es seguro y válido en Linux y Windows.
+///
+/// Se comparten las reglas más estrictas de ambos sistemas: nada de caracteres
+/// reservados de Windows, nombres de dispositivo, puntos/espacios finales ni
+/// componentes de más de 255 unidades UTF-16. Así un proyecto creado en Linux
+/// también se puede abrir y sincronizar en Windows.
+pub fn componente_valido(componente: &str) -> bool {
+    !componente.is_empty()
+        && componente != "."
+        && componente != ".."
+        && !componente.starts_with(' ')
+        && !componente.ends_with('.')
+        && !componente.ends_with(' ')
+        && !componente.chars().any(char::is_control)
+        && !componente.chars().any(|caracter| {
+            matches!(
+                caracter,
+                '/' | '\\' | ':' | '<' | '>' | '"' | '|' | '?' | '*'
+            )
+        })
+        && componente.encode_utf16().count() <= 255
+        && !es_nombre_reservado(componente)
+}
+
+fn es_nombre_reservado(componente: &str) -> bool {
+    let mayusculas = componente.to_ascii_uppercase();
+    let base = mayusculas.split('.').next().unwrap_or("");
+    let base = base.trim_end_matches([' ', '.']);
+    matches!(
+        base,
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$" | "CLOCK$"
+    ) || (base.len() == 4
+        && (base.starts_with("COM") || base.starts_with("LPT"))
+        && base.as_bytes()[3].is_ascii_digit()
+        && base.as_bytes()[3] != b'0')
+        || matches!(
+            base,
+            "COM\u{00b9}"
+                | "COM\u{00b2}"
+                | "COM\u{00b3}"
+                | "LPT\u{00b9}"
+                | "LPT\u{00b2}"
+                | "LPT\u{00b3}"
+        )
 }
 
 /// Valida una ruta que debe ser un documento del proyecto.
@@ -224,8 +263,7 @@ pub fn validar_ruta_documento(relativa: &str) -> Result<()> {
 /// en cualquier componente existente. Devuelve la ruta bajo la raíz canónica.
 pub fn ruta_del_proyecto(raiz: &Path, relativa: &str) -> Result<PathBuf> {
     validar_ruta_relativa(relativa)?;
-    let raiz_real =
-        std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
+    let raiz_real = dunce::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
     let componentes: Vec<&str> = relativa.split('/').collect();
     let mut salida = raiz_real;
     for (indice, componente) in componentes.iter().enumerate() {
@@ -275,7 +313,7 @@ pub fn directorio_real(ruta: &Path) -> Result<PathBuf> {
             ruta.display()
         )));
     }
-    std::fs::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
+    dunce::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
 }
 
 /// Comprueba que `ruta` es un archivo real (no un enlace simbólico) y devuelve
@@ -289,7 +327,7 @@ pub fn archivo_real(ruta: &Path) -> Result<PathBuf> {
             ruta.display()
         )));
     }
-    std::fs::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
+    dunce::canonicalize(ruta).map_err(|error| Error::Io(error).with_path(ruta))
 }
 
 #[cfg(unix)]
@@ -383,7 +421,7 @@ pub fn validar_escritor(raiz: &Path) -> Result<Option<PathBuf>> {
 /// cuarentena. La raíz puede ser un alias, pero sus directorios internos no.
 /// Devuelve `None` si falta un directorio y no se pidió crearlo.
 pub(crate) fn directorio_cuarentena(raiz: &Path, crear: bool) -> Result<Option<PathBuf>> {
-    let mut ruta = std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
+    let mut ruta = dunce::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
     for nombre in [".escritor", "cuarentena"] {
         ruta.push(nombre);
         match std::fs::symlink_metadata(&ruta) {
@@ -463,6 +501,14 @@ mod tests {
             "manuscrito//x.md",
             "manuscrito/CON.md",
             "manuscrito/CONIN$.md",
+            "manuscrito/CLOCK$.md",
+            "manuscrito/COM\u{00b9}.md",
+            "manuscrito/a?b.md",
+            "manuscrito/a*b.md",
+            "manuscrito/a\"b.md",
+            "manuscrito/a<b.md",
+            "manuscrito/a>b.md",
+            "manuscrito/a|b.md",
             "manuscrito/ archivo.md",
             "manuscrito/archivo.",
             "manuscrito/archivo ",
@@ -480,5 +526,7 @@ mod tests {
             );
         }
         assert!(validar_ruta_documento("proyecto.yml").is_err());
+        assert!(es_extension(Path::new("manuscrito/001.MD"), "md"));
+        assert!(!es_extension(Path::new("manuscrito/001.md.bak"), "md"));
     }
 }

@@ -133,7 +133,7 @@ pub fn mover_a_papelera(
             ruta_proyecto.display()
         )));
     }
-    let proyecto = std::fs::canonicalize(ruta_proyecto)
+    let proyecto = dunce::canonicalize(ruta_proyecto)
         .map_err(|error| Error::Io(error).with_path(ruta_proyecto))?;
     if !proyecto.join("proyecto.yml").is_file() {
         return Err(Error::Input(format!(

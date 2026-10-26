@@ -286,7 +286,7 @@ pub fn listar_sesiones(raiz: &Path) -> Result<Vec<Sesion>> {
     {
         let entrada = entrada.map_err(|error| Error::Io(error).with_path(&directorio))?;
         let ruta = entrada.path();
-        if ruta.extension().and_then(|valor| valor.to_str()) != Some("jsonl") {
+        if !fsutil::es_extension(&ruta, "jsonl") {
             continue;
         }
         let Some(mes) = ruta.file_stem().and_then(|valor| valor.to_str()) else {

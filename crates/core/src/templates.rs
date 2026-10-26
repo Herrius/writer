@@ -387,7 +387,7 @@ fn copiar_manuscrito(
         let texto = std::fs::read_to_string(archivo)
             .map_err(|error| Error::Io(error).with_path(archivo))?;
         let cuerpo = crate::import::sin_frontmatter(&texto);
-        proyecto.escribir_cuerpo(id, cuerpo)?;
+        proyecto.escribir_cuerpo(id, &cuerpo)?;
     }
     Ok(())
 }
@@ -426,7 +426,7 @@ fn copiar_notas(
         let cuerpo = crate::import::sin_frontmatter(&texto);
         let titulo = titulo_desde_archivo(&archivo);
         let (id, _) = proyecto.crear_nota(tipo, &titulo)?;
-        proyecto.escribir_cuerpo(&id, cuerpo)?;
+        proyecto.escribir_cuerpo(&id, &cuerpo)?;
     }
     Ok(())
 }
@@ -455,7 +455,7 @@ fn recorrer_md(
             recorrer_md(&ruta, archivos, maximo, total_bytes, total_archivos)?;
             continue;
         }
-        if !metadatos.is_file() || ruta.extension().and_then(|valor| valor.to_str()) != Some("md") {
+        if !metadatos.is_file() || !crate::fsutil::es_extension(&ruta, "md") {
             continue;
         }
         if metadatos.len() > MAX_ARCHIVO {

@@ -456,7 +456,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
     if let Ok(entradas) = std::fs::read_dir(&sesiones) {
         for entrada in entradas.flatten() {
             let ruta = entrada.path();
-            if ruta.extension().and_then(|valor| valor.to_str()) != Some("jsonl") {
+            if !fsutil::es_extension(&ruta, "jsonl") {
                 continue;
             }
             if let Some(error) = revisar(&ruta) {
@@ -490,7 +490,7 @@ fn verificar_sidecars(raiz: &Path, escaneo: &mut Escaneo) {
     if let Ok(entradas) = std::fs::read_dir(&comentarios) {
         for entrada in entradas.flatten() {
             let ruta = entrada.path();
-            if ruta.extension().and_then(|valor| valor.to_str()) != Some("json") {
+            if !fsutil::es_extension(&ruta, "json") {
                 continue;
             }
             if let Some(error) = revisar(&ruta) {
@@ -723,7 +723,7 @@ fn recorrer_md(
         }
         if tipo.is_dir() {
             recorrer_md(raiz, &ruta, salida, avisos)?;
-        } else if tipo.is_file() && nombre.ends_with(".md") {
+        } else if tipo.is_file() && fsutil::es_extension(&ruta, "md") {
             salida.push(ruta);
         }
     }

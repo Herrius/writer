@@ -12,6 +12,7 @@ workspace = true
 [dependencies]
 atomic-write-file.workspace = true
 blake3.workspace = true
+dunce.workspace = true
 getrandom.workspace = true
 pulldown-cmark.workspace = true
 rusqlite.workspace = true

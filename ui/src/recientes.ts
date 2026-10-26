@@ -83,6 +83,20 @@ export function guardarRecientes(recientes: Reciente[]): void {
   }
 }
 
+const RESERVADOS_WINDOWS =
+  /^(con|prn|aux|nul|com[1-9]|lpt[1-9]|conin\$|conout\$|clock\$)$/i;
+
+export function nombreArchivoSeguro(titulo: string, extension: string): string {
+  const limpio = titulo
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[. ]+$/g, '');
+  const base = limpio || 'documento';
+  const seguro = RESERVADOS_WINDOWS.test(base) ? `documento-${base}` : base;
+  return `${seguro.slice(0, 200)}.${extension}`;
+}
+
 export function slugProyecto(titulo: string): string {
   const base = titulo
     .normalize('NFD')
@@ -91,7 +105,12 @@ export function slugProyecto(titulo: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   if (base) {
-    return base;
+    const recortado = base.slice(0, 120).replace(/-+$/g, '');
+    // Un proyecto llamado «CON» no se puede crear en Windows; se prefija para
+    // que el mismo título funcione igual en Linux y Windows.
+    return RESERVADOS_WINDOWS.test(recortado)
+      ? `proyecto-${recortado.slice(0, 110)}`
+      : recortado;
   }
   let suma = 0;
   for (const caracter of titulo) {

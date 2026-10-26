@@ -38,7 +38,7 @@ pub fn importar_markdown(
         Some(tipo) => proyecto.crear_nota(tipo, titulo)?,
         None => proyecto.crear_escena(titulo, None, None, None)?,
     };
-    proyecto.escribir_cuerpo(&id, cuerpo)?;
+    proyecto.escribir_cuerpo(&id, &cuerpo)?;
     Ok((id, ruta))
 }
 
@@ -132,7 +132,7 @@ pub fn previsualizar(archivo: &Path) -> Result<(String, String)> {
             let bytes = leer_limitado(archivo)?;
             let texto = String::from_utf8(bytes)
                 .map_err(|error| Error::Format(format!("Markdown no es UTF-8: {error}")))?;
-            ("Markdown", sin_frontmatter(&texto).to_string())
+            ("Markdown", sin_frontmatter(&texto))
         }
     };
     let recortado: String = cuerpo.chars().take(2000).collect();
@@ -172,7 +172,7 @@ fn cuerpo_docx(archivo: &Path) -> Result<String> {
 
 /// Crea un backup ZIP del proyecto.
 pub fn crear_backup(raiz: &Path, destino: &Path) -> Result<PathBuf> {
-    let raiz = std::fs::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
+    let raiz = dunce::canonicalize(raiz).map_err(|error| Error::Io(error).with_path(raiz))?;
     if !destino.is_absolute() {
         return Err(Error::Input(
             "el destino del backup debe ser una ruta absoluta".to_string(),
@@ -183,7 +183,7 @@ pub fn crear_backup(raiz: &Path, destino: &Path) -> Result<PathBuf> {
         .parent()
         .ok_or_else(|| Error::Input("el destino del backup no tiene padre".to_string()))?;
     std::fs::create_dir_all(padre).map_err(|error| Error::Io(error).with_path(padre))?;
-    let padre = std::fs::canonicalize(padre).map_err(|error| Error::Io(error).with_path(padre))?;
+    let padre = dunce::canonicalize(padre).map_err(|error| Error::Io(error).with_path(padre))?;
     let destino = padre.join(
         destino
             .file_name()
@@ -335,10 +335,18 @@ fn leer_limitado(archivo: &Path) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-pub(crate) fn sin_frontmatter(texto: &str) -> &str {
+/// Normaliza texto que llega de fuera del proyecto (Windows suele usar BOM y
+/// CRLF). El formato interno de writer es siempre UTF-8 sin BOM y con LF.
+pub(crate) fn normalizar_texto_entrada(texto: &str) -> String {
+    let texto = texto.strip_prefix('\u{feff}').unwrap_or(texto);
+    texto.replace("\r\n", "\n").replace('\r', "\n")
+}
+
+pub(crate) fn sin_frontmatter(texto: &str) -> String {
+    let texto = normalizar_texto_entrada(texto);
     if let Some(resto) = texto.strip_prefix("---\n") {
         if let Some(fin) = resto.find("\n---\n") {
-            return texto[3 + fin + 5..].trim_start_matches('\n');
+            return texto[3 + fin + 5..].trim_start_matches('\n').to_string();
         }
     }
     texto
@@ -562,6 +570,22 @@ mod tests {
         assert_eq!(
             proyecto.leer(&id).expect("leer").cuerpo(),
             "Texto importado.\n"
+        );
+    }
+
+    #[test]
+    fn importa_markdown_de_windows_con_bom_y_crlf() {
+        let (temporal, proyecto) = proyecto();
+        let archivo = temporal.path().join("entrada-windows.md");
+        std::fs::write(
+            &archivo,
+            "\u{feff}---\r\ntitulo: X\r\n---\r\n\r\nTexto Windows.\r\n",
+        )
+        .expect("escribir");
+        let (id, _) = importar_markdown(&proyecto, &archivo, "Windows", None).expect("importar");
+        assert_eq!(
+            proyecto.leer(&id).expect("leer").cuerpo(),
+            "Texto Windows.\n"
         );
     }
 

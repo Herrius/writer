@@ -141,6 +141,7 @@ import {
   colorDesdeTitulo,
   guardarRecientes,
   leerRecientes,
+  nombreArchivoSeguro,
   slugProyecto,
   type Reciente,
 } from './recientes';
@@ -2087,7 +2088,7 @@ export default function App() {
         documento.id === activoRef.current?.id
           ? await leer(actual.raiz, documento.id)
           : documento;
-      const nombre = `${vivo.titulo.replace(/[\\/:*?"<>|]+/g, '-')}.md`;
+      const nombre = nombreArchivoSeguro(vivo.titulo, 'md');
       const destino = await exportarTexto(nombre, contenidoMarkdown([vivo]));
       if (destino) {
         setMensaje(`Exportado: ${destino}.`);
@@ -2115,7 +2116,7 @@ export default function App() {
       return;
     }
     try {
-      const nombreArchivo = `${nombre.replace(/[\\/:*?"<>|]+/g, '-')}.md`;
+      const nombreArchivo = nombreArchivoSeguro(nombre, 'md');
       const destino = await exportarTexto(nombreArchivo, contenidoMarkdown(lista));
       if (destino) {
         setMensaje(`Exportado: ${destino}.`);

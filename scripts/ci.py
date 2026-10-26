@@ -74,7 +74,7 @@ def _entorno() -> dict[str, str]:
     entorno.setdefault("CARGO_TERM_COLOR", "never")
     local = Path.home() / ".local" / "bin"
     if local.is_dir():
-        entorno["PATH"] = f"{local}:{entorno.get('PATH', '')}"
+        entorno["PATH"] = f"{local}{os.pathsep}{entorno.get('PATH', '')}"
     return entorno
 
 
