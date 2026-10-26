@@ -593,9 +593,39 @@ def _comprobar_rpm() -> None:
     print(f"Empaquetado: {paquete.name} verificado (estructura, permisos, digests)")
 
 
+def _comprobar_windows() -> None:
+    """Comprueba que Tauri generó instaladores Windows utilizables.
+
+    No sustituye una instalación real en una máquina limpia, pero detecta el
+    fallo más común del empaquetado: que no se genere ningún artefacto o que el
+    archivo no sea un PE/MSI válido.
+    """
+    msi = sorted((BUNDLE / "msi").glob("*.msi"))
+    nsis = sorted((BUNDLE / "nsis").glob("*.exe"))
+    if not msi and not nsis:
+        raise Fallo("Windows: Tauri no generó ningún MSI ni instalador NSIS")
+    for paquete in [*msi, *nsis]:
+        if paquete.stat().st_size < 1_000_000:
+            raise Fallo(f"Windows: instalador sospechosamente pequeño: {paquete}")
+        with paquete.open("rb") as archivo:
+            cabecera = archivo.read(8)
+        if cabecera[:2] != b"MZ":
+            raise Fallo(f"Windows: el instalador no es un PE válido: {paquete}")
+    for paquete in msi:
+        with paquete.open("rb") as archivo:
+            cabecera = archivo.read(8)
+        if cabecera != b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+            raise Fallo(f"Windows: el MSI no tiene cabecera OLE: {paquete}")
+    nombres = ", ".join(paquete.name for paquete in [*msi, *nsis])
+    print(f"Empaquetado Windows: {nombres} verificados")
+
+
 def _comprobar_paquetes() -> None:
+    if sys.platform == "win32":
+        _comprobar_windows()
+        return
     if not sys.platform.startswith("linux"):
-        print("Empaquetado: verificación estructural omitida fuera de Linux")
+        print("Empaquetado: verificación estructural omitida fuera de Linux/Windows")
         return
     _comprobar_deb()
     _comprobar_rpm()

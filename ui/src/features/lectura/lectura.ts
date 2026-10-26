@@ -15,7 +15,11 @@ export type OpcionesLectura = {
 
 /** `true` si el WebView expone la síntesis de voz del sistema. */
 export function soportaLectura(): boolean {
-  return typeof window !== 'undefined' && 'speechSynthesis' in window;
+  return (
+    typeof window !== 'undefined' &&
+    'speechSynthesis' in window &&
+    'SpeechSynthesisUtterance' in window
+  );
 }
 
 /** Voces del sistema, sin red. Puede devolver una lista vacía. */
