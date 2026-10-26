@@ -78,12 +78,24 @@ def _entorno() -> dict[str, str]:
     return entorno
 
 
+def pnpm_bin() -> str:
+    """Resuelve pnpm en Linux y en Windows (donde el shim es `pnpm.cmd`)."""
+    return shutil.which("pnpm.cmd") or shutil.which("pnpm") or "pnpm"
+
+
 def ejecutar(
     comando: list[str],
     *,
     capturar: bool = False,
     timeout: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    # En Windows, `pnpm` es un shim `.cmd`; CreateProcess no lo ejecuta directo.
+    if (
+        sys.platform == "win32"
+        and comando
+        and comando[0].lower().endswith((".cmd", ".bat"))
+    ):
+        comando = ["cmd", "/c", *comando]
     print("$ " + " ".join(comando), flush=True)
     try:
         proceso = subprocess.run(
@@ -130,12 +142,12 @@ def calidad() -> None:
 
 
 def interfaz() -> None:
-    if shutil.which("pnpm") is None:
+    if shutil.which("pnpm") is None and shutil.which("pnpm.cmd") is None:
         raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
-    ejecutar(["pnpm", "install", "--frozen-lockfile"])
-    ejecutar(["pnpm", "typecheck"])
-    ejecutar(["pnpm", "ui:test"])
-    ejecutar(["pnpm", "ui:build"])
+    ejecutar([pnpm_bin(), "install", "--frozen-lockfile"])
+    ejecutar([pnpm_bin(), "typecheck"])
+    ejecutar([pnpm_bin(), "ui:test"])
+    ejecutar([pnpm_bin(), "ui:build"])
     ejecutar(
         [
             "cargo",
@@ -633,10 +645,10 @@ def _comprobar_paquetes() -> None:
 
 
 def e2e() -> None:
-    if shutil.which("pnpm") is None:
+    if shutil.which("pnpm") is None and shutil.which("pnpm.cmd") is None:
         raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
-    ejecutar(["pnpm", "install", "--frozen-lockfile"])
-    ejecutar(["pnpm", "e2e"])
+    ejecutar([pnpm_bin(), "install", "--frozen-lockfile"])
+    ejecutar([pnpm_bin(), "e2e"])
 
 
 def e2e_tauri() -> None:
@@ -649,16 +661,16 @@ def e2e_tauri() -> None:
         )
     if shutil.which("WebKitWebDriver") is None:
         raise Fallo("falta WebKitWebDriver")
-    if shutil.which("pnpm") is None:
+    if shutil.which("pnpm") is None and shutil.which("pnpm.cmd") is None:
         raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
-    ejecutar(["pnpm", "install", "--frozen-lockfile"])
-    ejecutar(["pnpm", "e2e:tauri"])
+    ejecutar([pnpm_bin(), "install", "--frozen-lockfile"])
+    ejecutar([pnpm_bin(), "e2e:tauri"])
 
 
 def empaquetado() -> None:
-    if shutil.which("pnpm") is None:
+    if shutil.which("pnpm") is None and shutil.which("pnpm.cmd") is None:
         raise Fallo("falta pnpm (instala pnpm 12; npm/npx no se usan)")
-    ejecutar(["pnpm", "build"])
+    ejecutar([pnpm_bin(), "build"])
     _comprobar_paquetes()
 
 
