@@ -607,10 +607,11 @@ def _comprobar_windows() -> None:
     for paquete in [*msi, *nsis]:
         if paquete.stat().st_size < 1_000_000:
             raise Fallo(f"Windows: instalador sospechosamente pequeño: {paquete}")
+    for paquete in nsis:
         with paquete.open("rb") as archivo:
-            cabecera = archivo.read(8)
-        if cabecera[:2] != b"MZ":
-            raise Fallo(f"Windows: el instalador no es un PE válido: {paquete}")
+            cabecera = archivo.read(2)
+        if cabecera != b"MZ":
+            raise Fallo(f"Windows: el instalador NSIS no es un PE válido: {paquete}")
     for paquete in msi:
         with paquete.open("rb") as archivo:
             cabecera = archivo.read(8)

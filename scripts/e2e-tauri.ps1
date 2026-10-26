@@ -24,7 +24,9 @@ $baseTemporal = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Pat
 $temporal = Join-Path $baseTemporal ("writer-e2e-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temporal -Force | Out-Null
 $proyecto = Join-Path $temporal 'novela'
-$app = Join-Path $raiz 'apps/desktop/src-tauri/target/release/writer-desktop.exe'
+# El ejemplo oficial de Tauri usa una build debug para WebDriver; además
+# compila mucho más rápido y conserva la consola de diagnóstico.
+$app = Join-Path $raiz 'apps/desktop/src-tauri/target/debug/writer-desktop.exe'
 $cli = Join-Path $raiz 'target/debug/writer.exe'
 $logDriver = Join-Path $temporal 'tauri-driver.log'
 $driver = $null
@@ -54,9 +56,9 @@ try {
     Ejecutar $cli @('init', $proyecto, '--titulo', 'E2E Tauri')
 
     # La feature `e2e` autoabre el proyecto; la app de producción no la lleva.
-    Ejecutar 'pnpm' @('--dir', 'apps/desktop', 'exec', 'tauri', 'build', '--no-bundle', '--features', 'e2e')
+    Ejecutar 'pnpm' @('--dir', 'apps/desktop', 'exec', 'tauri', 'build', '--debug', '--no-bundle', '--features', 'e2e')
     if (-not (Test-Path $app)) {
-        $alternativa = Join-Path $raiz 'apps/desktop/src-tauri/target/release/writer.exe'
+        $alternativa = Join-Path $raiz 'apps/desktop/src-tauri/target/debug/writer.exe'
         if (Test-Path $alternativa) {
             $app = $alternativa
         } else {
@@ -67,6 +69,25 @@ try {
     $env:WRITER_E2E_PROJECT = $proyecto
     $env:WRITER_DESKTOP_BIN = $app
     $env:WRITER_E2E_PORT = '4444'
+
+    # Diagnóstico: la app debe arrancar y quedarse viva antes de involucrar
+    # a msedgedriver. Si crashea aquí, el fallo es de la app, no del driver.
+    $prueba = Start-Process -FilePath $app -PassThru `
+        -RedirectStandardOutput (Join-Path $temporal 'app.out') `
+        -RedirectStandardError (Join-Path $temporal 'app.err')
+    Start-Sleep -Seconds 8
+    $prueba.Refresh()
+    if ($prueba.HasExited) {
+        Write-Host '--- app stdout ---'
+        Get-Content (Join-Path $temporal 'app.out') -Raw -ErrorAction SilentlyContinue
+        Write-Host '--- app stderr ---'
+        Get-Content (Join-Path $temporal 'app.err') -Raw -ErrorAction SilentlyContinue
+        throw "la app E2E terminó al arrancar (código $($prueba.ExitCode))"
+    }
+    $prueba.Refresh()
+    Write-Host "app E2E viva: pid=$($prueba.Id) ventana='$($prueba.MainWindowTitle)' handle=$($prueba.MainWindowHandle)"
+    Stop-Process -Id $prueba.Id -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 750
 
     $driver = Start-Process -FilePath 'tauri-driver' -ArgumentList @(
         '--port', '4444',
