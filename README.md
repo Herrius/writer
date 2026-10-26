@@ -5,23 +5,24 @@ el proyecto, índice SQLite reconstruible y un log de operaciones que permite
 recuperarse de un corte sin perder ni medio cambio.
 
 Este repositorio ha cerrado la **Fase 3 (Local avanzado)** en **Linux
-x86_64**. El motor y la CLI (Fase 1), la interfaz y la publicación local (Fase 2)
-y las extensiones locales de la Fase 3 están implementados: control de cambios,
-comparación de versiones, preferencias y temas, lectura en voz alta, Quick Open,
-paleta de comandos, filtros, colecciones, plantillas, papelera local de
-proyectos, árbol jerárquico con menús contextuales e iconos Lucide, cabecera
-sincronizada con la ruta activa, grupos de personajes, carpetas de cuaderno,
-menús de creación/renombrado/eliminación por sección, archivo/papelera de
-documentos, meta diaria global
-y presupuestos de rendimiento.
-La app se empaqueta en deb/rpm.
+x86_64** y mantiene una matriz de CI **Linux + Windows**. El motor y la CLI
+(Fase 1), la interfaz y la publicación local (Fase 2) y las extensiones locales
+de la Fase 3 están implementados: control de cambios, comparación de versiones,
+preferencias y temas, lectura en voz alta, Quick Open, paleta de comandos,
+filtros, colecciones, plantillas, papelera local de proyectos, árbol jerárquico
+con menús contextuales e iconos Lucide, cabecera sincronizada con la ruta
+activa, grupos de personajes, carpetas de cuaderno, menús de
+creación/renombrado/eliminación por sección, archivo/papelera de documentos,
+meta diaria global y presupuestos de rendimiento.
+La app se empaqueta en deb/rpm en Linux y en MSI/NSIS en Windows.
 
-El **release público no está autorizado** todavía: AppImage, firma, updater,
-Windows, CI remoto y la prueba de la app instalada son condiciones de
-publicación. **El objetivo del producto es Windows y Linux**; el estado actual
-está validado en **Linux x86_64** y Windows pasa a la Fase 4, pendiente de una
-máquina real. La Fase 3 es local/offline: no hay cuentas, servidor,
-sincronización ni servicios online.
+El **release público no está autorizado** todavía: AppImage, firma, updater y
+la prueba de la app instalada en una máquina limpia son condiciones de
+publicación. **El objetivo del producto es Windows y Linux**; Linux está
+validado en **x86_64** y Windows se compila, prueba y empaqueta en GitHub
+Actions. La Fase 4 sigue abierta para la validación en Windows 10/11 real, la
+firma y la instalación desde MSI/NSIS. La Fase 3 es local/offline: no hay
+cuentas, servidor, sincronización ni servicios online.
 
 > **Estado para retomar:** [`HANDOFF.md`](HANDOFF.md).
 >
@@ -32,28 +33,29 @@ sincronización ni servicios online.
 
 | Fase | Contenido | Estado |
 |---|---|---|
-| 0 | Workspace, CI, esquema v1, fixtures | Completada en local; falta CI remoto |
+| 0 | Workspace, CI, esquema v1, fixtures | Completada; CI remoto Linux/Windows activo |
 | 1 | Motor + CLI (v0.1) | **Completada en local (Linux; MSRV 1.89 verificada)** |
-| 2 | Interfaz Tauri (v0.2) | **Cerrada funcionalmente en Linux; release público no autorizado** |
-| 3 | Local avanzado | **Cerrada funcionalmente en Linux x86_64** |
-| 4 | Windows | **Pendiente de máquina Windows: MSVC, WebView2, instalador y E2E nativo** |
+| 2 | Interfaz Tauri (v0.2) | **Cerrada funcionalmente en Linux; build y E2E Windows en CI** |
+| 3 | Local avanzado | **Cerrada funcionalmente en Linux x86_64; tests Windows en CI** |
+| 4 | Windows | **Build, tests, E2E e instaladores MSI/NSIS en CI; pendiente máquina limpia y firma** |
 | 5 | Documentación y cierre | Pendiente después de Windows |
 
 La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
-exportación Markdown e inyección de fallos. El conjunto Rust acumula **91
-unitarias + 50 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
+exportación Markdown e inyección de fallos. El conjunto Rust acumula **93
+unitarias + 51 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
 tiene 10 pruebas y la UI 88 (corpus, preferencias, lectura simulada, autosave,
 búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 61 flujos E2E
 de navegador y 2 escenarios de escritorio con Tauri/WebDriver (`Ctrl+S` y cierre
-de ventana).
+de ventana) en Linux y en Windows.
 
 ## Requisitos
 
 - Rust estable (el repo fija `stable` en `rust-toolchain.toml`).
   En Windows hace falta el toolchain MSVC y Visual Studio Build Tools con el
   workload **Desarrollo para el escritorio con C++**. El núcleo mantiene MSRV
-  1.89; la cáscara Tauri (`apps/desktop`) requiere Rust 1.90 o superior.
+  1.89; la cáscara Tauri (`apps/desktop`) requiere Rust 1.90 o superior. Guía
+  completa: [`docs/windows.md`](docs/windows.md).
 - **pnpm 12** y Node 22 o superior para la interfaz. `npm` y `npx` no se usan.
   Instalación de pnpm sin npm: `curl -fsSL https://get.pnpm.io/install.sh | sh -`
   (o el binario oficial de pnpm).
@@ -306,10 +308,10 @@ Limitaciones conocidas (documentadas en [`docs/protocolo-commit.md`](docs/protoc
   El informe se reemplaza de forma atómica y descartar nunca toca el original.
 - Descartar una copia de cuarentena no repara el archivo original; `verify`
   sigue mostrando el error.
-- El E2E de navegador usa la demo; el de escritorio es Linux-only y no prueba
-  diálogos nativos ni la app instalada.
-- El empaquetado genera deb/rpm en Linux; AppImage, firma y Windows quedan
-  pendientes.
+- El E2E de navegador usa la demo; el de escritorio se ejecuta en Linux y
+  Windows, pero no prueba la app instalada ni todos los diálogos nativos.
+- El empaquetado genera deb/rpm en Linux y MSI/NSIS en Windows; AppImage, firma
+  y updater quedan pendientes.
 
 ## Pruebas y gates
 
@@ -408,22 +410,24 @@ comprobaciones de `docs/esquema-v1.md`. El verificador Rust reproduce los mismos
 
 ## CI
 
-Siete grupos de gates, ejecutables también en local con `python scripts/ci.py`:
+El CI remoto vive en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) y
+el release por tag en [`.github/workflows/release.yml`](.github/workflows/release.yml).
+Los gates también se pueden ejecutar en local con `python scripts/ci.py`:
 
 | Grupo | Qué comprueba |
 |---|---|
-| `calidad` | `fmt`, `clippy -D warnings`, `cargo test --locked` (matriz prevista: Windows, Linux y macOS; hoy ejecutado en Linux) |
-| `interfaz` | `pnpm install --frozen-lockfile`, tipos TS, corpus/autosave, build de Vite y `cargo check` de la cáscara Tauri |
-| `e2e` | Playwright sobre la demo: autosave persistente, búsqueda, formato, historial, marcas, cuarentena y DOCX |
-| `e2e-tauri` | Tauri/WebDriver en Linux: `Ctrl+S` con verificación en disco y cierre de ventana con cambios pendientes |
-| `empaquetado` | `pnpm build` y verificación de estructura, permisos, lanzador, iconos y md5/digests de deb/rpm |
-| `producto` | esquema, autopruebas, determinismo de fixtures, 12 hallazgos esperados, presupuesto de 1.000 escenas, enlaces y CLI Rust |
-| `seguridad` | `cargo-deny` (advisories, licencias, bans, orígenes), `gitleaks` (historial y árbol) y `zizmor` (workflows) |
+| `calidad` | `fmt`, `clippy -D warnings`, tests Rust, tipos TS, tests de UI, tests de la cáscara Tauri e instaladores; matriz Ubuntu/Windows |
+| `interfaz` | `pnpm install --frozen-lockfile`, tipos TS, corpus/autosave y build de Vite (incluido en `calidad`) |
+| `e2e` | Playwright sobre la demo en Chromium; matriz Ubuntu/Windows |
+| `e2e-tauri` | Tauri/WebDriver: `Ctrl+S` con verificación en disco y cierre de ventana con cambios pendientes; Linux local y Windows en CI |
+| `empaquetado` | `pnpm build` y verificación de deb/rpm en Linux y MSI/NSIS en Windows |
+| `producto` | esquema, autopruebas, determinismo de fixtures, 12 hallazgos esperados, presupuesto de 1.000 escenas, enlaces y CLI Rust; matriz Ubuntu/Windows |
+| `seguridad` | `cargo-deny`, `gitleaks` y `zizmor`; hoy se ejecuta en local, no como job remoto |
 
-El CI remoto aún no está publicado (no hay `.github/`). Cuando se publique,
-usará acciones fijadas por SHA, permisos mínimos, Dependabot con cooldown y job
-de MSRV. Detalle en [`docs/ci.md`](docs/ci.md), [`docs/e2e.md`](docs/e2e.md) y
-[`docs/empaquetado.md`](docs/empaquetado.md).
+El release `v*` crea un borrador con los instaladores de Linux y Windows. Los
+paquetes aún no están firmados. Detalle en [`docs/ci.md`](docs/ci.md),
+[`docs/e2e.md`](docs/e2e.md), [`docs/empaquetado.md`](docs/empaquetado.md) y
+[`docs/windows.md`](docs/windows.md).
 
 ## Nota sobre MEGA
 

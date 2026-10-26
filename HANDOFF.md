@@ -9,7 +9,8 @@
   Etapa local/offline: sin cuentas, servidor, sincronización ni servicios online.
 - **Objetivo de plataforma:** Windows y Linux. Estado validado: Linux x86_64.
   Windows requiere una máquina real (MSVC, WebView2, instalador y E2E nativo).
-- **Rama:** `main`, sin remoto ni CI remoto. Repositorio inicial `1c9f3c6`.
+- **Rama:** `main`, con remoto `origin` y CI en GitHub Actions
+  (Linux + Windows). Repositorio inicial `1c9f3c6`.
 - **Fase 3 congelada:** `347adcb`, tag local `fase-3-congelado`; QA/seguridad r4 y UX r3 aprobaron.
 - **Corrección visual 2026-10-24:** portadas ilustradas, tarjetas de libro y
   cabecera limpia en el panel de Proyectos; validada con `e2e/fase-1-panel`
@@ -163,21 +164,27 @@ ci.py empaquetado                               OK (deb/rpm)
 Los números exactos y el detalle por bloque están en las iteraciones 26–29 y en
 [`docs/iteraciones/30-fase-3-6-cierre.md`](docs/iteraciones/30-fase-3-6-cierre.md).
 
-## 6. Pendiente: Fase 4 Windows
+## 6. Fase 4 Windows (en curso)
 
-No se puede completar en esta máquina:
+La matriz de GitHub Actions ya cubre en `windows-latest`:
 
-- toolchain MSVC y target Windows;
-- WebView2;
-- diálogos nativos, rutas largas/nombres reservados y cierre de ventana en
-  Windows real;
-- instalador MSI/NSIS, firma y prueba en máquina limpia;
-- `tauri-driver` en Windows;
+- toolchain MSVC, compilación de la cáscara Tauri y WebView2;
+- tests Rust del motor/CLI y de la cáscara, tests de la UI y E2E de navegador;
+- E2E nativo con `tauri-driver` + `msedgedriver`: `Ctrl+S` con verificación en
+  disco y cierre de ventana con cambios pendientes;
+- instaladores MSI/NSIS y verificación estructural básica.
+
+Sigue pendiente antes de declarar Windows soportado:
+
+- probar la app instalada en una máquina Windows 10/11 limpia (sin Rust/Node);
+- firma de binarios, updater y decisión sobre WebView2 offline;
+- rutas totales >260 caracteres, enlaces duros y durabilidad de `fsync` en
+  Windows (ver [`docs/windows.md`](docs/windows.md));
 - validación de DOCX en Word/LibreOffice.
 
 La prueba parcial del CLI Windows bajo Wine está en
 [`docs/revisiones/fase-2-wine-2026-10-23.md`](docs/revisiones/fase-2-wine-2026-10-23.md);
-no autoriza declarar Windows soportado.
+sigue siendo evidencia histórica, no la validación principal.
 
 ## 7. Publicación
 
@@ -185,9 +192,9 @@ El release público de `0.2.0` **no** está autorizado. Siguen pendientes:
 
 - subir versión y revisar seguridad del commit exacto;
 - checksums/firma y decisión AppImage/updater;
-- probar la app instalada desde `.deb`/`.rpm`;
+- probar la app instalada desde `.deb`/`.rpm` y desde `.msi`/`.exe`;
 - validar DOCX en Word/LibreOffice;
-- CI remoto (`.github/`) y runner Windows;
+- probar Windows 10/11 en máquina limpia y sin red;
 - aceptación final de Fase 5.
 
 ## 8. Límites conocidos

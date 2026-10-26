@@ -41,9 +41,9 @@ python scripts/ci.py todo
 `unsafe_code = "forbid"` en el workspace: la única forma de introducir `unsafe`
 es cambiar la política, y eso se revisa.
 
-La matriz prevista es **Windows, Linux y macOS**; el código manipula rutas,
-locks y `fsync`, así que la matriz no es decorativa. Hoy el pipeline se ejecuta
-en local sobre Linux y el CI remoto aún no está publicado.
+La matriz activa es **Ubuntu 22.04 y Windows Server 2025**; el código manipula
+rutas, locks y `fsync`, así que la matriz no es decorativa. macOS queda fuera
+del CI actual y se mantiene como objetivo documentado.
 
 ### Interfaz (`interfaz`)
 
@@ -63,22 +63,24 @@ Requiere **pnpm 12** y, en Linux, las bibliotecas de Tauri (`webkit2gtk-4.1`,
 
 | Comprobación | Qué detecta |
 |---|---|
-| `pnpm e2e` | 61 flujos de la demo en Chromium: autosave, búsqueda, historial, cambios, preferencias, paleta, TTS simulado, filtros, colecciones, plantillas, papelera, cuarentena, DOCX y responsive/zoom. |
+| `pnpm e2e` | 61 flujos de la demo en Chromium: autosave, búsqueda, historial, cambios, preferencias, paleta, TTS simulado, filtros, colecciones, plantillas, papelera, cuarentena, DOCX y responsive/zoom. Se ejecuta en Ubuntu y Windows. |
 | `pnpm e2e:tauri` | 2 escenarios reales de escritorio en Linux: `Ctrl+S` con verificación en disco y cierre de ventana con cambios pendientes. |
+| `scripts/e2e-tauri.ps1` | Los mismos 2 escenarios sobre WebView2 en Windows, con `tauri-driver` + `msedgedriver`. |
 
 Requiere Chromium de Playwright (`pnpm e2e:install`) y, para Tauri,
-`tauri-driver` 2.0.6 + `WebKitWebDriver` + `xdotool` en Linux. Detalle:
-[`e2e.md`](e2e.md).
+`tauri-driver` 2.0.6 + `WebKitWebDriver` + `xdotool` en Linux, o
+`tauri-driver` + `msedgedriver` en Windows. Detalle: [`e2e.md`](e2e.md) y
+[`windows.md`](windows.md).
 
 ### Empaquetado (`empaquetado`)
 
 | Comprobación | Qué detecta |
 |---|---|
-| `pnpm build` y verificación | Que Tauri compile y que el `.deb`/`.rpm` contenga binario ejecutable, lanzador, iconos y checksums/digests correctos. |
+| `pnpm build` y verificación | Que Tauri compile y que el `.deb`/`.rpm` contenga binario ejecutable, lanzador, iconos y checksums/digests correctos; en Windows valida que existan MSI/NSIS y que tengan cabecera PE/OLE. |
 
 En Linux genera `.deb` y `.rpm`; AppImage queda pendiente por `linuxdeploy`.
-Windows/macOS requieren sus toolchains. Detalle:
-[`empaquetado.md`](empaquetado.md).
+En Windows genera `.msi` y `.exe` (NSIS). Detalle:
+[`empaquetado.md`](empaquetado.md) y [`windows.md`](windows.md).
 
 ### Producto (`producto`)
 
@@ -116,8 +118,7 @@ Política de `deny.toml`:
   `version` además de `path`).
 - **Sources**: solo crates.io. Nada de Git arbitrario ni registros alternativos.
 
-Endurecimiento previsto del CI remoto (aún no hay `.github/`; hoy estas reglas
-son un objetivo documentado):
+Endurecimiento aplicado al CI remoto:
 
 - Acciones fijadas por **SHA** con el tag en comentario.
 - `permissions: contents: read` y `persist-credentials: false`.
@@ -128,23 +129,23 @@ son un objetivo documentado):
 
 ## 2. Equivalencia local ↔ CI
 
-> El repositorio aún no tiene `.github/` ni remoto. La columna «CI» describe los
-> jobs previstos; la evidencia actual es la ejecución local en Linux.
+> El repositorio tiene remoto y workflows en `.github/workflows/`. La matriz
+> activa es Ubuntu 22.04 + Windows Server 2025; macOS y el job remoto de
+> seguridad siguen pendientes.
 
 | Local (`scripts/ci.py`) | CI |
 |---|---|
-| `calidad`: fmt, clippy, test | Job `calidad` en 3 sistemas |
-| `interfaz`: pnpm, tipos, corpus, autosave, búsqueda, historial, Vite y Tauri | Job `interfaz` en Linux (y build de escritorio en la matriz) |
-| `e2e`: Playwright sobre la demo | Job `e2e` en Linux con Chromium |
-| `e2e-tauri`: WebDriver sobre la app real | Job `e2e-tauri` en Linux con WebKitWebDriver |
-| `empaquetado`: Tauri release + instaladores | Job `empaquetado` en la matriz |
-| `producto`: esquema y características | Job `producto` en Windows y Linux |
-| `seguridad`: cargo-deny, gitleaks, zizmor | Job `seguridad` con `cargo-deny-action`, `gitleaks-action` y `zizmor-action` |
-| — | Job `msrv`: `cargo check` con Rust 1.89 para el núcleo; la cáscara Tauri declara 1.90 |
+| `calidad`: fmt, clippy, test | Job `calidad` en Ubuntu y Windows |
+| `interfaz`: pnpm, tipos, corpus, autosave, búsqueda, historial, Vite y Tauri | Incluido en `calidad` (Ubuntu y Windows) |
+| `e2e`: Playwright sobre la demo | Job `e2e` en Ubuntu y Windows con Chromium |
+| `e2e-tauri`: WebDriver sobre la app real | Linux local con WebKitWebDriver; Windows en el job `e2e-tauri-windows` con msedgedriver |
+| `empaquetado`: Tauri release + instaladores | Incluido en `calidad`; deb/rpm y MSI/NSIS |
+| `producto`: esquema y características | Job `producto` en Ubuntu y Windows |
+| `seguridad`: cargo-deny, gitleaks, zizmor | Pendiente de job remoto; se ejecuta en local |
+| — | Release `v*` con `release.yml`; MSRV 1.89 para el núcleo y 1.90 para Tauri |
 
-El job de seguridad usa las acciones oficiales porque instalan y cachean las
-herramientas con su propia verificación; `ci.py seguridad` ejecuta los mismos
-binarios y la misma configuración (`deny.toml`).
+`ci.py seguridad` ejecuta los mismos binarios y la misma configuración
+(`deny.toml`) que usaría un job remoto.
 
 Instalación local de las herramientas:
 

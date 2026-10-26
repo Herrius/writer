@@ -1,9 +1,10 @@
 # E2E — navegador y escritorio
 
-- **Fecha:** 2026-10-24
-- **Estado:** vigente para la Fase 3 (61 flujos)
-- **Ámbito:** `e2e/`, `e2e-tauri/`, `playwright.config.ts` y
-  `scripts/e2e-tauri.sh`
+- **Fecha:** 2026-10-26
+- **Estado:** 61 flujos de navegador en Linux/Windows y 2 escenarios de
+  escritorio en Linux y Windows
+- **Ámbito:** `e2e/`, `e2e-tauri/`, `playwright.config.ts`,
+  `scripts/e2e-tauri.sh` y `scripts/e2e-tauri.ps1`
 
 ## 1. E2E de navegador (Playwright)
 
@@ -61,17 +62,38 @@ app al terminar.
 La feature `e2e` solo existe en la compilación de prueba: la app de producción
 no autoabre proyectos ni conserva el hook activo.
 
-## 3. Limitaciones
+## 3. E2E de escritorio (Tauri/WebDriver, Windows)
+
+`scripts/e2e-tauri.ps1` reutiliza `e2e-tauri/tauri.test.mjs` con
+`tauri-driver` + `msedgedriver` y la app real sobre WebView2:
+
+1. crea el proyecto temporal con `target/debug/writer.exe`;
+2. compila la app con la feature `e2e` y `--no-bundle`;
+3. ejecuta el escenario `Ctrl+S` con verificación del archivo en disco;
+4. ejecuta el escenario de cierre: escribe texto pendiente, envía `WM_CLOSE`,
+   comprueba que se guarda y que el proceso termina.
+
+```powershell
+cargo install tauri-driver --version 2.0.6 --locked
+$env:MSEDGEDRIVER = 'C:\ruta\a\msedgedriver.exe'
+pwsh -File scripts/e2e-tauri.ps1
+```
+
+El workflow `e2e-tauri-windows` instala `tauri-driver`, descarga el
+`msedgedriver` correspondiente a Microsoft Edge y ejecuta el script. Requiere
+Windows 10/11, WebView2 y Visual Studio Build Tools.
+
+## 4. Limitaciones
 
 - El E2E de navegador usa la demo en memoria; recargar reinicia el estado.
-- El E2E de Tauri es Linux-only y no cubre diálogos nativos ni Windows.
+- Los E2E de Tauri no cubren todos los diálogos nativos.
 - Chromium de Playwright y `tauri-driver` se instalan fuera del repositorio.
 - El E2E de escritorio no prueba DOCX, búsqueda, cuarentena ni el diálogo
   nativo de creación; esos flujos se cubren en navegador o con pruebas Tauri.
-- El cierre real depende de X11 y `xdotool`; en Wayland puro o en Windows queda pendiente.
+- El cierre real en Linux depende de X11 y `xdotool`; Wayland puro queda
+  pendiente. En Windows se usa `WM_CLOSE` sobre WebView2.
 
-## 4. Pendiente
+## 5. Pendiente
 
-- E2E de escritorio en Windows (WebView2).
 - Un flujo de escritorio que abra un proyecto con el diálogo nativo.
 - Empaquetar y probar la app instalada, no solo el binario de `target/`.

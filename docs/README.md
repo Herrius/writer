@@ -44,6 +44,7 @@
   comentarios.
 - [`e2e.md`](e2e.md) — Playwright sobre la demo y límites frente a Tauri.
 - [`empaquetado.md`](empaquetado.md) — configuración de bundle e instaladores.
+- [`windows.md`](windows.md) — build, pruebas, instaladores y límites en Windows.
 - [`ci.md`](ci.md) — gates de calidad, interfaz, producto y seguridad; paridad
   local/CI.
 - [`adr/0001-editor-tiptap.md`](adr/0001-editor-tiptap.md) — decisión del editor
@@ -119,6 +120,8 @@
   la iteración 35).
 - [`iteraciones/35-arbol-jerarquico.md`](iteraciones/35-arbol-jerarquico.md) —
   árbol jerárquico, menús contextuales, iconos Lucide y páginas de estado.
+- [`iteraciones/36-fase-4-windows.md`](iteraciones/36-fase-4-windows.md) —
+  paridad Windows, CI multiplataforma e instaladores MSI/NSIS.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura
@@ -132,6 +135,6 @@ Estado por fase:
 - **Fase 2:** cerrada funcionalmente en Linux; validación Windows y release
   público pendientes.
 - **Fase 3 (local avanzado):** cerrada funcionalmente en Linux.
-- **Fase 4 (Windows):** pendiente de una máquina Windows para toolchain MSVC,
-  WebView2, instalador y E2E nativo.
+- **Fase 4 (Windows):** build, tests, E2E nativo e instaladores MSI/NSIS en
+  CI; pendiente máquina limpia y firma.
 - **Fase 5 (cierre):** documentación final y aceptación después de Windows.

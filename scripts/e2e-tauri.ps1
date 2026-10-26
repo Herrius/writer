@@ -56,7 +56,12 @@ try {
     # La feature `e2e` autoabre el proyecto; la app de producción no la lleva.
     Ejecutar 'pnpm' @('--dir', 'apps/desktop', 'exec', 'tauri', 'build', '--no-bundle', '--features', 'e2e')
     if (-not (Test-Path $app)) {
-        throw "no se generó la app E2E: $app"
+        $alternativa = Join-Path $raiz 'apps/desktop/src-tauri/target/release/writer.exe'
+        if (Test-Path $alternativa) {
+            $app = $alternativa
+        } else {
+            throw "no se generó la app E2E: $app"
+        }
     }
 
     $env:WRITER_E2E_PROJECT = $proyecto
