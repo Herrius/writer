@@ -73,6 +73,10 @@ test('agrupa personajes y crea notas dentro de carpetas de cuaderno', async ({ p
   await expect(page.getByRole('menuitem', { name: 'Capítulo' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Acciones de Tramas' }).click();
 
+  await page.getByRole('button', { name: 'Acciones de Personajes principales' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Renombrar' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Eliminar' })).toBeVisible();
+  await page.getByRole('button', { name: 'Acciones de Personajes principales' }).click();
   await page.getByRole('button', { name: 'Acciones de Personajes', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Nueva sección de personajes' }).click();
   const dialogo = page.getByRole('dialog', { name: 'Nueva sección' });

@@ -270,6 +270,36 @@ function guardarCarpetasCuadernoOcultas(proyectoId: string | null, carpetas: str
   }
 }
 
+function cargarGruposPersonajesOcultos(proyectoId: string | null): string[] {
+  if (!proyectoId) {
+    return [];
+  }
+  try {
+    const valor = JSON.parse(
+      window.localStorage.getItem(`writer.grupos-personajes-ocultos.v1.${proyectoId}`) ?? '[]',
+    );
+    return Array.isArray(valor)
+      ? valor.filter((item): item is string => typeof item === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarGruposPersonajesOcultos(proyectoId: string | null, grupos: string[]) {
+  if (!proyectoId) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      `writer.grupos-personajes-ocultos.v1.${proyectoId}`,
+      JSON.stringify(grupos),
+    );
+  } catch {
+    // Sin almacenamiento, las secciones ocultas permanecen en memoria.
+  }
+}
+
 function etiquetaRolPersonaje(rol: string | null): string {
   if (rol === 'principal') {
     return 'Personajes principales';
@@ -365,6 +395,7 @@ export default function App() {
   const [contenedor, setContenedor] = useState<ContenedorProyecto | null>(null);
   const [gruposPersonajes, setGruposPersonajes] = useState<string[]>([]);
   const [carpetasCuadernoOcultas, setCarpetasCuadernoOcultas] = useState<string[]>([]);
+  const [gruposPersonajesOcultos, setGruposPersonajesOcultos] = useState<string[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoDto[]>([]);
   const [activo, setActivo] = useState<DocumentoDto | null>(null);
   const [vista, setVista] = useState<Vista>('editor');
@@ -547,6 +578,10 @@ export default function App() {
   useEffect(() => {
     guardarCarpetasCuadernoOcultas(proyecto?.id ?? null, carpetasCuadernoOcultas);
   }, [proyecto?.id, carpetasCuadernoOcultas]);
+
+  useEffect(() => {
+    guardarGruposPersonajesOcultos(proyecto?.id ?? null, gruposPersonajesOcultos);
+  }, [proyecto?.id, gruposPersonajesOcultos]);
 
   useEffect(() => {
     if (!panelAbierto || !esVistaEstrecha()) {
@@ -839,6 +874,7 @@ export default function App() {
       setCarpetas(carpetasProyecto);
       setGruposPersonajes(cargarGruposPersonajes(resumen.id));
       setCarpetasCuadernoOcultas(cargarCarpetasCuadernoOcultas(resumen.id));
+      setGruposPersonajesOcultos(cargarGruposPersonajesOcultos(resumen.id));
       setContenedor(null);
       limpiarPendiente();
       fijarActivo(leido);
@@ -1721,12 +1757,19 @@ export default function App() {
     }
     try {
       await actualizarRolGrupo(grupo, limpio);
+      const eraPredeterminada = ['', 'principal', 'secundario'].includes(grupo);
       setGruposPersonajes((actual) => {
         const sinViejo = actual.filter((item) => item !== grupo);
         return sinViejo.some((item) => item.toLowerCase() === limpio.toLowerCase())
           ? sinViejo
           : [...sinViejo, limpio];
       });
+      if (eraPredeterminada) {
+        setGruposPersonajesOcultos((actual) =>
+          actual.includes(grupo) ? actual : [...actual, grupo],
+        );
+      }
+      setGruposPersonajesOcultos((actual) => actual.filter((item) => item !== limpio));
       if (contenedor?.tipo === 'personajes' && contenedor.grupo === grupo) {
         setContenedor({ tipo: 'personajes', grupo: limpio, etiqueta: limpio });
       }
@@ -1739,16 +1782,31 @@ export default function App() {
 
   const eliminarGrupoPersonaje = async (grupo: string) => {
     try {
-      await actualizarRolGrupo(grupo, null);
+      const destino = grupo === '' ? 'principal' : '';
+      await actualizarRolGrupo(grupo, destino || null);
+      const eraPredeterminada = ['', 'principal', 'secundario'].includes(grupo);
       setGruposPersonajes((actual) => actual.filter((item) => item !== grupo));
+      if (eraPredeterminada) {
+        setGruposPersonajesOcultos((actual) =>
+          actual.includes(grupo) ? actual : [...actual, grupo],
+        );
+      }
+      setGruposPersonajesOcultos((actual) => actual.filter((item) => item !== destino));
       if (contenedor?.tipo === 'personajes' && contenedor.grupo === grupo) {
         setContenedor({
           tipo: 'personajes',
-          grupo: '',
-          etiqueta: 'Personajes sin clasificar',
+          grupo: destino,
+          etiqueta:
+            destino === 'principal'
+              ? 'Personajes principales'
+              : 'Personajes sin clasificar',
         });
       }
-      setMensaje('Sección eliminada; sus personajes pasaron a Sin clasificar.');
+      setMensaje(
+        destino === 'principal'
+          ? 'Sección eliminada; sus personajes pasaron a Personajes principales.'
+          : 'Sección eliminada; sus personajes pasaron a Sin clasificar.',
+      );
     } catch (fallo) {
       setMensaje(`No se pudo eliminar la sección: ${errorDe(fallo).mensaje}`);
       throw fallo;
@@ -2776,6 +2834,7 @@ export default function App() {
     setCarpetas([]);
     setGruposPersonajes([]);
     setCarpetasCuadernoOcultas([]);
+    setGruposPersonajesOcultos([]);
     setContenedor(null);
     setVistaProyecto('editor');
     fijarActivo(null);
@@ -3898,6 +3957,7 @@ export default function App() {
                 filtroEtiqueta={filtroEtiqueta}
                 tituloProyecto={proyecto?.titulo ?? ''}
                 gruposPersonajes={gruposPersonajes}
+                gruposPersonajesOcultos={gruposPersonajesOcultos}
                 carpetasCuadernoOcultas={carpetasCuadernoOcultas}
                 contenedorActivo={
                   contenedor?.tipo === 'personajes'

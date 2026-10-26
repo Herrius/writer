@@ -33,6 +33,7 @@ type Acciones = {
   onExportarDocumento: (documento: DocumentoDto) => void;
   onMoverDocumento: (documento: DocumentoDto, ruta: string) => void;
   gruposPersonajes: string[];
+  gruposPersonajesOcultos: string[];
   carpetasCuadernoOcultas: string[];
   contenedorActivo: string | null;
   onSeleccionarGrupo: (grupo: string, etiqueta: string) => void;
@@ -412,6 +413,7 @@ export function ArbolProyecto({
   onEliminarDocumento,
   onExportarDocumento,
   gruposPersonajes,
+  gruposPersonajesOcultos,
   carpetasCuadernoOcultas,
   contenedorActivo,
   onSeleccionarGrupo,
@@ -777,11 +779,18 @@ export function ArbolProyecto({
       }
       return grupo;
     };
-    const grupos = ids.map((grupo) => ({
-      grupo,
-      etiqueta: etiqueta(grupo),
-      lista: personajes.filter((personaje) => (personaje.rol ?? '') === grupo),
-    }));
+    const grupos = ids
+      .map((grupo) => ({
+        grupo,
+        etiqueta: etiqueta(grupo),
+        lista: personajes.filter((personaje) => (personaje.rol ?? '') === grupo),
+      }))
+      .filter(
+        (item) =>
+          item.lista.length > 0 ||
+          gruposPersonajes.includes(item.grupo) ||
+          !gruposPersonajesOcultos.includes(item.grupo),
+      );
     const claveMenu = 'seccion:Personajes';
     return (
       <section className="arbol-seccion-notas" key="Personajes">
@@ -837,25 +846,19 @@ export function ArbolProyecto({
                   onCerrar={() => setMenuAbierto(null)}
                   onCrear={() => onCrearPersonajeEnGrupo(grupo)}
                   tipoFiltro={['personaje']}
-                  onRenombrar={
-                    grupo && gruposPersonajes.includes(grupo)
-                      ? () =>
-                          setDialogo({
-                            tipo: 'renombrar-grupo',
-                            grupo,
-                            valor: nombre,
-                          })
-                      : undefined
+                  onRenombrar={() =>
+                    setDialogo({
+                      tipo: 'renombrar-grupo',
+                      grupo,
+                      valor: nombre,
+                    })
                   }
-                  onEliminar={
-                    grupo && gruposPersonajes.includes(grupo)
-                      ? () =>
-                          setDialogo({
-                            tipo: 'eliminar-grupo',
-                            grupo,
-                            nombre,
-                          })
-                      : undefined
+                  onEliminar={() =>
+                    setDialogo({
+                      tipo: 'eliminar-grupo',
+                      grupo,
+                      nombre,
+                    })
                   }
                 />
               )}

@@ -48,10 +48,10 @@ propias para Archivo, Papelera y Plantillas.
 - **Tramas:** solo tramas.
 - **Personajes:** solo personajes y nuevas secciones de personajes (grupos por
   rol o grupos personalizados). Cada sección tiene su menú `⋯` para crear un
-  personaje; las secciones **personalizadas** también se pueden renombrar y
-  eliminar. Al eliminar una sección personalizada, sus personajes pasan a
-  «Sin clasificar». Las secciones predeterminadas (principales, secundarios y
-  sin clasificar) son estructurales y no se renombran ni eliminan.
+  personaje y para **renombrarla o eliminarla**. Al eliminar una sección, sus
+  personajes pasan a «Sin clasificar» (o a «Principales» si se elimina «Sin
+  clasificar»). Las secciones predeterminadas que se renombran o eliminan se
+  ocultan y pueden volver a aparecer si se les asigna un personaje.
 - **Cuaderno:** carpetas y notas dentro de ellas. La raíz y cada carpeta tienen
   su menú `⋯` para crear una nota o una carpeta. Las carpetas se pueden
   renombrar y eliminar; al eliminarlas, sus notas pasan a la Papelera.
@@ -78,7 +78,7 @@ Cada nodo tiene un menú `⋯` adaptado a su nivel:
 | Sección | Sección, Escena | Renombrar, Exportar, Eliminar |
 | Escena/nota | — | Renombrar, Exportar, Eliminar |
 | Tramas | Trama | — |
-| Personajes | Personaje, nueva sección | Renombrar/eliminar sección personalizada |
+| Personajes | Personaje, nueva sección | Renombrar/eliminar cualquier sección |
 | Cuaderno (raíz) | Nota, carpeta | — |
 | Cuaderno (carpeta) | Nota, carpeta | Renombrar, eliminar |
 
