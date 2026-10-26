@@ -11,7 +11,8 @@ comparación de versiones, preferencias y temas, lectura en voz alta, Quick Open
 paleta de comandos, filtros, colecciones, plantillas, papelera local de
 proyectos, árbol jerárquico con menús contextuales e iconos Lucide, cabecera
 sincronizada con la ruta activa, grupos de personajes, carpetas de cuaderno,
-archivo/papelera de documentos, meta diaria global y presupuestos de rendimiento.
+menús de creación por sección, archivo/papelera de documentos, meta diaria global
+y presupuestos de rendimiento.
 La app se empaqueta en deb/rpm.
 
 El **release público no está autorizado** todavía: AppImage, firma, updater,

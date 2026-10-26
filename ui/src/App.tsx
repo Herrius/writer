@@ -3719,6 +3719,9 @@ export default function App() {
                   setVista('editor');
                 }}
                 onCrearGrupoPersonaje={crearGrupoPersonaje}
+                onCrearPersonajeEnGrupo={(grupo) => void crearPersonajeEnGrupo(grupo)}
+                onCrearNotaCuaderno={(ruta) => void crearNotaCuaderno(ruta)}
+                onCrearCarpetaCuaderno={crearCarpetaCuaderno}
                 onSeleccionar={(documento) => void seleccionar(documento)}
                 onCrear={crearNodo}
                 onRenombrarCarpeta={renombrarCarpetaNodo}

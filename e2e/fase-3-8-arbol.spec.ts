@@ -68,13 +68,16 @@ test('agrupa personajes y crea notas dentro de carpetas de cuaderno', async ({ p
   await page.getByRole('button', { name: 'Ver demo' }).click();
   await expect(page.getByRole('heading', { name: 'El umbral' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Acciones de Personajes' }).click();
+  await page.getByRole('button', { name: 'Acciones de Personajes', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Nueva sección de personajes' }).click();
   const dialogo = page.getByRole('dialog', { name: 'Nueva sección' });
   await dialogo.locator('input').fill('Antagonistas');
   await dialogo.getByRole('button', { name: 'Guardar' }).click();
   await expect(page.getByRole('heading', { name: 'Personajes: Antagonistas' })).toBeVisible();
   await expect(page.locator('.dabble-breadcrumb')).toContainText('Antagonistas');
+  await page.getByRole('button', { name: 'Acciones de Antagonistas' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Personaje' })).toBeVisible();
+  await page.getByRole('button', { name: 'Acciones de Antagonistas' }).click();
 
   await page.getByRole('button', { name: 'Crear un personaje' }).click();
   await expect(page.getByText('Personaje creado.')).toBeVisible();
@@ -82,10 +85,17 @@ test('agrupa personajes y crea notas dentro de carpetas de cuaderno', async ({ p
   await expect(page.locator('.tarjeta-personaje').filter({ hasText: 'Personaje sin título' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Cuaderno', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Acciones de Cuaderno' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Nota' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Carpeta' })).toBeVisible();
+  await page.getByRole('button', { name: 'Acciones de Cuaderno' }).click();
   await page.getByRole('button', { name: 'Crear una carpeta' }).click();
   await page.locator('.vista-crear-carpeta input').fill('Construcción del mundo');
   await page.locator('.vista-crear-carpeta').getByRole('button', { name: 'Crear' }).click();
   await expect(page.getByRole('heading', { name: 'Cuaderno: Construcción del mundo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Acciones de Construcción del mundo' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Nota' })).toBeVisible();
+  await page.getByRole('button', { name: 'Acciones de Construcción del mundo' }).click();
 
   await page.getByRole('button', { name: 'Crear una nota' }).click();
   await expect(page.getByText('Nota creada.')).toBeVisible();

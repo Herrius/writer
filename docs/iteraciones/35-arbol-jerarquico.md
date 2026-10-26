@@ -7,7 +7,9 @@
   [`../revisiones/vista-plantillas-2026-10-25.png`](../revisiones/vista-plantillas-2026-10-25.png),
   [`../revisiones/cabecera-personajes-2026-10-25.png`](../revisiones/cabecera-personajes-2026-10-25.png),
   [`../revisiones/personajes-grupo-2026-10-25.png`](../revisiones/personajes-grupo-2026-10-25.png),
-  [`../revisiones/cuaderno-carpeta-2026-10-25.png`](../revisiones/cuaderno-carpeta-2026-10-25.png).
+  [`../revisiones/cuaderno-carpeta-2026-10-25.png`](../revisiones/cuaderno-carpeta-2026-10-25.png),
+  [`../revisiones/personajes-seccion-menu-2026-10-25.png`](../revisiones/personajes-seccion-menu-2026-10-25.png),
+  [`../revisiones/cuaderno-menu-2026-10-25.png`](../revisiones/cuaderno-menu-2026-10-25.png).
 
 ## 1. Objetivo
 
@@ -45,8 +47,10 @@ propias para Archivo, Papelera y Plantillas.
   escenas; no crea tramas, personajes ni notas.
 - **Tramas:** solo tramas.
 - **Personajes:** solo personajes y nuevas secciones de personajes (grupos por
-  rol o grupos personalizados).
-- **Cuaderno:** carpetas y notas dentro de ellas.
+  rol o grupos personalizados). Cada sección tiene su menú `⋯` para crear un
+  personaje dentro.
+- **Cuaderno:** carpetas y notas dentro de ellas. La raíz y cada carpeta tienen
+  su menú `⋯` para crear una nota o una carpeta.
 - Las secciones de personajes se guardan por proyecto en `localStorage` y los
   personajes se asignan con su `rol`.
 

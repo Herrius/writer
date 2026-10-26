@@ -6278,3 +6278,9 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
   bottom: auto;
   margin-left: auto;
 }
+
+.arbol-personajes-grupo .arbol-menu-boton,
+.arbol-categoria .arbol-menu-boton {
+  opacity: 0.55;
+  pointer-events: auto;
+}

@@ -21,7 +21,8 @@
   restauración por fila y estados vacíos; ver
   [`docs/iteraciones/34-archivo-papelera-sidebar.md`](docs/iteraciones/34-archivo-papelera-sidebar.md).
 - **Árbol jerárquico 2026-10-25:** iconos Lucide, reglas de un solo libro,
-  grupos de personajes, carpetas de Cuaderno, menús por nodo, miga de pan
+  grupos de personajes con menú de creación, carpetas de Cuaderno con menú de
+  nota/carpeta, menús por nodo, miga de pan
   sincronizada y páginas de Archivo/Papelera/Plantillas; ver
   [`docs/iteraciones/35-arbol-jerarquico.md`](docs/iteraciones/35-arbol-jerarquico.md).
 
