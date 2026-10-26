@@ -88,7 +88,8 @@ instala drivers externos. Requiere Windows 10/11 y Visual Studio Build Tools.
 
 - El E2E de navegador usa la demo en memoria; recargar reinicia el estado.
 - Los E2E de Tauri no cubren todos los diálogos nativos.
-- Chromium de Playwright y `tauri-driver` se instalan fuera del repositorio.
+- Chromium de Playwright y, en Linux, `tauri-driver` se instalan fuera del
+  repositorio; el E2E de Windows usa Playwright + WebView2, sin driver externo.
 - El E2E de escritorio no prueba DOCX, búsqueda, cuarentena ni el diálogo
   nativo de creación; esos flujos se cubren en navegador o con pruebas Tauri.
 - El cierre real en Linux depende de X11 y `xdotool`; Wayland puro queda

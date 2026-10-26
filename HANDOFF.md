@@ -170,8 +170,8 @@ La matriz de GitHub Actions ya cubre en `windows-latest`:
 
 - toolchain MSVC, compilación de la cáscara Tauri y WebView2;
 - tests Rust del motor/CLI y de la cáscara, tests de la UI y E2E de navegador;
-- E2E nativo con `tauri-driver` + `msedgedriver`: `Ctrl+S` con verificación en
-  disco y cierre de ventana con cambios pendientes;
+- E2E nativo de Windows con CDP sobre WebView2 + Playwright: `Ctrl+S` con
+  verificación en disco y cierre de ventana con cambios pendientes;
 - instaladores MSI/NSIS y verificación estructural básica.
 
 Sigue pendiente antes de declarar Windows soportado:
