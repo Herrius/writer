@@ -107,7 +107,51 @@ function cerrarVentanaX11() {
   return pid;
 }
 
+function cerrarVentanaWindows() {
+  // WM_CLOSE reproduce el cierre real de la ventana; `deleteSession()` no pasa
+  // por el handler de Tauri y no probaría el guardado al cerrar.
+  const script = `
+$ErrorActionPreference = 'Stop'
+$p = Get-Process -ErrorAction Stop |
+  Where-Object { $_.MainWindowTitle -eq 'writer' -and $_.MainWindowHandle -ne 0 } |
+  Select-Object -First 1
+if (-not $p) { throw 'no se encontró la ventana de writer' }
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class Win32Writer {
+  [DllImport("user32.dll", SetLastError = true)]
+  public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+}
+"@
+[void][Win32Writer]::PostMessage($p.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+$p.Id
+`;
+  const salida = execFileSync(
+    'powershell',
+    ['-NoProfile', '-NonInteractive', '-Command', script],
+    { encoding: 'utf8' },
+  ).trim();
+  const pid = Number(salida);
+  if (!Number.isFinite(pid) || pid <= 0) {
+    throw new Error(`no se pudo cerrar la ventana de writer: ${salida}`);
+  }
+  return pid;
+}
+
+function cerrarVentana() {
+  return process.platform === 'win32' ? cerrarVentanaWindows() : cerrarVentanaX11();
+}
+
 function procesoVivo(pid) {
+  if (process.platform === 'win32') {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
   if (!existsSync(`/proc/${pid}`)) {
     return false;
   }
@@ -130,6 +174,25 @@ async function esperarProcesoCerrado(pid, intentos = 60) {
 }
 
 async function esperarVentanaCerrada(pid, intentos = 60) {
+  if (process.platform === 'win32') {
+    for (let intento = 0; intento < intentos; intento += 1) {
+      const salida = execFileSync(
+        'powershell',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `$p = Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if ($null -eq $p) { '' } else { $p.MainWindowHandle }`,
+        ],
+        { encoding: 'utf8' },
+      ).trim();
+      if (salida === '' || salida === '0') {
+        return true;
+      }
+      await new Promise((resolver) => setTimeout(resolver, 250));
+    }
+    return false;
+  }
   for (let intento = 0; intento < intentos; intento += 1) {
     try {
       const salida = execFileSync(
@@ -194,7 +257,7 @@ try {
     console.log('E2E Tauri: Ctrl+S guarda en disco y la escena sigue visible');
   } else if (modo === 'cerrar') {
     await escribirEnEditor(navegador, textoCierre);
-    const pid = cerrarVentanaX11();
+    const pid = cerrarVentana();
     const contenido = await esperarTextoEnArchivo(textoCierre, 60);
     if (!contenido.includes(textoCierre)) {
       throw new Error(

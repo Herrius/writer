@@ -75,6 +75,28 @@ fn crea_renombra_carpetas_y_escenas_en_cualquier_nivel() {
 }
 
 #[test]
+fn rechaza_nombres_invalidos_de_windows_en_carpetas_y_notas() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("novela"));
+    proyecto.init("Novela", None, None).expect("init");
+
+    for nombre in ["a?b", "a*b", "CON", "CLOCK$", "archivo."] {
+        assert!(
+            proyecto
+                .crear_carpeta(&format!("manuscrito/01-libro/{nombre}"))
+                .is_err(),
+            "debió rechazar la carpeta {nombre:?}"
+        );
+    }
+
+    let (_, ruta) = proyecto
+        .crear_nota("personajes", "CON")
+        .expect("crear nota reservada");
+    assert_eq!(ruta, "notas/personajes/nota-con.md");
+    assert!(proyecto.raiz().join(ruta).is_file());
+}
+
+#[test]
 fn cambios_locales_se_proponen_aceptan_o_rechazan() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));
