@@ -310,7 +310,10 @@ mod tests {
         assert!(Path::new(&entrada.ruta_papelera).join("proyecto").is_dir());
         let restaurada =
             restaurar_de_papelera(Path::new(&entrada.ruta_papelera)).expect("restaurar");
-        assert_eq!(restaurada, ruta);
+        assert_eq!(
+            dunce::canonicalize(&restaurada).expect("canónica restaurada"),
+            dunce::canonicalize(&ruta).expect("canónica original")
+        );
         assert!(restaurada.join("proyecto.yml").is_file());
         assert!(!Path::new(&entrada.ruta_papelera).exists());
         let _ = temporal;

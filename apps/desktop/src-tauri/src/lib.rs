@@ -2243,7 +2243,10 @@ mod tests {
         assert!(!raiz.exists());
         let ruta =
             restaurar_proyecto_de_papelera(entrada.ruta_papelera.clone()).expect("restaurar");
-        assert_eq!(ruta, raiz.display().to_string());
+        assert_eq!(
+            std::fs::canonicalize(&ruta).expect("canónica restaurada"),
+            std::fs::canonicalize(&raiz).expect("canónica original")
+        );
         assert!(raiz.join("proyecto.yml").is_file());
 
         let segunda = mover_proyecto_a_papelera(
