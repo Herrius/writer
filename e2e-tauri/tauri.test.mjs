@@ -29,7 +29,14 @@ function abrirSesion() {
       `writer-e2e-webview2-${process.pid}`,
     );
     mkdirSync(carpetaDatos, { recursive: true });
-    opciones.webviewOptions = { userDataFolder: carpetaDatos };
+    opciones.webviewOptions = {
+      userDataFolder: carpetaDatos,
+      additionalBrowserArguments: [
+        '--disable-gpu',
+        '--no-first-run',
+        '--disable-extensions',
+      ],
+    };
   }
   return remote({
     hostname: '127.0.0.1',
