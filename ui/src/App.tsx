@@ -3705,6 +3705,7 @@ export default function App() {
 
   const abrirCreacionRapida = () => {
     setVistaProyecto('editor');
+    setVista('editor');
     setConsulta('');
     setPanelDerecho('crear');
     if (esVistaEstrecha()) {
