@@ -7,7 +7,7 @@ recuperarse de un corte sin perder ni medio cambio.
 Este repositorio ha cerrado la **Fase 3 (Local avanzado)** en **Linux
 x86_64** y mantiene una matriz de CI **Linux + Windows**. El motor y la CLI
 (Fase 1), la interfaz y la publicación local (Fase 2) y las extensiones locales
-de la Fase 3 están implementados: control de cambios, comparación de versiones,
+de la Fase 3 están implementados: comparación de versiones,
 preferencias y temas, lectura en voz alta, Quick Open, paleta de comandos,
 filtros, colecciones, plantillas, papelera local de proyectos, árbol jerárquico
 con menús contextuales e iconos Lucide, cabecera sincronizada con la ruta
@@ -44,8 +44,8 @@ La Fase 1 incluye modelo, escritura atómica, blobs, op log con checksum,
 recuperación idempotente, lock del SO, CAS optimista, índice SQLite/FTS5,
 exportación Markdown e inyección de fallos. El conjunto Rust acumula **93
 unitarias + 51 de integración + 25 de CLI + 1 de rendimiento**. La cáscara Tauri
-tiene 10 pruebas y la UI 88 (corpus, preferencias, lectura simulada, autosave,
-búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 61 flujos E2E
+tiene 10 pruebas y la UI 86 (corpus, preferencias, lectura simulada, autosave,
+búsqueda, historial, DOCX, cuarentena, marcas y regresiones). Hay 58 flujos E2E
 de navegador y 2 escenarios de escritorio con Tauri/WebDriver (`Ctrl+S` y cierre
 de ventana) en Linux y en Windows.
 
@@ -142,7 +142,7 @@ pnpm dev            # Tauri + Vite
 pnpm typecheck      # comprobación TypeScript
 pnpm ui:test        # corpus Markdown, compatibilidad y autosave
 pnpm e2e:install    # Chromium de Playwright (una vez)
-pnpm e2e            # 61 flujos de la demo
+pnpm e2e            # 58 flujos de la demo
 pnpm e2e:tauri      # E2E real Linux (tauri-driver + WebKitWebDriver)
 pnpm ui:build       # build estático de la UI
 pnpm check          # Tauri build --no-bundle

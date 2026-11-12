@@ -23,7 +23,7 @@ test('archiva, restaura, vacía la papelera y crea desde la barra lateral', asyn
   await expect(page.getByText('La papelera está vacía')).toBeVisible();
 
   await page.getByRole('button', { name: 'Crear documento' }).click();
-  await expect(page.getByRole('tab', { name: 'Plan' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Crear' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#nueva-escena-titulo')).toBeFocused();
 
   await page.getByRole('button', { name: /Plantillas/ }).click();

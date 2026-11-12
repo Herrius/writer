@@ -2502,6 +2502,70 @@ button.guardar:disabled {
   font-weight: 500;
 }
 
+.dabble-titulo-editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: text;
+}
+
+.dabble-titulo-lapiz {
+  opacity: 0.2;
+  color: #8a8074;
+  transition: opacity 120ms ease;
+}
+
+.dabble-titulo-editable:hover .dabble-titulo-lapiz,
+.dabble-titulo-editable:focus-visible .dabble-titulo-lapiz {
+  opacity: 0.8;
+}
+
+.dabble-titulo-input {
+  display: block;
+  width: 100%;
+  text-align: center;
+  border: 1px solid #cfc9c0;
+  border-radius: 0.3rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  padding: 0.2rem 0.5rem;
+}
+
+.buscador-hoja {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.8rem 0 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #ded9d1;
+  border-radius: 0.35rem;
+  background: #fbfaf8;
+  color: #756c61;
+}
+
+.buscador-hoja input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #332f2a;
+  font: inherit;
+}
+
+.buscador-hoja-contador {
+  color: #8a8074;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.dabble-timeline-etiqueta {
+  color: #756c61;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 .dabble-doc-meta {
   display: flex;
   justify-content: center;

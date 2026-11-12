@@ -4,7 +4,19 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Archive, FileStack, Home, Plus, Search, Settings, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  ArrowDown,
+  ArrowUp,
+  FileStack,
+  Home,
+  Pencil,
+  Plus,
+  Search,
+  Settings,
+  Trash2,
+  X,
+} from 'lucide-react';
 import {
   abrirProyecto,
   actualizarEscena,
@@ -19,7 +31,6 @@ import {
   descartarCambio,
   editarMensajeComentario,
   leerCambio,
-  listarCambios,
   registrarCambio,
   buscar as buscarEnProyecto,
   cambiarArchivo as cambiarArchivoApi,
@@ -66,7 +77,6 @@ import {
   leer,
   leerFormatoPdf,
   leerMetas,
-  leerPlotGrid,
   listar,
   listarComentarios,
   mostrar as pedirRevision,
@@ -96,7 +106,7 @@ import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
 import type { RevisionDto } from './types/RevisionDto';
 import type { TipoError } from './types/TipoError';
-import { EditorMarkdown } from './EditorMarkdown';
+import { EditorMarkdown, type EditorMarkdownHandle } from './EditorMarkdown';
 import { PanelCambios } from './features/cambios/PanelCambios';
 import { ModalDiff } from './features/cambios/ModalDiff';
 import { DiffLineas } from './features/cambios/DiffLineas';
@@ -409,8 +419,17 @@ export default function App() {
   const [confirmarRecarga, setConfirmarRecarga] = useState(false);
 
   const [consulta, setConsulta] = useState('');
+  const [filtroTitulo, setFiltroTitulo] = useState('');
+  const [busquedaHojaAbierta, setBusquedaHojaAbierta] = useState(false);
+  const [consultaHoja, setConsultaHoja] = useState('');
+  const [resultadoHoja, setResultadoHoja] = useState({ total: 0, indice: 0 });
+  const [editandoTitulo, setEditandoTitulo] = useState(false);
+  const [tipoCreacion, setTipoCreacion] = useState<
+    'libro' | 'capitulo' | 'seccion' | 'escena' | 'nota'
+  >('escena');
+  const [padreCreacion, setPadreCreacion] = useState('');
   const [panelDerecho, setPanelDerecho] = useState<
-    'metas' | 'notas' | 'comentarios' | 'plan' | 'cambios' | 'herramientas'
+    'metas' | 'notas' | 'comentarios' | 'crear' | 'plan' | 'cambios' | 'herramientas'
   >('metas');
   const [comentarios, setComentarios] = useState<ComentarioDto[]>([]);
   const [errorComentarios, setErrorComentarios] = useState<string | null>(null);
@@ -478,6 +497,20 @@ export default function App() {
   const [errorHistorial, setErrorHistorial] = useState<string | null>(null);
   const [historialVersion, setHistorialVersion] = useState(0);
   const [revisionSeleccionada, setRevisionSeleccionada] = useState<number | null>(null);
+  const revisionesCronologicas = useMemo(
+    () => [...revisiones].reverse(),
+    [revisiones],
+  );
+  const indiceRevision = useMemo(() => {
+    if (revisionesCronologicas.length === 0) {
+      return 0;
+    }
+    const objetivo = revisionSeleccionada ?? proyecto?.revision;
+    const indice = revisionesCronologicas.findIndex(
+      (revision) => revision.revision === objetivo,
+    );
+    return indice >= 0 ? indice : revisionesCronologicas.length - 1;
+  }, [revisionesCronologicas, revisionSeleccionada, proyecto?.revision]);
   const [detalleRevision, setDetalleRevision] = useState<RevisionDetalleDto | null>(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
@@ -512,6 +545,10 @@ export default function App() {
   const detalleSeq = useRef(0);
   const busquedaSeq = useRef(0);
   const buscadorRef = useRef<HTMLInputElement | null>(null);
+  const buscadorHojaRef = useRef<HTMLInputElement | null>(null);
+  const tituloInlineRef = useRef<HTMLInputElement | null>(null);
+  const cancelarTituloRef = useRef(false);
+  const editorRef = useRef<EditorMarkdownHandle | null>(null);
   const bannerErrorRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const panelToggleRef = useRef<HTMLButtonElement | null>(null);
@@ -751,9 +788,8 @@ export default function App() {
 
   const cargarMetas = async (ruta: string) => {
     setErrorMetas(null);
-    const [metasResultado, gridResultado, formatoResultado] = await Promise.allSettled([
+    const [metasResultado, formatoResultado] = await Promise.allSettled([
       leerMetas(ruta),
-      leerPlotGrid(ruta),
       leerFormatoPdf(ruta),
     ]);
     const errores: string[] = [];
@@ -762,18 +798,6 @@ export default function App() {
     } else {
       setMetas(null);
       errores.push(`Metas: ${errorDe(metasResultado.reason).mensaje}`);
-    }
-    if (gridResultado.status === 'fulfilled') {
-      setPlotGrid(gridResultado.value);
-      setTramaSeleccionada((actual) =>
-        gridResultado.value.tramas.some((trama) => trama.id === actual)
-          ? actual
-          : (gridResultado.value.tramas[0]?.id ?? ''),
-      );
-    } else {
-      setPlotGrid({ version: 1, tramas: [] });
-      setTramaSeleccionada('');
-      errores.push(`Planificación: ${errorDe(gridResultado.reason).mensaje}`);
     }
     if (formatoResultado.status === 'fulfilled') {
       setFormatoPdf(formatoResultado.value);
@@ -785,33 +809,16 @@ export default function App() {
     }
   };
 
-  const cargarCambiosDeProyecto = async (ruta: string, documentoId?: string | null) => {
-    setCargandoCambios(true);
+  const cargarCambiosDeProyecto = async (
+    _ruta: string,
+    _documentoId?: string | null,
+  ) => {
+    // La sección de cambios ya no forma parte de la interfaz: el editor
+    // guarda directamente y no activa el modo de propuestas.
+    setCargandoCambios(false);
+    setCambiosProyecto([]);
+    setCambioActivo(null);
     setErrorCambios(null);
-    try {
-      const lista = await listarCambios(ruta);
-      if (proyectoRef.current?.raiz !== ruta) {
-        return;
-      }
-      setCambiosProyecto(lista);
-      const resumen = lista.find((cambio) => cambio.documento === documentoId);
-      if (!resumen) {
-        setCambioActivo(null);
-        return;
-      }
-      const detalle = await leerCambio(ruta, resumen.id);
-      if (proyectoRef.current?.raiz === ruta) {
-        setCambioActivo(detalle);
-      }
-    } catch (fallo) {
-      if (proyectoRef.current?.raiz === ruta) {
-        setCambiosProyecto([]);
-        setCambioActivo(null);
-        setErrorCambios(errorDe(fallo).mensaje);
-      }
-    } finally {
-      setCargandoCambios(false);
-    }
   };
 
   const cargar = async (ruta: string, objetivoPreferido?: string | null) => {
@@ -834,6 +841,10 @@ export default function App() {
     setMensaje(null);
     setErrorGuardado(null);
     setConsulta('');
+    setFiltroTitulo('');
+    setBusquedaHojaAbierta(false);
+    setConsultaHoja('');
+    setEditandoTitulo(false);
     setVistaProyecto('editor');
     setCarpetas([]);
     setResultados([]);
@@ -1652,7 +1663,10 @@ export default function App() {
     }
   };
 
-  const crearEscenaEnCarpeta = async (carpeta: string) => {
+  const crearEscenaEnCarpeta = async (
+    carpeta: string,
+    titulo = 'Escena sin título',
+  ) => {
     const actual = proyectoRef.current;
     if (!actual) {
       return;
@@ -1663,7 +1677,7 @@ export default function App() {
       return;
     }
     try {
-      const escena = await crearEscenaEn(actual.raiz, carpeta, 'Escena sin título');
+      const escena = await crearEscenaEn(actual.raiz, carpeta, titulo);
       await refrescarEstructura();
       await seleccionar(escena);
       setMensaje('Escena creada.');
@@ -1975,6 +1989,51 @@ export default function App() {
     }
   };
 
+  const crearDesdePanel = async () => {
+    const actual = proyectoRef.current;
+    if (!actual) {
+      return;
+    }
+    if (tipoCreacion === 'nota') {
+      const titulo = nuevaNotaTitulo.trim();
+      if (!titulo) {
+        setMensaje('Escribe un título para la nota.');
+        return;
+      }
+      const guardado = await guardarAhora();
+      if (!guardado) {
+        setMensaje('No se creó la nota: resuelve el guardado pendiente.');
+        return;
+      }
+      try {
+        const nota = await crearNotaApi(actual.raiz, nuevaNotaTipo, titulo);
+        await refrescarEstructura();
+        await seleccionar(nota);
+        setNuevaNotaTitulo('');
+        setMensaje(`Nota creada: ${nota.titulo}.`);
+      } catch (fallo) {
+        setMensaje(`No se pudo crear la nota: ${errorDe(fallo).mensaje}`);
+      }
+      return;
+    }
+    if (tipoCreacion === 'escena') {
+      const titulo = nuevaEscenaTitulo.trim();
+      if (!titulo || !padreCreacion) {
+        setMensaje('Escribe un título y elige un capítulo.');
+        return;
+      }
+      await crearEscenaEnCarpeta(padreCreacion, titulo);
+      setNuevaEscenaTitulo('');
+      return;
+    }
+    const padre = tipoCreacion === 'libro' ? 'manuscrito' : padreCreacion;
+    if (!padre) {
+      setMensaje('Selecciona dónde crear la carpeta.');
+      return;
+    }
+    await crearCarpetaEn(tipoCreacion, padre);
+  };
+
   const renombrarCarpetaNodo = async (ruta: string, nombre: string) => {
     const actual = proyectoRef.current;
     if (!actual) {
@@ -2036,6 +2095,46 @@ export default function App() {
     } catch (fallo) {
       setMensaje(`No se pudo eliminar: ${errorDe(fallo).mensaje}`);
       throw fallo;
+    }
+  };
+
+  const abrirTituloInline = () => {
+    const documento = activoRef.current;
+    if (!documento || !puedeEditarRef.current || revirtiendoRef.current) {
+      return;
+    }
+    setTituloEdicion(documento.titulo);
+    setEditandoTitulo(true);
+    window.setTimeout(() => {
+      tituloInlineRef.current?.focus();
+      tituloInlineRef.current?.select();
+    }, 0);
+  };
+
+  const guardarTituloInline = async () => {
+    const documento = activoRef.current;
+    const actual = proyectoRef.current;
+    const nuevo = tituloEdicion.trim();
+    setEditandoTitulo(false);
+    if (!documento || !actual || !nuevo || nuevo === documento.titulo) {
+      setTituloEdicion(documento?.titulo ?? '');
+      return;
+    }
+    const guardado = await guardarAhora();
+    if (!guardado) {
+      setTituloEdicion(documento.titulo);
+      setMensaje('No se cambió el título: resuelve el guardado pendiente.');
+      return;
+    }
+    try {
+      const actualizado = await renombrarDocumento(actual.raiz, documento.id, nuevo);
+      fijarActivo(actualizado);
+      setTituloEdicion(actualizado.titulo);
+      await refrescarEstructura();
+      setMensaje('Título actualizado.');
+    } catch (fallo) {
+      setTituloEdicion(documento.titulo);
+      setMensaje(`No se pudo cambiar el título: ${errorDe(fallo).mensaje}`);
     }
   };
 
@@ -2518,11 +2617,21 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (vista !== 'historial' || !proyecto || revisionSeleccionada !== null) {
+    if (
+      vista !== 'historial' ||
+      !proyecto ||
+      revisionSeleccionada !== null ||
+      revisiones.length === 0
+    ) {
       return;
     }
-    void verRevision(proyecto.revision);
-  }, [vista, proyecto?.revision, revisionSeleccionada]);
+    const preferida =
+      revisiones.find((revision) => revision.revision === proyecto.revision) ??
+      revisiones[0];
+    if (preferida) {
+      void verRevision(preferida.revision);
+    }
+  }, [vista, proyecto?.revision, revisionSeleccionada, revisiones]);
 
   const revertirARevision = async () => {
     const detalle = detalleRevision;
@@ -2843,6 +2952,10 @@ export default function App() {
     setVistaInicio(destino);
     setVista('editor');
     setConsulta('');
+    setFiltroTitulo('');
+    setBusquedaHojaAbierta(false);
+    setConsultaHoja('');
+    setEditandoTitulo(false);
     setResultados([]);
     setRevisiones([]);
     setDetalleRevision(null);
@@ -3046,10 +3159,22 @@ export default function App() {
       } else if (evento.key.toLowerCase() === 'o') {
         evento.preventDefault();
         void accionesRef.current?.abrir();
-      } else if (evento.key.toLowerCase() === 'f' && proyectoRef.current) {
+      } else if (
+        evento.key.toLowerCase() === 'f' &&
+        evento.shiftKey &&
+        proyectoRef.current
+      ) {
         evento.preventDefault();
         buscadorRef.current?.focus();
         buscadorRef.current?.select();
+      } else if (evento.key.toLowerCase() === 'f' && proyectoRef.current) {
+        evento.preventDefault();
+        setVista('editor');
+        setBusquedaHojaAbierta(true);
+        window.setTimeout(() => {
+          buscadorHojaRef.current?.focus();
+          buscadorHojaRef.current?.select();
+        }, 0);
       } else if (evento.shiftKey && evento.key.toLowerCase() === 'h') {
         evento.preventDefault();
         setRevisionSeleccionada(null);
@@ -3175,6 +3300,13 @@ export default function App() {
       desregistrar?.();
     };
   }, []);
+
+  useEffect(() => {
+    setBusquedaHojaAbierta(false);
+    setConsultaHoja('');
+    setResultadoHoja({ total: 0, indice: 0 });
+    setEditandoTitulo(false);
+  }, [activo?.id]);
 
   useEffect(() => {
     setTituloEdicion(activo?.titulo ?? '');
@@ -3480,9 +3612,14 @@ export default function App() {
 
   const comandos: ComandoPaleta[] = [
     { id: 'guardar', etiqueta: 'Guardar', detalle: 'Escribe los cambios pendientes', atajo: 'Ctrl+S' },
-    { id: 'buscar', etiqueta: 'Buscar en el proyecto', atajo: 'Ctrl+F' },
+    { id: 'buscar-hoja', etiqueta: 'Buscar en esta hoja', atajo: 'Ctrl+F' },
+    {
+      id: 'buscar',
+      etiqueta: 'Buscar texto en todas las hojas',
+      atajo: 'Ctrl+Shift+F',
+    },
     { id: 'historial', etiqueta: 'Abrir historial', atajo: 'Ctrl+Shift+H' },
-    { id: 'cambios', etiqueta: 'Revisar cambios propuestos' },
+    { id: 'crear', etiqueta: 'Crear libro, capítulo o documento' },
     { id: 'herramientas', etiqueta: 'Herramientas de escritura' },
     { id: 'leer-documento', etiqueta: 'Leer documento en voz alta' },
     { id: 'detener-lectura', etiqueta: 'Detener lectura' },
@@ -3501,6 +3638,14 @@ export default function App() {
       case 'guardar':
         void guardarAhora();
         break;
+      case 'buscar-hoja':
+        setVista('editor');
+        setBusquedaHojaAbierta(true);
+        window.setTimeout(() => {
+          buscadorHojaRef.current?.focus();
+          buscadorHojaRef.current?.select();
+        }, 0);
+        break;
       case 'buscar':
         buscadorRef.current?.focus();
         buscadorRef.current?.select();
@@ -3510,8 +3655,8 @@ export default function App() {
         setDetalleRevision(null);
         setVista('historial');
         break;
-      case 'cambios':
-        setPanelDerecho('cambios');
+      case 'crear':
+        setPanelDerecho('crear');
         setPanelAbierto(true);
         break;
       case 'herramientas':
@@ -3561,7 +3706,7 @@ export default function App() {
   const abrirCreacionRapida = () => {
     setVistaProyecto('editor');
     setConsulta('');
-    setPanelDerecho('plan');
+    setPanelDerecho('crear');
     if (esVistaEstrecha()) {
       setPanelAbierto(true);
     }
@@ -3569,6 +3714,84 @@ export default function App() {
       document.getElementById('nueva-escena-titulo')?.focus();
     }, 50);
   };
+
+  const abrirBusquedaHoja = () => {
+    if (!activoRef.current) {
+      return;
+    }
+    setVista('editor');
+    setBusquedaHojaAbierta(true);
+    window.setTimeout(() => {
+      buscadorHojaRef.current?.focus();
+      buscadorHojaRef.current?.select();
+    }, 0);
+  };
+
+  const actualizarConsultaHoja = (texto: string) => {
+    setConsultaHoja(texto);
+    setResultadoHoja({
+      total: editorRef.current?.contar(texto) ?? 0,
+      indice: 0,
+    });
+  };
+
+  const navegarBusquedaHoja = (delta: number) => {
+    if (!consultaHoja.trim()) {
+      return;
+    }
+    const resultado = editorRef.current?.buscar(
+      consultaHoja,
+      resultadoHoja.indice + delta,
+    );
+    if (resultado) {
+      setResultadoHoja(resultado);
+    }
+  };
+
+  const documentosLista = useMemo(() => {
+    const termino = filtroTitulo.trim().toLocaleLowerCase();
+    if (!termino) {
+      return documentos;
+    }
+    return documentos.filter(
+      (documento) =>
+        documento.titulo.toLocaleLowerCase().includes(termino) ||
+        documento.ruta.toLocaleLowerCase().includes(termino),
+    );
+  }, [documentos, filtroTitulo]);
+
+  const opcionesPadreCreacion = useMemo(() => {
+    const libros = carpetas.filter(
+      (carpeta) =>
+        carpeta.startsWith('manuscrito/') && carpeta.split('/').length === 2,
+    );
+    if (tipoCreacion === 'capitulo') {
+      return libros.sort((a, b) => a.localeCompare(b, 'es'));
+    }
+    if (tipoCreacion === 'seccion' || tipoCreacion === 'escena') {
+      return carpetas
+        .filter(
+          (carpeta) =>
+            carpeta.startsWith('manuscrito/') && carpeta.split('/').length === 3,
+        )
+        .sort((a, b) => a.localeCompare(b, 'es'));
+    }
+    return [];
+  }, [carpetas, tipoCreacion]);
+
+  useEffect(() => {
+    if (
+      tipoCreacion === 'libro' ||
+      tipoCreacion === 'nota' ||
+      opcionesPadreCreacion.length === 0
+    ) {
+      setPadreCreacion('');
+      return;
+    }
+    setPadreCreacion((actual) =>
+      opcionesPadreCreacion.includes(actual) ? actual : opcionesPadreCreacion[0],
+    );
+  }, [tipoCreacion, opcionesPadreCreacion]);
 
   const primerLibro = useMemo(
     () =>
@@ -3814,6 +4037,15 @@ export default function App() {
             Aa
           </button>
           <button
+            className={`icono-dabble ${busquedaHojaAbierta ? 'activo' : ''}`}
+            aria-label="Buscar en esta hoja"
+            title="Buscar en esta hoja (Ctrl+F)"
+            onClick={abrirBusquedaHoja}
+            disabled={!activo}
+          >
+            <Search size={16} strokeWidth={1.7} aria-hidden="true" />
+          </button>
+          <button
             className={`icono-dabble ${vista === 'historial' ? 'activo' : ''}`}
             aria-label="Historial"
             title="Historial de versiones"
@@ -3824,28 +4056,6 @@ export default function App() {
             }}
           >
             ◷
-          </button>
-          <button
-            className={`icono-dabble ${
-              panelDerecho === 'cambios' ? 'activo' : ''
-            } ${cambiosProyecto.length > 0 ? 'con-badge' : ''}`}
-            aria-label={`Control de cambios${
-              cambiosProyecto.length > 0
-                ? `: ${cambiosProyecto.length} pendiente(s)`
-                : ''
-            }`}
-            title="Control de cambios"
-            onClick={() => {
-              setPanelDerecho('cambios');
-              setPanelAbierto(true);
-            }}
-          >
-            ±
-            {cambiosProyecto.length > 0 && (
-              <span className="dabble-badge" aria-hidden="true">
-                {cambiosProyecto.length}
-              </span>
-            )}
           </button>
           <button className="icono-dabble" aria-label="Ayuda" title="Ayuda">
             ?
@@ -3896,8 +4106,8 @@ export default function App() {
                   void abrirResultado(resultados[0]);
                 }
               }}
-              placeholder="Filtrar archivos del proyecto"
-              aria-label="Buscar en el proyecto"
+              placeholder="Buscar texto en todas las hojas"
+              aria-label="Buscar texto en todas las hojas"
             />
             <button
               className="dabble-mas"
@@ -3907,6 +4117,14 @@ export default function App() {
             >
               <Plus size={15} strokeWidth={2} aria-hidden="true" />
             </button>
+          </div>
+          <div className="dabble-filtro-etiqueta">
+            <input
+              value={filtroTitulo}
+              onChange={(evento) => setFiltroTitulo(evento.target.value)}
+              placeholder="Filtrar hojas por título"
+              aria-label="Filtrar hojas por título"
+            />
           </div>
           <div className="dabble-filtro-etiqueta">
             <input
@@ -3953,7 +4171,7 @@ export default function App() {
             <div className="dabble-arbol">
               <ArbolProyecto
                 carpetas={carpetas}
-                documentos={documentos}
+                documentos={documentosLista}
                 activoId={contenedor ? null : activo?.id ?? null}
                 filtroEtiqueta={filtroEtiqueta}
                 tituloProyecto={proyecto?.titulo ?? ''}
@@ -4310,16 +4528,54 @@ export default function App() {
                   Salir de la máquina del tiempo
                 </button>
                 <div className="dabble-timeline-control">
-                  <span aria-hidden="true">◀</span>
+                  <button
+                    type="button"
+                    className="icono-dabble"
+                    aria-label="Revisión anterior"
+                    disabled={indiceRevision <= 0}
+                    onClick={() => {
+                      const anterior = revisionesCronologicas[indiceRevision - 1];
+                      if (anterior) {
+                        void verRevision(anterior.revision);
+                      }
+                    }}
+                  >
+                    ◀
+                  </button>
                   <input
                     type="range"
-                    min={1}
-                    max={Math.max(1, proyecto?.revision ?? 1)}
-                    value={revisionSeleccionada ?? proyecto?.revision ?? 1}
-                    onChange={(evento) => void verRevision(Number(evento.target.value))}
+                    min={0}
+                    max={Math.max(0, revisionesCronologicas.length - 1)}
+                    value={indiceRevision}
+                    onChange={(evento) => {
+                      const revision =
+                        revisionesCronologicas[Number(evento.target.value)];
+                      if (revision) {
+                        void verRevision(revision.revision);
+                      }
+                    }}
+                    disabled={revisionesCronologicas.length < 2}
                     aria-label="Línea de tiempo de revisiones"
                   />
-                  <span aria-hidden="true">▶</span>
+                  <button
+                    type="button"
+                    className="icono-dabble"
+                    aria-label="Revisión siguiente"
+                    disabled={indiceRevision >= revisionesCronologicas.length - 1}
+                    onClick={() => {
+                      const siguiente = revisionesCronologicas[indiceRevision + 1];
+                      if (siguiente) {
+                        void verRevision(siguiente.revision);
+                      }
+                    }}
+                  >
+                    ▶
+                  </button>
+                  <span className="dabble-timeline-etiqueta">
+                    {revisionesCronologicas.length === 0
+                      ? 'Sin revisiones'
+                      : `Revisión ${revisionSeleccionada ?? proyecto?.revision ?? '—'} · ${indiceRevision + 1}/${revisionesCronologicas.length}`}
+                  </span>
                 </div>
                 <button
                   className="dabble-boton-primario"
@@ -4351,16 +4607,135 @@ export default function App() {
                 <span className="dabble-doc-tipo">
                   {activo.tipo === 'escena' ? 'escena' : activo.clase ?? 'nota'}
                 </span>
-                <h1 className="dabble-titulo">{activo.titulo}</h1>
+                {editandoTitulo ? (
+                  <input
+                    ref={tituloInlineRef}
+                    className="dabble-titulo dabble-titulo-input"
+                    value={tituloEdicion}
+                    onChange={(evento) => setTituloEdicion(evento.target.value)}
+                    onBlur={() => {
+                      if (cancelarTituloRef.current) {
+                        cancelarTituloRef.current = false;
+                        setEditandoTitulo(false);
+                        setTituloEdicion(activo.titulo);
+                        return;
+                      }
+                      void guardarTituloInline();
+                    }}
+                    onKeyDown={(evento) => {
+                      if (evento.key === 'Enter') {
+                        evento.preventDefault();
+                        evento.currentTarget.blur();
+                      } else if (evento.key === 'Escape') {
+                        evento.preventDefault();
+                        cancelarTituloRef.current = true;
+                        evento.currentTarget.blur();
+                      }
+                    }}
+                    aria-label="Título de la hoja"
+                  />
+                ) : (
+                  <h1
+                    className={`dabble-titulo ${
+                      puedeEditar ? 'dabble-titulo-editable' : ''
+                    }`}
+                    tabIndex={puedeEditar ? 0 : -1}
+                    title={puedeEditar ? 'Haz clic para cambiar el título' : undefined}
+                    onClick={abrirTituloInline}
+                    onKeyDown={(evento) => {
+                      if (
+                        puedeEditar &&
+                        (evento.key === 'Enter' || evento.key === ' ')
+                      ) {
+                        evento.preventDefault();
+                        abrirTituloInline();
+                      }
+                    }}
+                  >
+                    {activo.titulo}
+                    {puedeEditar && (
+                      <Pencil
+                        className="dabble-titulo-lapiz"
+                        size={16}
+                        strokeWidth={1.7}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </h1>
+                )}
                 <div className="dabble-doc-meta">
                   <span>{etiquetaTipo(activo)}</span>
                   <span>{palabrasDocumento} palabras</span>
                   <span>{estadoVisible}</span>
                 </div>
               </header>
+              {busquedaHojaAbierta && (
+                <div className="buscador-hoja" role="search">
+                  <Search size={15} strokeWidth={1.7} aria-hidden="true" />
+                  <input
+                    ref={buscadorHojaRef}
+                    value={consultaHoja}
+                    onChange={(evento) => actualizarConsultaHoja(evento.target.value)}
+                    onKeyDown={(evento) => {
+                      if (evento.key === 'Enter') {
+                        evento.preventDefault();
+                        navegarBusquedaHoja(evento.shiftKey ? -1 : 1);
+                      } else if (evento.key === 'Escape') {
+                        evento.preventDefault();
+                        setBusquedaHojaAbierta(false);
+                      }
+                    }}
+                    placeholder="Buscar en esta hoja"
+                    aria-label="Buscar en esta hoja"
+                  />
+                  <span className="buscador-hoja-contador" aria-live="polite">
+                    {resultadoHoja.total > 0
+                      ? `${resultadoHoja.indice + 1} de ${resultadoHoja.total}`
+                      : consultaHoja.trim()
+                        ? 'Sin coincidencias'
+                        : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="icono-dabble"
+                    aria-label="Coincidencia anterior"
+                    title="Coincidencia anterior"
+                    disabled={resultadoHoja.total === 0}
+                    onClick={() => {
+                      navegarBusquedaHoja(-1);
+                      buscadorHojaRef.current?.focus();
+                    }}
+                  >
+                    <ArrowUp size={15} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="icono-dabble"
+                    aria-label="Siguiente coincidencia"
+                    title="Siguiente coincidencia"
+                    disabled={resultadoHoja.total === 0}
+                    onClick={() => {
+                      navegarBusquedaHoja(1);
+                      buscadorHojaRef.current?.focus();
+                    }}
+                  >
+                    <ArrowDown size={15} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="icono-dabble"
+                    aria-label="Cerrar búsqueda en la hoja"
+                    title="Cerrar búsqueda"
+                    onClick={() => setBusquedaHojaAbierta(false)}
+                  >
+                    <X size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
               <div className="dabble-hoja">
                 {vista === 'editor' ? (
                   <EditorMarkdown
+                    ref={editorRef}
                     key={`${activo.id}:${revisionEditor}`}
                     markdown={cuerpoVisible}
                     editable={puedeEditar}
@@ -4524,19 +4899,11 @@ export default function App() {
               </button>
               <button
                 role="tab"
-                aria-selected={panelDerecho === 'plan'}
-                className={panelDerecho === 'plan' ? 'activo' : ''}
-                onClick={() => setPanelDerecho('plan')}
+                aria-selected={panelDerecho === 'crear'}
+                className={panelDerecho === 'crear' ? 'activo' : ''}
+                onClick={() => setPanelDerecho('crear')}
               >
-                Plan
-              </button>
-              <button
-                role="tab"
-                aria-selected={panelDerecho === 'cambios'}
-                className={panelDerecho === 'cambios' ? 'activo' : ''}
-                onClick={() => setPanelDerecho('cambios')}
-              >
-                Cambios
+                Crear
               </button>
               <button
                 role="tab"
@@ -5023,6 +5390,160 @@ export default function App() {
                 ) : (
                   <p className="dabble-vacio">Abre un documento para ver sus comentarios.</p>
                 )}
+              </section>
+            ) : panelDerecho === 'crear' ? (
+              <section className="dabble-plan-panel">
+                <h3>Crear</h3>
+                <label className="dabble-campo-meta">
+                  <span>Qué quieres crear</span>
+                  <select
+                    value={tipoCreacion}
+                    onChange={(evento) =>
+                      setTipoCreacion(
+                        evento.target.value as
+                          | 'libro'
+                          | 'capitulo'
+                          | 'seccion'
+                          | 'escena'
+                          | 'nota',
+                      )
+                    }
+                    aria-label="Tipo de documento a crear"
+                  >
+                    <option value="libro">Libro</option>
+                    <option value="capitulo">Capítulo</option>
+                    <option value="seccion">Sección</option>
+                    <option value="escena">Escena</option>
+                    <option value="nota">Nota</option>
+                  </select>
+                </label>
+
+                {tipoCreacion !== 'libro' && tipoCreacion !== 'nota' && (
+                  <label className="dabble-campo-meta">
+                    <span>Dónde</span>
+                    <select
+                      value={padreCreacion}
+                      onChange={(evento) => setPadreCreacion(evento.target.value)}
+                      aria-label="Carpeta donde crear"
+                      disabled={opcionesPadreCreacion.length === 0}
+                    >
+                      {opcionesPadreCreacion.length === 0 ? (
+                        <option value="">
+                          {tipoCreacion === 'capitulo'
+                            ? 'No hay libros'
+                            : 'No hay capítulos'}
+                        </option>
+                      ) : (
+                        opcionesPadreCreacion.map((carpeta) => (
+                          <option key={carpeta} value={carpeta}>
+                            {carpeta.split('/').slice(1).map(etiquetaCarpeta).join(' / ')}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </label>
+                )}
+
+                {tipoCreacion === 'nota' && (
+                  <label className="dabble-campo-meta">
+                    <span>Tipo de nota</span>
+                    <select
+                      value={nuevaNotaTipo}
+                      onChange={(evento) => setNuevaNotaTipo(evento.target.value)}
+                      aria-label="Tipo de la nueva nota"
+                    >
+                      <option value="cuaderno">Cuaderno</option>
+                      <option value="personajes">Personajes</option>
+                      <option value="tramas">Tramas</option>
+                      <option value="lugares">Lugares</option>
+                      <option value="cronologia">Cronología</option>
+                      <option value="objetos">Objetos</option>
+                    </select>
+                  </label>
+                )}
+
+                {tipoCreacion === 'escena' ? (
+                  <label className="dabble-campo-meta">
+                    <span>Título de la escena</span>
+                    <input
+                      id="nueva-escena-titulo"
+                      value={nuevaEscenaTitulo}
+                      onChange={(evento) => setNuevaEscenaTitulo(evento.target.value)}
+                      aria-label="Título de la nueva escena"
+                    />
+                  </label>
+                ) : tipoCreacion === 'nota' ? (
+                  <label className="dabble-campo-meta">
+                    <span>Título de la nota</span>
+                    <input
+                      value={nuevaNotaTitulo}
+                      onChange={(evento) => setNuevaNotaTitulo(evento.target.value)}
+                      aria-label="Título de la nueva nota"
+                    />
+                  </label>
+                ) : null}
+
+                <button
+                  className="dabble-boton"
+                  onClick={() => void crearDesdePanel()}
+                  disabled={
+                    (tipoCreacion === 'escena' &&
+                      (nuevaEscenaTitulo.trim() === '' || !padreCreacion)) ||
+                    (tipoCreacion === 'nota' && nuevaNotaTitulo.trim() === '') ||
+                    (tipoCreacion !== 'libro' &&
+                      tipoCreacion !== 'nota' &&
+                      !padreCreacion)
+                  }
+                >
+                  {tipoCreacion === 'libro'
+                    ? 'Crear libro'
+                    : tipoCreacion === 'capitulo'
+                      ? 'Crear capítulo'
+                      : tipoCreacion === 'seccion'
+                        ? 'Crear sección'
+                        : tipoCreacion === 'escena'
+                          ? 'Crear escena'
+                          : 'Crear nota'}
+                </button>
+
+                {activo?.clase === 'ideas' && (
+                  <button
+                    className="dabble-boton"
+                    onClick={() => void convertirIdeaActiva()}
+                  >
+                    Convertir idea en proyecto
+                  </button>
+                )}
+
+                <h3>Importar y respaldar</h3>
+                <label className="dabble-campo-meta">
+                  <span>Importar como</span>
+                  <select
+                    value={tipoImportacion}
+                    onChange={(evento) => setTipoImportacion(evento.target.value)}
+                    aria-label="Importar como"
+                  >
+                    <option value="">Escena</option>
+                    <option value="cuaderno">Nota de cuaderno</option>
+                    <option value="personajes">Personaje</option>
+                    <option value="tramas">Trama</option>
+                    <option value="lugares">Lugar</option>
+                    <option value="cronologia">Cronología</option>
+                    <option value="objetos">Objeto</option>
+                  </select>
+                </label>
+                <button className="dabble-boton" onClick={() => void importarArchivo()}>
+                  Importar documento
+                </button>
+                <button className="dabble-boton" onClick={() => void hacerBackup()}>
+                  Crear backup ZIP
+                </button>
+                <button
+                  className="dabble-boton"
+                  onClick={() => void restaurarProyectoDesdeBackup()}
+                >
+                  Restaurar backup
+                </button>
               </section>
             ) : panelDerecho === 'plan' ? (
               <section className="dabble-plan-panel">

@@ -1,5 +1,11 @@
-import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
-import { useEffect, useRef, useState } from 'react';
+import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { extensionesEditor } from './editor/extensions';
 import { comentarioValido } from './editor/marcas';
 import { actualizarReferencias } from './editor/referencias';
@@ -9,6 +15,43 @@ export type OpcionMarca = {
   id: string;
   titulo: string;
 };
+
+export type EditorMarkdownHandle = {
+  /** Cuenta coincidencias sin mover la selección. */
+  contar: (texto: string) => number;
+  /** Selecciona una coincidencia y devuelve el total y el índice activo. */
+  buscar: (texto: string, indice?: number) => { total: number; indice: number };
+};
+
+type Coincidencia = { from: number; to: number };
+
+function coincidenciasEnEditor(editor: Editor | null, texto: string): Coincidencia[] {
+  if (!editor || !texto.trim()) {
+    return [];
+  }
+  const aguja = texto.toLocaleLowerCase();
+  const coincidencias: Coincidencia[] = [];
+  editor.state.doc.descendants((nodo, posicion) => {
+    if (!nodo.isText || !nodo.text) {
+      return true;
+    }
+    const contenido = nodo.text.toLocaleLowerCase();
+    let desde = 0;
+    while (desde < contenido.length) {
+      const indice = contenido.indexOf(aguja, desde);
+      if (indice < 0) {
+        break;
+      }
+      coincidencias.push({
+        from: posicion + indice,
+        to: posicion + indice + aguja.length,
+      });
+      desde = indice + aguja.length;
+    }
+    return true;
+  });
+  return coincidencias;
+}
 
 
 
@@ -24,17 +67,21 @@ type Props = {
   onPegar?: (palabras: number) => void;
 };
 
-export function EditorMarkdown({
-  markdown,
-  editable,
-  personajes,
-  tramas,
-  onCambio,
-  onComentario,
-  ancla,
-  corrector = true,
-  onPegar,
-}: Props) {  const alCambiar = useRef(onCambio);
+export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function EditorMarkdown(
+  {
+    markdown,
+    editable,
+    personajes,
+    tramas,
+    onCambio,
+    onComentario,
+    ancla,
+    corrector = true,
+    onPegar,
+  },
+  ref,
+) {
+  const alCambiar = useRef(onCambio);
   alCambiar.current = onCambio;
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
   const [comentarioTexto, setComentarioTexto] = useState('');
@@ -119,6 +166,29 @@ export function EditorMarkdown({
     // cambios (sin tocar el DOM a mano ni crear pasos de deshacer).
     editor?.view.dispatch(editor.state.tr.setMeta('referencias-marcas', true));
   }, [editor, personajes, tramas]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      contar: (texto) => coincidenciasEnEditor(editor, texto).length,
+      buscar: (texto, indice = 0) => {
+        const coincidencias = coincidenciasEnEditor(editor, texto);
+        if (!editor || coincidencias.length === 0) {
+          return { total: 0, indice: 0 };
+        }
+        const activo = ((indice % coincidencias.length) + coincidencias.length) %
+          coincidencias.length;
+        const coincidencia = coincidencias[activo];
+        editor
+          .chain()
+          .setTextSelection({ from: coincidencia.from, to: coincidencia.to })
+          .scrollIntoView()
+          .run();
+        return { total: coincidencias.length, indice: activo };
+      },
+    }),
+    [editor],
+  );
 
   const estado = useEditorState({
     editor,
@@ -397,4 +467,4 @@ export function EditorMarkdown({
       <EditorContent editor={editor} />
     </div>
   );
-}
+});

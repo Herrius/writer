@@ -5,14 +5,12 @@ import {
   abrirProyecto,
   agregarMensajeComentario,
   agregarSesion,
-  aplicarCambio,
   buscar,
   compararDocumento,
   crearComentario,
   crearProyecto,
   crearSticky,
   cuarentena,
-  descartarCambio,
   descartarCuarentena,
   duplicar,
   elegirCarpetaCreacion,
@@ -22,19 +20,15 @@ import {
   guardarMetas,
   historial,
   leer,
-  leerCambio,
-  listarCambios,
   leerMetas,
   leerSesiones,
   listar,
   listarComentarios,
   mostrar,
-  registrarCambio,
   renombrar,
   resolverComentario,
   revertir,
 } from './api';
-import type { CambioDetalleDto } from './types/CambioDetalleDto';
 import type { DocumentoDto } from './types/DocumentoDto';
 import type { ProyectoDto } from './types/ProyectoDto';
 import type { RevisionDetalleDto } from './types/RevisionDetalleDto';
@@ -138,11 +132,6 @@ const buscarMock = vi.mocked(buscar);
 const historialMock = vi.mocked(historial);
 const mostrarMock = vi.mocked(mostrar);
 const revertirMock = vi.mocked(revertir);
-const listarCambiosMock = vi.mocked(listarCambios);
-const leerCambioMock = vi.mocked(leerCambio);
-const registrarCambioMock = vi.mocked(registrarCambio);
-const aplicarCambioMock = vi.mocked(aplicarCambio);
-const descartarCambioMock = vi.mocked(descartarCambio);
 const compararDocumentoMock = vi.mocked(compararDocumento);
 const elegirDestinoDocxMock = vi.mocked(elegirDestinoDocx);
 const exportarDocxMock = vi.mocked(exportarDocx);
@@ -269,11 +258,6 @@ function preparar(documentoActivo: DocumentoDto = documento, resumen: ProyectoDt
     ],
   }));
   revertirMock.mockResolvedValue({ revision: 3, erroresPendientes: [] });
-  listarCambiosMock.mockResolvedValue([]);
-  leerCambioMock.mockRejectedValue({ tipo: 'no-encontrado', mensaje: 'sin cambios' });
-  registrarCambioMock.mockResolvedValue(null);
-  aplicarCambioMock.mockResolvedValue({ revision: 2, hashArchivo: 'blake3:propuesta' });
-  descartarCambioMock.mockResolvedValue();
   compararDocumentoMock.mockResolvedValue({
     revision: 1,
     ruta: documentoActivo.ruta,
@@ -479,126 +463,6 @@ describe('autosave de la interfaz', () => {
     expect(screen.getAllByText('revisión 2').length).toBeGreaterThan(0);
   });
 
-  it('propone un cambio y lo acepta sin tocar el documento hasta confirmar', async () => {
-    const propuesta = 'Propuesta revisada.\n';
-    const cambio = {
-      id: '01CAMBIO00000000000000000',
-      documento: documento.id,
-      ruta: documento.ruta,
-      autor: 'local',
-      ts: '2026-10-24T10:00:00Z',
-      baseRevision: 1,
-      baseHash: documento.hashArchivo,
-      base: documento.cuerpo,
-      propuesta,
-      insertadas: 1,
-      borradas: 0,
-      lineas: [
-        {
-          tipo: 'igual',
-          numeroBase: 1,
-          numeroPropuesta: 1,
-          texto: 'Texto original.',
-        },
-        {
-          tipo: 'insertada',
-          numeroBase: null,
-          numeroPropuesta: 2,
-          texto: 'Propuesta revisada.',
-        },
-      ],
-    };
-    registrarCambioMock.mockResolvedValue(cambio);
-    const editor = await abrirDemo();
-    fireEvent.click(screen.getByRole('button', { name: 'Control de cambios' }));
-    fireEvent.click(screen.getByRole('switch'));
-    fireEvent.change(editor, { target: { value: propuesta } });
-
-    await waitFor(
-      () => expect(registrarCambioMock).toHaveBeenCalledTimes(1),
-      { timeout: 3000 },
-    );
-    expect(registrarCambioMock).toHaveBeenCalledWith(
-      '/tmp/novela',
-      documento.id,
-      propuesta,
-      'local',
-    );
-    await waitFor(() => expect(estadoGuardado()).toBe('cambio propuesto'));
-    expect(screen.getByRole('button', { name: 'Aceptar cambio' })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Aceptar cambio' }));
-    await waitFor(() =>
-      expect(aplicarCambioMock).toHaveBeenCalledWith(
-        '/tmp/novela',
-        '01CAMBIO00000000000000000',
-      ),
-    );
-    await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
-    expect(await screen.findByText(/Cambio aceptado en la revisión/)).toBeTruthy();
-  });
-
-  it('bloquea el editor antes de aplicar una propuesta y no pierde texto', async () => {
-    const inicial: CambioDetalleDto = {
-      id: '01CAMBIO00000000000000001',
-      documento: documento.id,
-      ruta: documento.ruta,
-      autor: 'local',
-      ts: '2026-10-24T10:00:00Z',
-      baseRevision: 1,
-      baseHash: documento.hashArchivo,
-      base: documento.cuerpo,
-      propuesta: 'Propuesta inicial.\n',
-      insertadas: 1,
-      borradas: 0,
-      lineas: [],
-    };
-    const actualizada: CambioDetalleDto = {
-      ...inicial,
-      id: '01CAMBIO00000000000000002',
-      propuesta: 'Propuesta actualizada.\n',
-    };
-    const enGuardado = diferida<CambioDetalleDto | null>();
-    registrarCambioMock
-      .mockResolvedValueOnce(inicial)
-      .mockReturnValueOnce(enGuardado.promesa);
-    leerCambioMock.mockImplementation(async (_ruta, id) => {
-      if (id === inicial.id) {
-        throw { tipo: 'no-encontrado', mensaje: 'el sidecar cambió de id' };
-      }
-      return actualizada;
-    });
-    aplicarCambioMock.mockResolvedValue({
-      revision: 2,
-      hashArchivo: 'blake3:actualizada',
-    });
-
-    const editor = await abrirDemo();
-    fireEvent.click(screen.getByRole('button', { name: 'Control de cambios' }));
-    fireEvent.click(screen.getByRole('switch'));
-    fireEvent.change(editor, { target: { value: inicial.propuesta } });
-    await waitFor(() => expect(estadoGuardado()).toBe('cambio propuesto'), {
-      timeout: 3000,
-    });
-
-    fireEvent.change(editor, { target: { value: actualizada.propuesta } });
-    fireEvent.click(screen.getByRole('button', { name: 'Aceptar cambio' }));
-    await waitFor(() => expect(registrarCambioMock).toHaveBeenCalledTimes(2));
-    expect(editor.disabled).toBe(true);
-
-    await act(async () => {
-      enGuardado.resolver(actualizada);
-    });
-    await waitFor(() =>
-      expect(aplicarCambioMock).toHaveBeenCalledWith(
-        '/tmp/novela',
-        actualizada.id,
-      ),
-    );
-    await waitFor(() => expect(estadoGuardado()).toBe('guardado'));
-    expect(screen.getByDisplayValue('Propuesta actualizada.')).toBeTruthy();
-  });
-
   it('compara una revisión con el documento actual', async () => {
     await abrirDemo();
     fireEvent.click(screen.getByRole('button', { name: 'Historial' }));
@@ -763,7 +627,7 @@ describe('autosave de la interfaz', () => {
 
   it('busca en el proyecto y muestra el fragmento resaltado', async () => {
     await abrirDemo();
-    const buscador = screen.getByRole('textbox', { name: 'Buscar en el proyecto' });
+    const buscador = screen.getByRole('textbox', { name: 'Buscar texto en todas las hojas' });
     fireEvent.change(buscador, { target: { value: 'puerto' } });
 
     await waitFor(
@@ -883,7 +747,7 @@ describe('autosave de la interfaz', () => {
 
   it('repite la búsqueda cuando cambia la revisión', async () => {
     await abrirDemo();
-    const buscador = screen.getByRole('textbox', { name: 'Buscar en el proyecto' });
+    const buscador = screen.getByRole('textbox', { name: 'Buscar texto en todas las hojas' });
     fireEvent.change(buscador, { target: { value: 'puerto' } });
     await waitFor(
       () => expect(buscarMock).toHaveBeenCalledTimes(1),

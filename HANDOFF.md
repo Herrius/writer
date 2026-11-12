@@ -103,8 +103,9 @@ WebKit/WebView2 al ejecutar `cargo test --workspace` del núcleo.
   `listar_cambios`, `leer_cambio`.
 - La propuesta no toca el Markdown; aceptar crea una transacción normal y
   conserva el CAS. Un sidecar corrupto va a cuarentena.
-- UI: pestaña **Cambios**, interruptor **Proponer cambios**, diff lado a lado,
-  aceptar/rechazar y badge de pendientes.
+- La UI ya no expone la sección de cambios; el backend y los sidecars se
+  conservan para la CLI y trabajo futuro. La UI añade búsqueda en la hoja y en
+  la lista, título editable y panel **Crear**.
 - Contrato: [`docs/cambios-v1.md`](docs/cambios-v1.md).
 
 ### 3.2 Comparación
@@ -148,11 +149,11 @@ WebKit/WebView2 al ejecutar `cargo test --workspace` del núcleo.
 ```text
 cargo fmt --all --check                         OK
 cargo clippy --workspace --all-targets -D warnings   OK
-cargo test --workspace --all-targets --locked   91 + 50 + 25 + 1 perf
+cargo test --workspace --all-targets --locked   93 + 51 + 25 + 1 perf
 cargo test desktop                              10/10
 pnpm typecheck                                  OK
-pnpm ui:test                                    88/88
-pnpm e2e                                        61/61
+pnpm ui:test                                    86/86
+pnpm e2e                                        58/58
 ci.py calidad                                   OK
 ci.py interfaz                                  OK
 ci.py producto                                  OK

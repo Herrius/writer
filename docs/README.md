@@ -122,6 +122,8 @@
   árbol jerárquico, menús contextuales, iconos Lucide y páginas de estado.
 - [`iteraciones/36-fase-4-windows.md`](iteraciones/36-fase-4-windows.md) —
   paridad Windows, CI multiplataforma e instaladores MSI/NSIS.
+- [`iteraciones/37-panel-crear-busqueda-titulo.md`](iteraciones/37-panel-crear-busqueda-titulo.md)
+  — panel Crear, búsqueda en hoja/lista, título editable y línea de tiempo.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

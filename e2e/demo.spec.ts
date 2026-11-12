@@ -97,7 +97,7 @@ test('abre la demo, edita y guarda con el autosave', async ({ page }) => {
 
 test('busca y salta a otro documento', async ({ page }) => {
   await abrirDemo(page);
-  await page.getByRole('textbox', { name: 'Buscar en el proyecto' }).fill('llave');
+  await page.getByRole('textbox', { name: 'Buscar texto en todas las hojas' }).fill('llave');
   const resultado = page.locator('.resultado').filter({ hasText: 'La llave' });
   await expect(resultado).toBeVisible();
   await expect(resultado).toContainText('llave');
