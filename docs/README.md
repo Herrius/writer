@@ -127,6 +127,9 @@
 - [`iteraciones/38-compatibilidad-proyectos-antiguos.md`](iteraciones/38-compatibilidad-proyectos-antiguos.md)
   — proyectos antiguos sin capítulo, orden por carpeta y menús coherentes del
   árbol.
+- [`iteraciones/39-nota-flotante-seleccion.md`](iteraciones/39-nota-flotante-seleccion.md)
+  — nota flotante al seleccionar texto, con caja de escritura y comentario
+  anclado.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

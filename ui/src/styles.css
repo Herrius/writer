@@ -767,6 +767,60 @@ button.guardar:disabled {
   align-items: center;
 }
 
+.editor-burbuja {
+  position: fixed;
+  z-index: 80;
+  width: 15.5rem;
+  padding: 0.35rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.6rem;
+  background: var(--papel);
+  box-shadow: var(--sombra);
+}
+
+.editor-burbuja-boton {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editor-burbuja-boton:hover {
+  background: var(--papel-2);
+}
+
+.editor-burbuja-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.editor-burbuja-form input {
+  width: 100%;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.4rem;
+  background: rgb(255 255 255 / 60%);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.editor-burbuja-acciones {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
 .editor-error {
   color: var(--rojo);
   font-size: 0.68rem;
@@ -4104,6 +4158,12 @@ details.cuarentena[open] > summary.cuarentena-cabecera::before {
 [data-tema='oscuro'] .dabble-hoja .editor-toolbar button.activo {
   background: #4a2a22;
   color: #ffd8c7;
+}
+
+[data-tema='oscuro'] .editor-burbuja-form input {
+  border-color: #555;
+  background: #303030;
+  color: #e8e2d8;
 }
 
 [data-tema='oscuro'] .dabble-top-acciones button,

@@ -166,7 +166,9 @@ describe('EditorMarkdown con marcas', () => {
         target: { value: texto },
       });
       fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
-      expect(screen.getByRole('alert').textContent).toContain('El comentario');
+      await waitFor(() =>
+        expect(screen.getByRole('alert').textContent).toContain('El comentario'),
+      );
       expect(editor.getText()).toBe('Marta');
       expect(onCambio).not.toHaveBeenCalled();
     },
@@ -189,6 +191,20 @@ describe('EditorMarkdown con marcas', () => {
     } finally {
       editor.destroy();
     }
+  });
+
+  it('muestra la nota flotante al seleccionar y aplica el comentario', async () => {
+    const { onCambio } = await seleccionarTexto();
+    fireEvent.click(screen.getByRole('button', { name: 'Comentar' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Texto de la nota' }), {
+      target: { value: 'Revisar esta línea' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Añadir nota' }));
+    await waitFor(() =>
+      expect(onCambio.mock.calls.at(-1)?.[0]).toBe(
+        '[[comentario:Revisar esta línea|Marta]]',
+      ),
+    );
   });
 
   it('rechaza delimitadores de cierre en la selección para personaje y trama', async () => {

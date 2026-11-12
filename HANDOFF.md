@@ -31,6 +31,9 @@
   carpeta real y los menús del árbol crean capítulos en el libro y escenas en el
   capítulo, sin la opción Sección; ver
   [`docs/iteraciones/38-compatibilidad-proyectos-antiguos.md`](docs/iteraciones/38-compatibilidad-proyectos-antiguos.md).
+- **Nota flotante 2026-11-12:** al seleccionar texto aparece un globo para
+  escribir una nota y anclarla al manuscrito, al estilo de Word; ver
+  [`docs/iteraciones/39-nota-flotante-seleccion.md`](docs/iteraciones/39-nota-flotante-seleccion.md).
 
 ## 1. Resumen
 

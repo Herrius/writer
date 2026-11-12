@@ -23,6 +23,9 @@ historial y notas adhesivas. No hay comentarios compartidos, cuentas ni red.
 - No se anidan comentarios.
 - Los comentarios v1 de dos campos quedan como legado de solo lectura. La UI los
   muestra como «comentario heredado» y no los reescribe.
+- Al seleccionar texto aparece un globo **Comentar** junto a la selección; desde
+  ahí se escribe la nota y se crea el hilo en una sola acción. La barra de
+  formato conserva el botón **Comentario** como acceso alternativo.
 
 ## 3. Modelo
 

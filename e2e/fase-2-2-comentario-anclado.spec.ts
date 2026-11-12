@@ -17,3 +17,21 @@ test('crea un comentario anclado con ULID v2', async ({ page }) => {
     /\[\[comentario:[0-9A-HJKMNP-TV-Z]{26}\|revisar el ritmo\|/,
   );
 });
+
+test('muestra la nota flotante al seleccionar texto y la aplica', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Ver demo' }).click();
+  const editor = page.locator('.ProseMirror');
+  await expect(editor).toContainText('La casa olía');
+  await editor.click();
+  await page.keyboard.press('Control+A');
+
+  await page.getByRole('button', { name: 'Comentar', exact: true }).click();
+  await page.getByLabel('Texto de la nota').fill('nota desde la selección');
+  await page.getByRole('button', { name: 'Añadir nota' }).click();
+
+  await page.getByRole('button', { name: 'Ver Markdown' }).click();
+  await expect(page.locator('pre.fuente')).toContainText(
+    /\[\[comentario:[0-9A-HJKMNP-TV-Z]{26}\|nota desde la selección\|/,
+  );
+});

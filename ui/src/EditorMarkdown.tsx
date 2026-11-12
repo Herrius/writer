@@ -1,4 +1,5 @@
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
+import { MessageSquarePlus } from 'lucide-react';
 import {
   forwardRef,
   useEffect,
@@ -24,6 +25,14 @@ export type EditorMarkdownHandle = {
 };
 
 type Coincidencia = { from: number; to: number };
+
+type BurbujaSeleccion = {
+  top: number;
+  left: number;
+  from: number;
+  to: number;
+  abierta: boolean;
+};
 
 function coincidenciasEnEditor(editor: Editor | null, texto: string): Coincidencia[] {
   if (!editor || !texto.trim()) {
@@ -86,6 +95,10 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
   const [comentarioAbierto, setComentarioAbierto] = useState(false);
   const [comentarioTexto, setComentarioTexto] = useState('');
   const [errorComentario, setErrorComentario] = useState<string | null>(null);
+  const [burbuja, setBurbuja] = useState<BurbujaSeleccion | null>(null);
+  const [notaBurbuja, setNotaBurbuja] = useState('');
+  const [errorBurbuja, setErrorBurbuja] = useState<string | null>(null);
+  const burbujaRef = useRef<HTMLDivElement | null>(null);
   const [palabras, setPalabras] = useState(() =>
     contarPalabras(textoSinMarcas(markdown)),
   );
@@ -135,6 +148,73 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
     dom.addEventListener('paste', alPegar);
     return () => dom.removeEventListener('paste', alPegar);
   }, [editor, onPegar]);
+
+  useEffect(() => {
+    if (!editor || !editable) {
+      setBurbuja(null);
+      return;
+    }
+    const calcular = () => {
+      const { from, to } = editor.state.selection;
+      if (from === to) {
+        setBurbuja(null);
+        return;
+      }
+      const ancho = 248;
+      let coords = { top: 96, bottom: 116, left: 96, right: 96 };
+      try {
+        coords = editor.view.coordsAtPos(from);
+      } catch {
+        // En entornos sin motor de disposición (jsdom) se usa una posición
+        // estable; en el WebView real coordsAtPos devuelve la del cursor.
+      }
+      const centro = (coords.left + coords.right) / 2;
+      const left = Math.min(
+        Math.max(12, centro - ancho / 2),
+        Math.max(12, window.innerWidth - ancho - 12),
+      );
+      const top = coords.top > 80 ? coords.top - 52 : coords.bottom + 12;
+      setBurbuja((anterior) => {
+        if (
+          anterior &&
+          anterior.from === from &&
+          anterior.to === to &&
+          anterior.top === top &&
+          anterior.left === left
+        ) {
+          return anterior;
+        }
+        return { top, left, from, to, abierta: false };
+      });
+    };
+    const ocultar = () => setBurbuja(null);
+    const alPulsarFuera = (evento: PointerEvent) => {
+      const objetivo = evento.target;
+      if (!(objetivo instanceof Node)) {
+        return;
+      }
+      if (burbujaRef.current?.contains(objetivo)) {
+        return;
+      }
+      if (editor.view.dom.contains(objetivo)) {
+        return;
+      }
+      setBurbuja(null);
+    };
+    editor.on('selectionUpdate', calcular);
+    editor.on('focus', calcular);
+    window.addEventListener('scroll', ocultar, true);
+    window.addEventListener('resize', ocultar);
+    document.addEventListener('pointerdown', alPulsarFuera);
+    calcular();
+    return () => {
+      editor.off('selectionUpdate', calcular);
+      editor.off('focus', calcular);
+      window.removeEventListener('scroll', ocultar, true);
+      window.removeEventListener('resize', ocultar);
+      document.removeEventListener('pointerdown', alPulsarFuera);
+    };
+  }, [editor, editable]);
 
   useEffect(() => {
     if (!ancla || ancla === ultimaAncla.current) {
@@ -259,29 +339,65 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
     reemplazarMarca('trama', { id });
   };
 
-  const aplicarComentario = async () => {
-    const texto = comentarioTexto.trim();
-    if (!comentarioValido(texto)) {
-      setErrorComentario('El comentario no puede estar vacío ni contener «|» o «]]».');
-      return;
+  const aplicarComentarioEn = async (
+    texto: string,
+    from: number,
+    to: number,
+  ): Promise<string | null> => {
+    const limpio = texto.trim();
+    if (!comentarioValido(limpio)) {
+      return 'El comentario no puede estar vacío ni contener «|» o «]]».';
     }
-    const { from, to } = editor.state.selection;
+    if (from === to) {
+      return 'Selecciona texto para crear el comentario.';
+    }
     const seleccion = editor.state.doc.textBetween(from, to, '\n');
     if (!seleccion.trim()) {
-      setErrorComentario('Selecciona texto para crear el comentario.');
-      return;
+      return 'Selecciona texto para crear el comentario.';
     }
-    const id = onComentario ? await onComentario(texto, seleccion) : null;
+    if (seleccion.includes(']]') || seleccion.includes('|')) {
+      return 'La selección no puede contener «|» ni «]]».';
+    }
+    const id = onComentario ? await onComentario(limpio, seleccion) : null;
     if (onComentario && !id) {
-      setErrorComentario('No se pudo crear el hilo del comentario.');
-      return;
+      return 'No se pudo crear el hilo del comentario.';
     }
-    if (!reemplazarMarca('comentario', id ? { texto, id } : { texto })) {
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({ from, to })
+      .unsetMark('personaje')
+      .unsetMark('trama')
+      .unsetMark('comentario')
+      .setMark('comentario', id ? { texto: limpio, id } : { texto: limpio })
+      .run();
+    return null;
+  };
+
+  const aplicarComentario = async () => {
+    const { from, to } = editor.state.selection;
+    const error = await aplicarComentarioEn(comentarioTexto, from, to);
+    if (error) {
+      setErrorComentario(error);
       return;
     }
     setComentarioTexto('');
     setComentarioAbierto(false);
     setErrorComentario(null);
+  };
+
+  const aplicarComentarioBurbuja = async () => {
+    if (!burbuja) {
+      return;
+    }
+    const error = await aplicarComentarioEn(notaBurbuja, burbuja.from, burbuja.to);
+    if (error) {
+      setErrorBurbuja(error);
+      return;
+    }
+    setNotaBurbuja('');
+    setErrorBurbuja(null);
+    setBurbuja(null);
   };
 
   const quitarMarcas = () => {
@@ -465,6 +581,86 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
         </div>
       )}
       <EditorContent editor={editor} />
+      {burbuja && editable && (
+        <div
+          className="editor-burbuja"
+          ref={burbujaRef}
+          style={{ top: `${burbuja.top}px`, left: `${burbuja.left}px` }}
+          role="dialog"
+          aria-label="Nota sobre el texto seleccionado"
+          onMouseDown={(evento) => {
+            if (!burbuja.abierta) {
+              evento.preventDefault();
+            }
+          }}
+        >
+          {burbuja.abierta ? (
+            <div className="editor-burbuja-form">
+              <input
+                autoFocus
+                aria-label="Texto de la nota"
+                placeholder="Escribe tu nota…"
+                value={notaBurbuja}
+                onChange={(evento) => {
+                  setNotaBurbuja(evento.target.value);
+                  setErrorBurbuja(null);
+                }}
+                onKeyDown={(evento) => {
+                  if (evento.nativeEvent.isComposing) {
+                    return;
+                  }
+                  if (evento.key === 'Enter') {
+                    evento.preventDefault();
+                    void aplicarComentarioBurbuja();
+                  } else if (evento.key === 'Escape') {
+                    setBurbuja(null);
+                    setNotaBurbuja('');
+                    setErrorBurbuja(null);
+                  }
+                }}
+              />
+              <div className="editor-burbuja-acciones">
+                <button
+                  type="button"
+                  className="secundario pequeno"
+                  onClick={() => {
+                    setBurbuja(null);
+                    setNotaBurbuja('');
+                    setErrorBurbuja(null);
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="dabble-boton-primario pequeno"
+                  onClick={() => void aplicarComentarioBurbuja()}
+                  disabled={notaBurbuja.trim() === ''}
+                >
+                  Añadir nota
+                </button>
+              </div>
+              {errorBurbuja && (
+                <span className="editor-error" role="alert">
+                  {errorBurbuja}
+                </span>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="editor-burbuja-boton"
+              onClick={() => {
+                setBurbuja({ ...burbuja, abierta: true });
+                setErrorBurbuja(null);
+              }}
+            >
+              <MessageSquarePlus size={15} strokeWidth={1.8} aria-hidden="true" />
+              Comentar
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 });
