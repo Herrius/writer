@@ -26,6 +26,8 @@ test('muestra la nota flotante al seleccionar texto y la aplica', async ({ page 
   await editor.click();
   await page.keyboard.press('Control+A');
 
+  await expect(page.getByRole('button', { name: 'Comentar', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Comentar', exact: true })).toBeInViewport();
   await page.getByRole('button', { name: 'Comentar', exact: true }).click();
   await page.getByLabel('Texto de la nota').fill('nota desde la selección');
   await page.getByRole('button', { name: 'Añadir nota' }).click();

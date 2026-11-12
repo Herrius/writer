@@ -5,14 +5,16 @@
 
 ## 1. Interfaz
 
-- Al seleccionar texto en el editor aparece un globo flotante junto a la
-  selección con la acción **Comentar**, al estilo de Word.
+- Al seleccionar texto en el editor aparece un globo flotante junto al **final**
+  de la selección con la acción **Comentar**, al estilo de Word. El globo se
+  mantiene siempre dentro de la ventana: si el final de una selección grande
+  queda fuera de la pantalla, se pega al borde visible más cercano.
 - Al pulsar **Comentar**, el globo se convierte en una caja para escribir la
   nota, con **Añadir nota** y **Cancelar**. Enter guarda y Escape cierra.
 - La nota se guarda como comentario anclado: crea el hilo en
   `.escritor/comentarios/` y aplica la marca `[[comentario:…]]` sobre el texto.
-- El globo se oculta al plegar la selección, al hacer scroll, al cambiar el
-  tamaño de la ventana o al pulsar fuera del editor.
+- El globo sigue a la selección al hacer scroll o cambiar el tamaño de la
+  ventana, y se oculta al plegar la selección o al pulsar fuera del editor.
 - El botón **Comentario** de la barra de formato se mantiene como acceso
   alternativo.
 - En solo lectura no se muestra el globo.

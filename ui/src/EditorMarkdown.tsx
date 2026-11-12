@@ -62,6 +62,38 @@ function coincidenciasEnEditor(editor: Editor | null, texto: string): Coincidenc
   return coincidencias;
 }
 
+/**
+ * Coloca el globo junto al final de la selección y lo mantiene dentro de la
+ * ventana. Si el final queda fuera de la pantalla (selecciones grandes o
+ * Ctrl+A), se pega al borde visible más cercano para que siempre se pueda usar.
+ */
+function posicionBurbuja(
+  editor: Editor,
+  posicion: number,
+  alto: number,
+): { top: number; left: number } {
+  const ancho = 248;
+  let coords = { top: 96, bottom: 116, left: 96, right: 96 };
+  try {
+    coords = editor.view.coordsAtPos(posicion);
+  } catch {
+    // En entornos sin motor de disposición (jsdom) se usa una posición estable;
+    // en el WebView real coordsAtPos devuelve la del cursor.
+  }
+  const centro = (coords.left + coords.right) / 2;
+  const left = Math.min(
+    Math.max(12, centro - ancho / 2),
+    Math.max(12, window.innerWidth - ancho - 12),
+  );
+  const sobre = coords.top - alto - 8;
+  const debajo = coords.bottom + 10;
+  const top = Math.min(
+    Math.max(8, sobre >= 8 ? sobre : debajo),
+    Math.max(8, window.innerHeight - alto - 8),
+  );
+  return { top, left };
+}
+
 
 
 type Props = {
@@ -160,34 +192,22 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
         setBurbuja(null);
         return;
       }
-      const ancho = 248;
-      let coords = { top: 96, bottom: 116, left: 96, right: 96 };
-      try {
-        coords = editor.view.coordsAtPos(from);
-      } catch {
-        // En entornos sin motor de disposición (jsdom) se usa una posición
-        // estable; en el WebView real coordsAtPos devuelve la del cursor.
-      }
-      const centro = (coords.left + coords.right) / 2;
-      const left = Math.min(
-        Math.max(12, centro - ancho / 2),
-        Math.max(12, window.innerWidth - ancho - 12),
+      const { top, left } = posicionBurbuja(
+        editor,
+        to,
+        Math.max(52, burbujaRef.current?.offsetHeight ?? 52),
       );
-      const top = coords.top > 80 ? coords.top - 52 : coords.bottom + 12;
       setBurbuja((anterior) => {
-        if (
-          anterior &&
-          anterior.from === from &&
-          anterior.to === to &&
-          anterior.top === top &&
-          anterior.left === left
-        ) {
+        if (!anterior || anterior.from !== from || anterior.to !== to) {
+          return { top, left, from, to, abierta: false };
+        }
+        if (anterior.top === top && anterior.left === left) {
           return anterior;
         }
-        return { top, left, from, to, abierta: false };
+        return { ...anterior, top, left };
       });
     };
-    const ocultar = () => setBurbuja(null);
+    const alDesplazar = () => calcular();
     const alPulsarFuera = (evento: PointerEvent) => {
       const objetivo = evento.target;
       if (!(objetivo instanceof Node)) {
@@ -203,15 +223,15 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
     };
     editor.on('selectionUpdate', calcular);
     editor.on('focus', calcular);
-    window.addEventListener('scroll', ocultar, true);
-    window.addEventListener('resize', ocultar);
+    window.addEventListener('scroll', alDesplazar, true);
+    window.addEventListener('resize', alDesplazar);
     document.addEventListener('pointerdown', alPulsarFuera);
     calcular();
     return () => {
       editor.off('selectionUpdate', calcular);
       editor.off('focus', calcular);
-      window.removeEventListener('scroll', ocultar, true);
-      window.removeEventListener('resize', ocultar);
+      window.removeEventListener('scroll', alDesplazar, true);
+      window.removeEventListener('resize', alDesplazar);
       document.removeEventListener('pointerdown', alPulsarFuera);
     };
   }, [editor, editable]);
@@ -651,7 +671,9 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
               type="button"
               className="editor-burbuja-boton"
               onClick={() => {
-                setBurbuja({ ...burbuja, abierta: true });
+                const { top, left } = posicionBurbuja(editor, burbuja.to, 180);
+                setBurbuja({ ...burbuja, top, left, abierta: true });
+                setNotaBurbuja('');
                 setErrorBurbuja(null);
               }}
             >
