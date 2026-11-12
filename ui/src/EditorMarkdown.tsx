@@ -787,7 +787,34 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
                   type="button"
                   className="secundario pequeno"
                   onClick={() => {
-                    if (notaVisible.from < notaVisible.to) {
+                    const id = notaVisible.id;
+                    if (id) {
+                      const { tr } = editor.state;
+                      let modificado = false;
+                      editor.state.doc.descendants((nodo, posicion) => {
+                        if (!nodo.isText) {
+                          return true;
+                        }
+                        const tieneMarca = nodo.marks.some(
+                          (marca) =>
+                            marca.type.name === 'comentario' &&
+                            marca.attrs.id === id,
+                        );
+                        if (tieneMarca) {
+                          tr.removeMark(
+                            posicion,
+                            posicion + nodo.nodeSize,
+                            editor.schema.marks.comentario,
+                          );
+                          modificado = true;
+                        }
+                        return true;
+                      });
+                      if (modificado) {
+                        editor.view.dispatch(tr);
+                      }
+                      onQuitarComentario?.(id);
+                    } else if (notaVisible.from < notaVisible.to) {
                       editor
                         .chain()
                         .focus()
@@ -797,9 +824,6 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
                         })
                         .unsetMark('comentario')
                         .run();
-                    }
-                    if (notaVisible.id) {
-                      onQuitarComentario?.(notaVisible.id);
                     }
                     setNotaVisible(null);
                   }}

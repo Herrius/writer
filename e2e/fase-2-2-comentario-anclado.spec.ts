@@ -47,3 +47,27 @@ test('muestra la nota flotante al seleccionar texto y la aplica', async ({ page 
     /\[\[comentario:[0-9A-HJKMNP-TV-Z]{26}\|nota desde la selección\|/,
   );
 });
+
+test('quita de una vez la marca de una nota que cubre varios párrafos', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Ver demo' }).click();
+  const editor = page.locator('.ProseMirror');
+  await expect(editor).toContainText('La casa olía');
+  await editor.click();
+  await page.keyboard.press('Control+A');
+
+  await page.getByRole('button', { name: 'Comentar', exact: true }).click();
+  await page.getByLabel('Texto de la nota').fill('nota grande');
+  await page.getByRole('button', { name: 'Añadir nota' }).click();
+  await expect(page.locator('.marca-comentario').first()).toBeVisible();
+
+  await page.locator('.marca-comentario').first().click();
+  await page
+    .getByRole('dialog', { name: 'Comentario del texto' })
+    .getByRole('button', { name: 'Quitar marca' })
+    .click();
+  await expect(page.locator('.marca-comentario')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Ver Markdown' }).click();
+  await expect(page.locator('pre.fuente')).not.toContainText('[[comentario:');
+});

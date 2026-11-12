@@ -1,7 +1,7 @@
 # Iteración 39 — Nota flotante al seleccionar texto
 
 - **Fecha:** 2026-11-12
-- **Estado:** implementado y cubierto por 88 tests de UI y 59 flujos E2E.
+- **Estado:** implementado y cubierto por 88 tests de UI y 60 flujos E2E.
 
 ## 1. Interfaz
 
@@ -15,8 +15,8 @@
   `.escritor/comentarios/` y aplica la marca `[[comentario:…]]` sobre el texto.
 - El texto comentado se marca con un fondo tenue y un subrayado punteado. Al
   pulsarlo se abre un globo con el texto de la nota, un acceso directo a
-  **Ver en Comentarios** y la acción **Quitar marca** para retirar el resaltado
-  y archivar el hilo.
+  **Ver en Comentarios** y la acción **Quitar marca** para retirar todos los
+  resaltados de esa nota y archivar el hilo.
 - El ancla de una nota que cruza varios párrafos se reconoce aunque el Markdown
   cambie el espaciado entre bloques, así que el hilo no pasa a huérfano al
   reabrir el documento.
