@@ -4781,6 +4781,9 @@ export default function App() {
                       setPanelDerecho('comentarios');
                       setFiltroComentarios('todos');
                     }}
+                    onQuitarComentario={(id) => {
+                      void archivarHilo(id);
+                    }}
                   />
                 ) : (
                   <pre className="fuente">{cuerpoVisible || '(cuerpo vacío)'}</pre>

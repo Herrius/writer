@@ -35,6 +35,7 @@ test('muestra la nota flotante al seleccionar texto y la aplica', async ({ page 
   await page.locator('.marca-comentario').first().click();
   const nota = page.getByRole('dialog', { name: 'Comentario del texto' });
   await expect(nota).toContainText('nota desde la selección');
+  await expect(nota.getByRole('button', { name: 'Quitar marca' })).toBeVisible();
   await nota.getByRole('button', { name: 'Ver en Comentarios' }).click();
   await page.getByLabel('Filtrar comentarios').selectOption('abiertos');
   await expect(

@@ -104,6 +104,7 @@ type Props = {
   onCambio: (markdown: string) => void;
   onComentario?: (texto: string, textoMarcado: string) => Promise<string | null>;
   onAbrirComentario?: (id: string) => void;
+  onQuitarComentario?: (id: string) => void;
   ancla?: string | null;
   corrector?: boolean;
   onPegar?: (palabras: number) => void;
@@ -118,6 +119,7 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
     onCambio,
     onComentario,
     onAbrirComentario,
+    onQuitarComentario,
     ancla,
     corrector = true,
     onPegar,
@@ -138,6 +140,8 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
     left: number;
     id: string | null;
     texto: string;
+    from: number;
+    to: number;
   } | null>(null);
   const notaVisibleRef = useRef<HTMLDivElement | null>(null);
   const [palabras, setPalabras] = useState(() =>
@@ -274,11 +278,21 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
         Math.max(8, sobre >= 8 ? sobre : rect.bottom + 8),
         Math.max(8, window.innerHeight - alto - 8),
       );
+      let from = 0;
+      let to = 0;
+      try {
+        from = editor.view.posAtDOM(marca, 0);
+        to = editor.view.posAtDOM(marca, marca.childNodes.length);
+      } catch {
+        // Sin posiciones válidas solo se muestra la nota, sin acción de quitar.
+      }
       setNotaVisible({
         top,
         left,
         id: marca.getAttribute('data-id'),
         texto: marca.getAttribute('data-referencia') ?? '',
+        from,
+        to,
       });
     };
     const alPulsarFuera = (evento: PointerEvent) => {
@@ -765,14 +779,40 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
             </button>
           </header>
           <p>{notaVisible.texto || 'Esta nota no tiene texto.'}</p>
-          {notaVisible.id && onAbrirComentario && (
+          {(notaVisible.from < notaVisible.to ||
+            (notaVisible.id && onAbrirComentario)) && (
             <div className="editor-nota-acciones">
+              {notaVisible.from < notaVisible.to && (
+                <button
+                  type="button"
+                  className="secundario pequeno"
+                  onClick={() => {
+                    if (notaVisible.from < notaVisible.to) {
+                      editor
+                        .chain()
+                        .focus()
+                        .setTextSelection({
+                          from: notaVisible.from,
+                          to: notaVisible.to,
+                        })
+                        .unsetMark('comentario')
+                        .run();
+                    }
+                    if (notaVisible.id) {
+                      onQuitarComentario?.(notaVisible.id);
+                    }
+                    setNotaVisible(null);
+                  }}
+                >
+                  Quitar marca
+                </button>
+              )}
               <button
                 type="button"
                 className="secundario pequeno"
                 onClick={() => {
                   if (notaVisible.id) {
-                    onAbrirComentario(notaVisible.id);
+                    onAbrirComentario?.(notaVisible.id);
                   }
                   setNotaVisible(null);
                 }}
