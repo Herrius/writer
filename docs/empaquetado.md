@@ -25,8 +25,8 @@ python scripts/ci.py empaquetado
 En este entorno se generan:
 
 ```text
-target/release/bundle/deb/writer_0.2.2_amd64.deb
-target/release/bundle/rpm/writer-0.2.2-1.x86_64.rpm
+target/release/bundle/deb/writer_0.2.3_amd64.deb
+target/release/bundle/rpm/writer-0.2.3-1.x86_64.rpm
 ```
 
 El gate `empaquetado` no solo ejecuta `pnpm build`: inspecciona los paquetes.
