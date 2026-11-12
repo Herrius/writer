@@ -207,6 +207,28 @@ describe('EditorMarkdown con marcas', () => {
     );
   });
 
+  it('muestra el texto de la nota al pulsar el comentario', async () => {
+    const onAbrirComentario = vi.fn();
+    render(
+      <EditorMarkdown
+        markdown="[[comentario:01KDVDNBYG20KW71NVRK6P2FHG|revisar el ritmo|Marta]] llega al faro."
+        editable
+        personajes={personajes}
+        tramas={tramas}
+        onCambio={() => {}}
+        onAbrirComentario={onAbrirComentario}
+      />,
+    );
+    await screen.findByRole('toolbar', { name: 'Marcas del texto' });
+    const marca = document.querySelector('.marca-comentario') as HTMLElement;
+    expect(marca).toBeTruthy();
+    fireEvent.click(marca);
+    const dialogo = await screen.findByRole('dialog', { name: 'Comentario del texto' });
+    expect(dialogo.textContent).toContain('revisar el ritmo');
+    fireEvent.click(screen.getByRole('button', { name: 'Ver en Comentarios' }));
+    expect(onAbrirComentario).toHaveBeenCalledWith('01KDVDNBYG20KW71NVRK6P2FHG');
+  });
+
   it('rechaza delimitadores de cierre en la selección para personaje y trama', async () => {
     const { editor, onCambio } = await seleccionarTexto('Marta ]] literal');
     for (const [nombre, id] of [

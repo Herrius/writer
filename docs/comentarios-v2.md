@@ -26,6 +26,8 @@ historial y notas adhesivas. No hay comentarios compartidos, cuentas ni red.
 - Al seleccionar texto aparece un globo **Comentar** junto a la selección; desde
   ahí se escribe la nota y se crea el hilo en una sola acción. La barra de
   formato conserva el botón **Comentario** como acceso alternativo.
+- El texto comentado se subraya de forma discreta; al pulsarlo se muestra la
+  nota y se puede abrir el panel **Comentarios**.
 
 ## 3. Modelo
 

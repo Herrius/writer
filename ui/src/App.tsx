@@ -3394,7 +3394,11 @@ export default function App() {
       return;
     }
     let cancelado = false;
-    sincronizarComentariosHuerfanos(actual.raiz, activo.ruta, activo.cuerpo)
+    sincronizarComentariosHuerfanos(
+      actual.raiz,
+      activo.ruta,
+      textoSinMarcas(activo.cuerpo),
+    )
       .then((lista) => {
         if (!cancelado) {
           setComentarios(lista);
@@ -4772,6 +4776,10 @@ export default function App() {
                         setErrorComentarios(errorDe(fallo).mensaje);
                         return null;
                       }
+                    }}
+                    onAbrirComentario={() => {
+                      setPanelDerecho('comentarios');
+                      setFiltroComentarios('todos');
                     }}
                   />
                 ) : (

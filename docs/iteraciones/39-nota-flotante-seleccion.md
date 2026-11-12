@@ -1,7 +1,7 @@
 # Iteración 39 — Nota flotante al seleccionar texto
 
 - **Fecha:** 2026-11-12
-- **Estado:** implementado y cubierto por 87 tests de UI y 59 flujos E2E.
+- **Estado:** implementado y cubierto por 88 tests de UI y 59 flujos E2E.
 
 ## 1. Interfaz
 
@@ -13,6 +13,12 @@
   nota, con **Añadir nota** y **Cancelar**. Enter guarda y Escape cierra.
 - La nota se guarda como comentario anclado: crea el hilo en
   `.escritor/comentarios/` y aplica la marca `[[comentario:…]]` sobre el texto.
+- El texto comentado se marca con un fondo tenue y un subrayado punteado. Al
+  pulsarlo se abre un globo con el texto de la nota y un acceso directo a
+  **Ver en Comentarios**.
+- El ancla de una nota que cruza varios párrafos se reconoce aunque el Markdown
+  cambie el espaciado entre bloques, así que el hilo no pasa a huérfano al
+  reabrir el documento.
 - El globo sigue a la selección al hacer scroll o cambiar el tamaño de la
   ventana, y se oculta al plegar la selección o al pulsar fuera del editor.
 - El botón **Comentario** de la barra de formato se mantiene como acceso

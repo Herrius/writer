@@ -503,11 +503,16 @@ export async function sincronizarComentariosHuerfanos(
   texto: string,
 ): Promise<ComentarioDto[]> {
   if (!esTauri) {
+    const normalizar = (valor: string) =>
+      valor.split(/\s+/u).filter(Boolean).join(' ');
+    const visible = normalizar(texto);
     return comentariosDemo
       .filter((comentario) => comentario.documento === documento)
       .map((comentario) => ({
         ...comentario,
-        huerfano: comentario.ancla ? !texto.includes(comentario.ancla.texto) : false,
+        huerfano: comentario.ancla
+          ? !visible.includes(normalizar(comentario.ancla.texto))
+          : false,
       }));
   }
   return invoke<ComentarioDto[]>('sincronizar_comentarios_huerfanos', {

@@ -162,6 +162,9 @@ function crearMarca(clase: ClaseMarca, atributo: string) {
         mergeAttributes(HTMLAttributes, {
           [`data-marca-${clase}`]: '',
           class: `marca marca-${clase}`,
+          ...(clase === 'comentario'
+            ? { title: HTMLAttributes['data-referencia'] ?? 'Comentario' }
+            : {}),
         }),
         0,
       ];

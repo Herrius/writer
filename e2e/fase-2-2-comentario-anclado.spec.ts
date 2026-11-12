@@ -32,6 +32,15 @@ test('muestra la nota flotante al seleccionar texto y la aplica', async ({ page 
   await page.getByLabel('Texto de la nota').fill('nota desde la selección');
   await page.getByRole('button', { name: 'Añadir nota' }).click();
 
+  await page.locator('.marca-comentario').first().click();
+  const nota = page.getByRole('dialog', { name: 'Comentario del texto' });
+  await expect(nota).toContainText('nota desde la selección');
+  await nota.getByRole('button', { name: 'Ver en Comentarios' }).click();
+  await page.getByLabel('Filtrar comentarios').selectOption('abiertos');
+  await expect(
+    page.locator('.dabble-comentarios-panel').getByText('nota desde la selección'),
+  ).toBeVisible();
+
   await page.getByRole('button', { name: 'Ver Markdown' }).click();
   await expect(page.locator('pre.fuente')).toContainText(
     /\[\[comentario:[0-9A-HJKMNP-TV-Z]{26}\|nota desde la selección\|/,

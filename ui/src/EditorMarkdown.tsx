@@ -103,6 +103,7 @@ type Props = {
   tramas: OpcionMarca[];
   onCambio: (markdown: string) => void;
   onComentario?: (texto: string, textoMarcado: string) => Promise<string | null>;
+  onAbrirComentario?: (id: string) => void;
   ancla?: string | null;
   corrector?: boolean;
   onPegar?: (palabras: number) => void;
@@ -116,6 +117,7 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
     tramas,
     onCambio,
     onComentario,
+    onAbrirComentario,
     ancla,
     corrector = true,
     onPegar,
@@ -131,6 +133,13 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
   const [notaBurbuja, setNotaBurbuja] = useState('');
   const [errorBurbuja, setErrorBurbuja] = useState<string | null>(null);
   const burbujaRef = useRef<HTMLDivElement | null>(null);
+  const [notaVisible, setNotaVisible] = useState<{
+    top: number;
+    left: number;
+    id: string | null;
+    texto: string;
+  } | null>(null);
+  const notaVisibleRef = useRef<HTMLDivElement | null>(null);
   const [palabras, setPalabras] = useState(() =>
     contarPalabras(textoSinMarcas(markdown)),
   );
@@ -235,6 +244,59 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
       document.removeEventListener('pointerdown', alPulsarFuera);
     };
   }, [editor, editable]);
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    const dom = editor.view.dom;
+    const alHacerClic = (evento: MouseEvent) => {
+      const objetivo = evento.target;
+      if (!(objetivo instanceof HTMLElement)) {
+        return;
+      }
+      const marca = objetivo.closest<HTMLElement>('[data-marca-comentario]');
+      if (!marca) {
+        if (!notaVisibleRef.current?.contains(objetivo)) {
+          setNotaVisible(null);
+        }
+        return;
+      }
+      const rect = marca.getBoundingClientRect();
+      const ancho = 264;
+      const alto = 180;
+      const left = Math.min(
+        Math.max(12, rect.left),
+        Math.max(12, window.innerWidth - ancho - 12),
+      );
+      const sobre = rect.top - alto - 8;
+      const top = Math.min(
+        Math.max(8, sobre >= 8 ? sobre : rect.bottom + 8),
+        Math.max(8, window.innerHeight - alto - 8),
+      );
+      setNotaVisible({
+        top,
+        left,
+        id: marca.getAttribute('data-id'),
+        texto: marca.getAttribute('data-referencia') ?? '',
+      });
+    };
+    const alPulsarFuera = (evento: PointerEvent) => {
+      if (!(evento.target instanceof Node)) {
+        return;
+      }
+      if (notaVisibleRef.current?.contains(evento.target)) {
+        return;
+      }
+      setNotaVisible(null);
+    };
+    dom.addEventListener('click', alHacerClic);
+    document.addEventListener('pointerdown', alPulsarFuera);
+    return () => {
+      dom.removeEventListener('click', alHacerClic);
+      document.removeEventListener('pointerdown', alPulsarFuera);
+    };
+  }, [editor]);
 
   useEffect(() => {
     if (!ancla || ancla === ultimaAncla.current) {
@@ -680,6 +742,44 @@ export const EditorMarkdown = forwardRef<EditorMarkdownHandle, Props>(function E
               <MessageSquarePlus size={15} strokeWidth={1.8} aria-hidden="true" />
               Comentar
             </button>
+          )}
+        </div>
+      )}
+      {notaVisible && (
+        <div
+          className="editor-nota-popover"
+          ref={notaVisibleRef}
+          style={{ top: `${notaVisible.top}px`, left: `${notaVisible.left}px` }}
+          role="dialog"
+          aria-label="Comentario del texto"
+        >
+          <header className="editor-nota-cabecera">
+            <span>Nota</span>
+            <button
+              type="button"
+              className="cerrar-modal"
+              aria-label="Cerrar nota"
+              onClick={() => setNotaVisible(null)}
+            >
+              ×
+            </button>
+          </header>
+          <p>{notaVisible.texto || 'Esta nota no tiene texto.'}</p>
+          {notaVisible.id && onAbrirComentario && (
+            <div className="editor-nota-acciones">
+              <button
+                type="button"
+                className="secundario pequeno"
+                onClick={() => {
+                  if (notaVisible.id) {
+                    onAbrirComentario(notaVisible.id);
+                  }
+                  setNotaVisible(null);
+                }}
+              >
+                Ver en Comentarios
+              </button>
+            </div>
           )}
         </div>
       )}

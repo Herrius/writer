@@ -387,7 +387,16 @@ pub fn sincronizar_huerfanos(raiz: &Path, documento: &str, texto: &str) -> Resul
     Ok(comentarios)
 }
 
+fn normalizar_espacios(texto: &str) -> String {
+    texto.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 fn buscar_ancla(texto: &str, ancla: &str) -> Option<(usize, usize)> {
+    let texto = normalizar_espacios(texto);
+    let ancla = normalizar_espacios(ancla);
+    if ancla.is_empty() {
+        return None;
+    }
     let empieza_alfanumerico = ancla
         .chars()
         .next()
@@ -396,7 +405,7 @@ fn buscar_ancla(texto: &str, ancla: &str) -> Option<(usize, usize)> {
         .chars()
         .last()
         .is_some_and(|caracter| caracter.is_alphanumeric());
-    for (inicio, _) in texto.match_indices(ancla) {
+    for (inicio, _) in texto.match_indices(&ancla) {
         let antes_ok = !empieza_alfanumerico
             || texto[..inicio]
                 .chars()
@@ -615,6 +624,30 @@ mod tests {
             sincronizar_huerfanos(temporal.path(), documento, "el texto vuelve").expect("sync");
         assert!(!recuperados[0].huerfano);
         assert_eq!(recuperados[0].id, comentario.id);
+    }
+
+    #[test]
+    fn ancla_de_varios_parrafos_tolera_el_espaciado() {
+        let temporal = raiz();
+        let documento = "manuscrito/01-libro/01-capitulo/001-escena.md";
+        crear_comentario(
+            temporal.path(),
+            documento,
+            "revisar",
+            "Primer párrafo.\nSegundo párrafo.",
+            "local",
+        )
+        .expect("crear");
+        let sincronizados = sincronizar_huerfanos(
+            temporal.path(),
+            documento,
+            "Primer párrafo.\n\nSegundo párrafo.",
+        )
+        .expect("sync");
+        assert!(
+            !sincronizados[0].huerfano,
+            "el ancla debe encontrarse aunque cambie el espaciado"
+        );
     }
 
     #[test]

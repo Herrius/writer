@@ -821,6 +821,53 @@ button.guardar:disabled {
   justify-content: flex-end;
 }
 
+.editor-nota-popover {
+  position: fixed;
+  z-index: 85;
+  width: 16.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--linea);
+  border-radius: 0.6rem;
+  background: var(--papel);
+  box-shadow: var(--sombra);
+  color: var(--tinta);
+}
+
+.editor-nota-cabecera {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+  color: var(--acento);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.editor-nota-cabecera .cerrar-modal {
+  position: static;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.editor-nota-popover p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.editor-nota-acciones {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
 .editor-error {
   color: var(--rojo);
   font-size: 0.68rem;
@@ -850,7 +897,8 @@ button.guardar:disabled {
 }
 
 .editor-content .ProseMirror .marca-comentario {
-  background: #fbebe7;
+  background: rgb(181 92 74 / 8%);
+  cursor: pointer;
   text-decoration: underline 1px dotted #b55c4a;
   text-underline-offset: 0.16em;
 }
