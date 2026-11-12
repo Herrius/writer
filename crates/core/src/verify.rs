@@ -278,6 +278,56 @@ impl Escaneo {
     }
 }
 
+/// Indica si la ruta relativa es una escena admitida.
+///
+/// Además de la jerarquía canónica `manuscrito/<libro>/<capítulo>/<escena>.md`
+/// se aceptan los proyectos antiguos, en los que la escena colgaba directamente
+/// del libro (`manuscrito/<libro>/<escena>.md`), y las carpetas de agrupación
+/// adicionales creadas por versiones anteriores. El primer nivel es siempre el
+/// libro y la carpeta que contiene el archivo agrupa las escenas.
+pub fn es_ruta_escena(relativa: &str) -> bool {
+    let partes: Vec<&str> = relativa.split('/').collect();
+    partes.len() >= 3
+        && partes.first() == Some(&"manuscrito")
+        && partes[1..partes.len() - 1]
+            .iter()
+            .all(|parte| !parte.is_empty())
+}
+
+/// Libro lógico de una escena (primer nivel bajo `manuscrito`).
+pub fn libro_de_escena(relativa: &str) -> Option<&str> {
+    es_ruta_escena(relativa)
+        .then(|| relativa.split('/').nth(1))
+        .flatten()
+}
+
+/// Carpeta que contiene la escena, incluido el libro.
+pub fn carpeta_de_escena(relativa: &str) -> Option<&str> {
+    relativa.rsplit_once('/').map(|(carpeta, _)| carpeta)
+}
+
+/// Ruta del capítulo lógico bajo el libro (vacía si la escena cuelga del libro).
+pub fn capitulo_de_escena(relativa: &str) -> String {
+    let partes: Vec<&str> = relativa.split('/').collect();
+    if partes.len() <= 3 {
+        return String::new();
+    }
+    partes[2..partes.len() - 1].join("/")
+}
+
+/// Título legible del capítulo lógico de una escena.
+pub fn titulo_capitulo_de_escena(relativa: &str) -> String {
+    let capitulo = capitulo_de_escena(relativa);
+    if capitulo.is_empty() {
+        return String::new();
+    }
+    capitulo
+        .split('/')
+        .map(model::titulo_humano)
+        .collect::<Vec<_>>()
+        .join(" · ")
+}
+
 /// Escanea una raíz de proyecto sin modificarla.
 pub fn escanear(raiz: &Path) -> Result<Escaneo> {
     if !raiz.is_dir() {
@@ -307,9 +357,13 @@ pub fn escanear(raiz: &Path) -> Result<Escaneo> {
         let relativa = fsutil::ruta_relativa(&ruta, raiz)?;
         let partes: Vec<&str> = relativa.split('/').collect();
         if partes.first() == Some(&"manuscrito") {
-            if partes.len() != 4 {
+            let estructura_valida = partes.len() >= 3
+                && partes[1..partes.len() - 1]
+                    .iter()
+                    .all(|parte| !parte.is_empty());
+            if !estructura_valida {
                 escaneo.errores.push(format!(
-                    "{relativa}: una escena debe estar en manuscrito/libro/capitulo/"
+                    "{relativa}: una escena debe estar en manuscrito/<libro>/ o manuscrito/<libro>/<capítulo>/"
                 ));
                 escaneo
                     .invalidos
@@ -677,13 +731,11 @@ fn verificar_ids_y_referencias(escaneo: &mut Escaneo) {
 fn verificar_orden(escaneo: &mut Escaneo) {
     let mut ordenes: BTreeMap<String, BTreeMap<i64, String>> = BTreeMap::new();
     for escena in &escaneo.escenas {
-        let partes: Vec<&str> = escena.relativa.split('/').collect();
-        if partes.len() != 4 {
+        let Some(carpeta) = carpeta_de_escena(&escena.relativa) else {
             continue;
-        }
-        let carpeta = format!("{}/{}", partes[0], partes[1..3].join("/"));
+        };
         let orden = escena.escena.orden;
-        let capitulo = ordenes.entry(carpeta.clone()).or_default();
+        let capitulo = ordenes.entry(carpeta.to_string()).or_default();
         if let Some(anterior) = capitulo.get(&orden) {
             escaneo.errores.push(format!(
                 "{}: 'orden' {orden} repetido en la carpeta {carpeta} (ya usado por {anterior})",
@@ -770,10 +822,29 @@ fn prefijo_orden(relativa: &str, nivel: usize) -> (u64, String) {
     }
 }
 
-fn clave_lectura(relativa: &str, orden: i64) -> ((u64, String), (u64, String), i64, String) {
+fn prefijo_carpeta(parte: &str) -> String {
+    match parte.split_once('-') {
+        Some((prefijo, resto)) if prefijo.bytes().all(|byte| byte.is_ascii_digit()) => {
+            format!("{:06}-{resto}", prefijo.parse::<u64>().unwrap_or(u64::MAX))
+        }
+        _ => format!("999999-{parte}"),
+    }
+}
+
+fn clave_lectura(relativa: &str, orden: i64) -> ((u64, String), String, i64, String) {
+    let partes: Vec<&str> = relativa.split('/').collect();
+    let capitulo = if partes.len() > 3 {
+        partes[2..partes.len() - 1]
+            .iter()
+            .map(|parte| prefijo_carpeta(parte))
+            .collect::<Vec<_>>()
+            .join("/")
+    } else {
+        String::new()
+    };
     (
         prefijo_orden(relativa, 1),
-        prefijo_orden(relativa, 2),
+        capitulo,
         orden,
         relativa.to_string(),
     )

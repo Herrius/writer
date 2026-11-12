@@ -646,9 +646,12 @@ export async function mover(
         mensaje: `documento no encontrado en la demo: ${objetivo}`,
       } satisfies ErrorDto;
     }
-    if (documento.tipo === 'escena' && libro && capitulo) {
+    if (documento.tipo === 'escena' && libro) {
       const nombre = documento.ruta.split('/').at(-1) ?? '001-escena.md';
-      documento.ruta = `manuscrito/${libro}/${capitulo}/${nombre}`;
+      const carpeta = capitulo
+        ? `manuscrito/${libro}/${capitulo}`
+        : `manuscrito/${libro}`;
+      documento.ruta = `${carpeta}/${nombre}`;
     } else if (documento.tipo === 'nota' && tipo) {
       const nombre = documento.ruta.split('/').at(-1) ?? 'nota.md';
       documento.ruta = `notas/${tipo}/${nombre}`;

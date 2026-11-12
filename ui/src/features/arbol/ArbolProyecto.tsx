@@ -240,7 +240,6 @@ function Menu({
   const opciones: Array<{ tipo: TipoCreacion; etiqueta: string }> = [
     { tipo: 'libro', etiqueta: 'Libro' },
     { tipo: 'capitulo', etiqueta: 'Capítulo' },
-    { tipo: 'seccion', etiqueta: 'Sección' },
     { tipo: 'escena', etiqueta: 'Escena' },
     { tipo: 'trama', etiqueta: 'Trama' },
     { tipo: 'personaje', etiqueta: 'Personaje' },
@@ -504,12 +503,9 @@ export function ArbolProyecto({
 
   const filtroCreacion = (nivel: number): TipoCreacion[] => {
     if (nivel === 1) {
-      return ['capitulo', 'seccion', 'escena'];
+      return ['capitulo', 'escena'];
     }
-    if (nivel === 2) {
-      return ['capitulo', 'seccion'];
-    }
-    return ['seccion', 'escena'];
+    return ['escena'];
   };
 
   const abrirRenombrarCarpeta = (nodo: CarpetaNodo) => {

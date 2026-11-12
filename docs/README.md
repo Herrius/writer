@@ -124,6 +124,9 @@
   paridad Windows, CI multiplataforma e instaladores MSI/NSIS.
 - [`iteraciones/37-panel-crear-busqueda-titulo.md`](iteraciones/37-panel-crear-busqueda-titulo.md)
   — panel Crear, búsqueda en hoja/lista, título editable y línea de tiempo.
+- [`iteraciones/38-compatibilidad-proyectos-antiguos.md`](iteraciones/38-compatibilidad-proyectos-antiguos.md)
+  — proyectos antiguos sin capítulo, orden por carpeta y menús coherentes del
+  árbol.
 - [`inicio-v1.md`](inicio-v1.md) — contrato del panel de Proyectos y del
   asistente de creación.
 - [`escritorio-v1.md`](escritorio-v1.md) — contrato de la interfaz de escritura

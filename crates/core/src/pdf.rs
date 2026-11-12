@@ -55,15 +55,14 @@ impl Formato {
 /// Exporta el manuscrito visible a PDF.
 pub fn exportar(escaneo: &Escaneo, destino: &Path, forzar: bool) -> Result<PathBuf> {
     let destino = preparar_destino(&escaneo.raiz, destino, forzar)?;
-    let mut escenas: Vec<_> = escaneo.escenas.iter().collect();
-    escenas.sort_by(|a, b| {
-        let pa: Vec<&str> = a.relativa.split('/').collect();
-        let pb: Vec<&str> = b.relativa.split('/').collect();
-        pa.get(1)
-            .cmp(&pb.get(1))
-            .then(pa.get(2).cmp(&pb.get(2)))
-            .then(a.escena.orden.cmp(&b.escena.orden))
-    });
+    let documentos = escaneo.ordenados();
+    let escenas: Vec<&crate::verify::EscenaEncontrada> = documentos
+        .iter()
+        .filter_map(|documento| match documento {
+            crate::verify::Documento::Escena(escena) => Some(escena),
+            crate::verify::Documento::Nota(_) => None,
+        })
+        .collect();
     let formato = leer_formato(&escaneo.raiz)?;
     let lineas = maquetar(escaneo, &escenas, formato);
     let bytes = generar_pdf(&lineas, formato);

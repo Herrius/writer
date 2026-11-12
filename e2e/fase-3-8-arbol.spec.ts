@@ -9,6 +9,7 @@ test('crea la jerarquía, renombra y elimina desde los menús del árbol', async
 
   await page.getByRole('button', { name: 'Acciones de El umbral' }).first().click();
   await expect(page.getByRole('menuitem', { name: 'Libro' })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: 'Sección' })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'Trama' })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'Personaje' })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'Nota de cuaderno' })).toHaveCount(0);
@@ -16,28 +17,26 @@ test('crea la jerarquía, renombra y elimina desde los menús del árbol', async
   await expect(page.getByRole('button', { name: 'Capítulo 3', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Acciones de Capítulo 3' }).click();
-  await page.getByRole('menuitem', { name: 'Sección' }).click();
-  await expect(page.getByText('Sección 1')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Acciones de Sección 1' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Capítulo' })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: 'Sección' })).toHaveCount(0);
   await page.getByRole('menuitem', { name: 'Escena' }).click();
   await expect(page.locator('.dabble-doc').filter({ hasText: 'Escena sin título' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Acciones de Sección 1' }).click();
+  await page.getByRole('button', { name: 'Acciones de Capítulo 3' }).click();
   await page.getByRole('menuitem', { name: 'Renombrar' }).click();
   const dialogo = page.getByRole('dialog', { name: 'Renombrar' });
   await dialogo.locator('input').fill('Parte nueva');
   await dialogo.getByRole('button', { name: 'Guardar' }).click();
   await expect(page.getByRole('button', { name: 'Parte nueva', exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Acciones de Capítulo 3' }).click();
+  await page.getByRole('button', { name: 'Acciones de Parte nueva' }).click();
   await page.getByRole('menuitem', { name: 'Eliminar' }).click();
   await page
     .getByRole('dialog', { name: 'Eliminar' })
     .getByRole('button', { name: 'Eliminar' })
     .click();
   await expect(page.getByRole('heading', { name: 'Papelera', level: 1 })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Capítulo 3', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Parte nueva', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Restaurar Escena sin título' })).toBeVisible();
 });
 

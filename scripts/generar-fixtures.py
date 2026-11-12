@@ -668,8 +668,11 @@ def verificar(raiz: Path, imprimir: bool = True) -> Informe:
         if ruta == proyecto_yml:
             continue
         if relativa.parts[0] == "manuscrito":
-            if len(relativa.parts) != 4:
-                informe.error(f"{relativa}: una escena debe estar en manuscrito/libro/capitulo/")
+            if len(relativa.parts) < 3:
+                informe.error(
+                    f"{relativa}: una escena debe estar en manuscrito/<libro>/ o "
+                    "manuscrito/<libro>/<capítulo>/"
+                )
                 continue
             escenas.append((ruta, _leer_fixture(ruta, relativa, informe)))
         elif relativa.parts[0] == "notas":

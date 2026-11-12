@@ -658,15 +658,14 @@ impl Project {
         });
         validar_componente(&libro)?;
         validar_componente(&capitulo)?;
+        let carpeta = format!("manuscrito/{libro}/{capitulo}");
         let orden = match orden {
             Some(valor) => {
                 if !(1..=99_999).contains(&valor) {
                     return Err(Error::Input("'orden' debe estar entre 1 y 99999".into()));
                 }
                 if sesion.escaneo.escenas.iter().any(|escena| {
-                    escena
-                        .relativa
-                        .starts_with(&format!("manuscrito/{libro}/{capitulo}/"))
+                    escena.relativa.starts_with(&format!("{carpeta}/"))
                         && escena.escena.orden == valor
                 }) {
                     return Err(Error::Conflict(format!(
@@ -675,9 +674,9 @@ impl Project {
                 }
                 valor
             }
-            None => siguiente_orden(&sesion.escaneo, &libro, &capitulo),
+            None => siguiente_orden(&sesion.escaneo, &carpeta),
         };
-        let relativa = nombre_escena_libre(&self.raiz, &libro, &capitulo, titulo)?;
+        let relativa = nombre_escena_libre(&self.raiz, &carpeta, titulo)?;
         let escena = Escena::nueva(titulo, orden)?;
         let id = escena.id.clone();
         self.commit_efectos(
@@ -1209,12 +1208,11 @@ impl Project {
             .ok_or_else(|| Error::NotFound(format!("documento no encontrado: {id_o_ruta}")))?;
         let (id, relativa, bytes, scope) = match documento {
             Documento::Escena(encontrada) => {
-                let partes: Vec<&str> = encontrada.relativa.split('/').collect();
-                let libro = partes[1];
-                let capitulo = partes[2];
+                let carpeta = crate::verify::carpeta_de_escena(&encontrada.relativa)
+                    .ok_or_else(|| Error::Integrity("ruta de escena no válida".into()))?;
                 let titulo = format!("Copia de {}", encontrada.escena.titulo);
-                let orden = siguiente_orden(&sesion.escaneo, libro, capitulo);
-                let relativa = nombre_escena_libre(&self.raiz, libro, capitulo, &titulo)?;
+                let orden = siguiente_orden(&sesion.escaneo, carpeta);
+                let relativa = nombre_escena_libre(&self.raiz, carpeta, &titulo)?;
                 let mut nueva = Escena::nueva(&titulo, orden)?;
                 nueva.estado = encontrada.escena.estado.clone();
                 nueva.pov = encontrada.escena.pov.clone();
@@ -1542,11 +1540,23 @@ impl Project {
             Documento::Escena(encontrada) => {
                 let partes: Vec<&str> = encontrada.relativa.split('/').collect();
                 let libro = libro.unwrap_or(partes[1]);
-                let capitulo = capitulo.unwrap_or(partes[2]);
+                let capitulo = capitulo
+                    .map(str::to_string)
+                    .unwrap_or_else(|| crate::verify::capitulo_de_escena(&encontrada.relativa));
                 validar_componente(libro)?;
-                validar_componente(capitulo)?;
-                let nombre = partes[3];
-                let destino = format!("manuscrito/{libro}/{capitulo}/{nombre}");
+                for componente in capitulo.split('/').filter(|parte| !parte.is_empty()) {
+                    validar_componente(componente)?;
+                }
+                let nombre = partes
+                    .last()
+                    .copied()
+                    .ok_or_else(|| Error::Integrity("ruta de escena no válida".into()))?;
+                let carpeta = if capitulo.is_empty() {
+                    format!("manuscrito/{libro}")
+                } else {
+                    format!("manuscrito/{libro}/{capitulo}")
+                };
+                let destino = format!("{carpeta}/{nombre}");
                 if destino == encontrada.relativa {
                     return Ok(destino);
                 }
@@ -1554,9 +1564,7 @@ impl Project {
                     return Err(Error::Conflict(format!("ya existe {destino}")));
                 }
                 if sesion.escaneo.escenas.iter().any(|escena| {
-                    escena
-                        .relativa
-                        .starts_with(&format!("manuscrito/{libro}/{capitulo}/"))
+                    escena.relativa.starts_with(&format!("{carpeta}/"))
                         && escena.escena.orden == encontrada.escena.orden
                         && escena.escena.id != encontrada.escena.id
                 }) {
@@ -2100,24 +2108,26 @@ impl Project {
     }
 }
 
-fn siguiente_orden(escaneo: &Escaneo, libro: &str, capitulo: &str) -> i64 {
-    let prefijo = format!("manuscrito/{libro}/{capitulo}/");
+fn siguiente_orden(escaneo: &Escaneo, carpeta: &str) -> i64 {
+    let prefijo = format!("{carpeta}/");
     escaneo
         .escenas
         .iter()
-        .filter(|escena| escena.relativa.starts_with(&prefijo))
+        .filter(|escena| {
+            escena.relativa.starts_with(&prefijo) && !escena.relativa[prefijo.len()..].contains('/')
+        })
         .map(|escena| escena.escena.orden)
         .max()
         .map(|orden| (orden / 10 + 1) * 10)
         .unwrap_or(10)
 }
 
-fn nombre_escena_libre(raiz: &Path, libro: &str, capitulo: &str, titulo: &str) -> Result<String> {
-    let directorio = raiz.join("manuscrito").join(libro).join(capitulo);
+fn nombre_escena_libre(raiz: &Path, carpeta: &str, titulo: &str) -> Result<String> {
+    let directorio = raiz.join(carpeta);
     let mut numero = siguiente_prefijo(&directorio);
     loop {
         let nombre = format!("{numero:03}-{}.md", model::slug(titulo));
-        let relativa = format!("manuscrito/{libro}/{capitulo}/{nombre}");
+        let relativa = format!("{carpeta}/{nombre}");
         if !directorio.join(&nombre).exists() {
             return Ok(relativa);
         }
@@ -2282,12 +2292,12 @@ fn exportar_markdown(escaneo: &Escaneo, incluir_notas: bool) -> String {
         let Documento::Escena(escena) = documento else {
             continue;
         };
-        let partes: Vec<&str> = escena.relativa.split('/').collect();
-        if partes.len() != 4 {
+        let Some(libro_clave) = crate::verify::libro_de_escena(&escena.relativa) else {
             continue;
-        }
-        let libro = model::titulo_humano(partes[1]);
-        let capitulo = model::titulo_humano(partes[2]);
+        };
+        let libro = model::titulo_humano(libro_clave);
+        let capitulo_clave = crate::verify::capitulo_de_escena(&escena.relativa);
+        let capitulo = crate::verify::titulo_capitulo_de_escena(&escena.relativa);
         if libro != libro_actual {
             if !salida.is_empty() {
                 salida.push_str("\n\n");
@@ -2296,9 +2306,9 @@ fn exportar_markdown(escaneo: &Escaneo, incluir_notas: bool) -> String {
             libro_actual = libro;
             capitulo_actual.clear();
         }
-        if capitulo != capitulo_actual {
+        if !capitulo.is_empty() && capitulo_clave != capitulo_actual {
             salida.push_str(&format!("\n## {capitulo}\n"));
-            capitulo_actual = capitulo;
+            capitulo_actual = capitulo_clave;
         }
         if !primera_escena {
             salida.push_str("\n***\n");

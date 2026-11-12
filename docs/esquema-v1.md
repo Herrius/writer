@@ -42,9 +42,14 @@ mi-novela/
     cuarentena/
 ```
 
-- `manuscrito/` contiene **solo** escenas, en tres niveles fijos:
-  libro → capítulo → escena. Un nivel de más o de menos es un error de
-  estructura, no una escena.
+- `manuscrito/` contiene **solo** escenas. La jerarquía canónica es
+  libro → capítulo → escena (`manuscrito/<libro>/<capítulo>/<escena>.md`).
+  Por compatibilidad con proyectos creados por versiones anteriores, también se
+  aceptan escenas colgadas directamente del libro
+  (`manuscrito/<libro>/<escena>.md`) y carpetas de agrupación adicionales dentro
+  del capítulo; en todos los casos el primer nivel es el libro y la carpeta que
+  contiene el archivo agrupa las escenas. Un archivo suelto directamente en
+  `manuscrito/` sí es un error de estructura, no una escena.
 - `notas/` contiene **solo** notas, un nivel: `notas/<tipo>/<archivo>.md`, con
   `tipo` ∈ `tramas`, `personajes`, `lugares`, `cronologia`, `objetos`.
 - Los nombres de carpeta y archivo son para humanos y para el sistema de

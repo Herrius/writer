@@ -33,6 +33,43 @@ fn init_crea_proyecto_verificable() {
 }
 
 #[test]
+fn acepta_escenas_de_proyectos_antiguos_colgadas_del_libro() {
+    let directorio = temporal();
+    let proyecto = Project::new(directorio.path().join("antiguo"));
+    proyecto.init("Antiguo", None, None).expect("init");
+
+    // Los proyectos creados por versiones anteriores podían guardar la escena
+    // directamente bajo el libro, sin carpeta de capítulo.
+    let escena = Escena::nueva("Escena antigua", 10).expect("escena");
+    let id = escena.id.clone();
+    let destino = proyecto
+        .raiz()
+        .join("manuscrito/01-libro/001-escena-antigua.md");
+    std::fs::write(&destino, escena.a_bytes()).expect("escribir escena antigua");
+
+    let escaneo = proyecto.verificar().expect("verificar");
+    assert!(
+        escaneo.errores.is_empty(),
+        "el proyecto antiguo debe abrirse: {:?}",
+        escaneo.errores
+    );
+    assert!(escaneo.escribible());
+
+    proyecto
+        .escribir_cuerpo(&id, "Se puede seguir escribiendo.\n")
+        .expect("escribir");
+    let (copia, ruta) = proyecto.duplicar(&id).expect("duplicar");
+    assert_ne!(copia, id);
+    assert!(
+        ruta.starts_with("manuscrito/01-libro/"),
+        "la copia debe quedar en el libro: {ruta}"
+    );
+    assert!(!ruta
+        .trim_start_matches("manuscrito/01-libro/")
+        .contains('/'));
+}
+
+#[test]
 fn crea_renombra_carpetas_y_escenas_en_cualquier_nivel() {
     let directorio = temporal();
     let proyecto = Project::new(directorio.path().join("novela"));

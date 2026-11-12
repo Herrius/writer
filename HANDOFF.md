@@ -26,6 +26,11 @@
   nota/carpeta, menús por nodo, miga de pan
   sincronizada y páginas de Archivo/Papelera/Plantillas; ver
   [`docs/iteraciones/35-arbol-jerarquico.md`](docs/iteraciones/35-arbol-jerarquico.md).
+- **Compatibilidad 2026-11-12:** los proyectos con escenas directamente bajo el
+  libro (formato antiguo) vuelven a ser escribibles; el orden se agrupa por la
+  carpeta real y los menús del árbol crean capítulos en el libro y escenas en el
+  capítulo, sin la opción Sección; ver
+  [`docs/iteraciones/38-compatibilidad-proyectos-antiguos.md`](docs/iteraciones/38-compatibilidad-proyectos-antiguos.md).
 
 ## 1. Resumen
 

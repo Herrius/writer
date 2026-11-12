@@ -8,7 +8,7 @@ indentación fuera del subconjunto YAML v1
 'pov' apunta a un id inexistente
 'refs' apunta a un id inexistente
 'orden' 20 repetido
-una escena debe estar en manuscrito/libro/capitulo/
+una escena debe estar en manuscrito/<libro>/
 no coincide con la carpeta
 retorno de carro aislado
 comillas simples no admitidas

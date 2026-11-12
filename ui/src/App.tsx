@@ -3769,11 +3769,12 @@ export default function App() {
     if (tipoCreacion === 'capitulo') {
       return libros.sort((a, b) => a.localeCompare(b, 'es'));
     }
-    if (tipoCreacion === 'seccion' || tipoCreacion === 'escena') {
+    if (tipoCreacion === 'escena') {
       return carpetas
         .filter(
           (carpeta) =>
-            carpeta.startsWith('manuscrito/') && carpeta.split('/').length === 3,
+            carpeta.startsWith('manuscrito/') &&
+            (carpeta.split('/').length === 2 || carpeta.split('/').length === 3),
         )
         .sort((a, b) => a.localeCompare(b, 'es'));
     }
@@ -4214,8 +4215,12 @@ export default function App() {
                 onExportarDocumento={(documento) => void exportarDocumentoNodo(documento)}
                 onMoverDocumento={(documento, ruta) => {
                   const partes = ruta.split('/');
-                  if (partes.length >= 3) {
-                    void moverDocumento(documento.id, partes[1], partes[2]);
+                  if (partes.length >= 2) {
+                    void moverDocumento(
+                      documento.id,
+                      partes[1],
+                      partes.slice(2).join('/'),
+                    );
                   }
                 }}
               />
@@ -5413,7 +5418,6 @@ export default function App() {
                   >
                     <option value="libro">Libro</option>
                     <option value="capitulo">Capítulo</option>
-                    <option value="seccion">Sección</option>
                     <option value="escena">Escena</option>
                     <option value="nota">Nota</option>
                   </select>
@@ -5432,7 +5436,7 @@ export default function App() {
                         <option value="">
                           {tipoCreacion === 'capitulo'
                             ? 'No hay libros'
-                            : 'No hay capítulos'}
+                            : 'No hay libros ni capítulos'}
                         </option>
                       ) : (
                         opcionesPadreCreacion.map((carpeta) => (

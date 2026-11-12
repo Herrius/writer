@@ -29,20 +29,20 @@ pub(crate) fn exportar(escaneo: &Escaneo, incluir_notas: bool) -> Result<Vec<u8>
         let Documento::Escena(encontrada) = documento else {
             continue;
         };
-        let partes: Vec<&str> = encontrada.relativa.split('/').collect();
-        if partes.len() != 4 {
+        let Some(libro_clave) = crate::verify::libro_de_escena(&encontrada.relativa) else {
             continue;
-        }
-        let libro = model::titulo_humano(partes[1]);
-        let capitulo = model::titulo_humano(partes[2]);
-        if libro != libro_actual {
+        };
+        let libro = model::titulo_humano(libro_clave);
+        let capitulo_clave = crate::verify::capitulo_de_escena(&encontrada.relativa);
+        let capitulo = crate::verify::titulo_capitulo_de_escena(&encontrada.relativa);
+        if libro_clave != libro_actual {
             render.titulo(&libro, 1);
-            libro_actual = libro;
+            libro_actual = libro_clave.to_string();
             capitulo_actual.clear();
         }
-        if capitulo != capitulo_actual {
+        if !capitulo.is_empty() && capitulo_clave != capitulo_actual {
             render.titulo(&capitulo, 2);
-            capitulo_actual = capitulo;
+            capitulo_actual = capitulo_clave;
         }
         render.titulo(&encontrada.escena.titulo, 3);
         render.markdown(&quitar_marcas(&encontrada.escena.cuerpo));
